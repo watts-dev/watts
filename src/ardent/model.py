@@ -46,16 +46,21 @@ class Model(MutableMapping):
                 # If dataset stores a string type, it needs to be decoded so
                 # that it doesn't return a bytes object
                 if h5py.check_string_dtype(obj.dtype) is not None:
-                    mapping[key] = obj[()].decode()
-                else:
-                    # Store value, converting to tuple/list if indicated
-                    value = obj[()]
-                    if obj.attrs['type'] == 'tuple':
-                        mapping[key] = tuple(value)
-                    elif obj.attrs['type'] == 'list':
-                        mapping[key] = list(value)
+                    if obj.shape == ():
+                        value = obj[()].decode()
                     else:
-                        mapping[key] = value
+                        value = obj[()].astype('str')
+                else:
+                    value = obj[()]
+
+                # Convert to tuple/list if indicated
+                if obj.attrs['type'] == 'tuple':
+                    mapping[key] = tuple(value)
+                elif obj.attrs['type'] == 'list':
+                    mapping[key] = list(value)
+                else:
+                    mapping[key] = value
+
             elif isinstance(obj, h5py.Group):
                 # For groups, load the mapping recursively
                 mapping[key] = {}
