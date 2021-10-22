@@ -33,7 +33,8 @@ class Model(MutableMapping):
                 group = h5_obj.create_group(key)
                 self._save_mapping(value, group)
             else:
-                h5_obj.create_dataset(key, data=value)
+                dset = h5_obj.create_dataset(key, data=value)
+                dset.attrs['type'] = type(value).__name__
 
     def save(self, filename):
         with h5py.File(filename, 'w') as h5file:
@@ -47,7 +48,14 @@ class Model(MutableMapping):
                 if h5py.check_string_dtype(obj.dtype) is not None:
                     mapping[key] = obj[()].decode()
                 else:
-                    mapping[key] = obj[()]
+                    # Store value, converting to tuple/list if indicated
+                    value = obj[()]
+                    if obj.attrs['type'] == 'tuple':
+                        mapping[key] = tuple(value)
+                    elif obj.attrs['type'] == 'list':
+                        mapping[key] = list(value)
+                    else:
+                        mapping[key] = value
             elif isinstance(obj, h5py.Group):
                 # For groups, load the mapping recursively
                 mapping[key] = {}
