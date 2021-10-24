@@ -1,7 +1,7 @@
 from collections.abc import MutableMapping, Mapping
 
 import h5py
-
+import time
 
 class Model(MutableMapping):
     def __init__(self):
@@ -11,7 +11,7 @@ class Model(MutableMapping):
         return self._dict[key]
 
     def __setitem__(self, key, value):
-        self._dict[key] = value
+        self._dict[key] = [value, "user", time.asctime(time.localtime(time.time()))]
 
     def __delitem__(self, key):
         del self._dict[key]
@@ -24,17 +24,17 @@ class Model(MutableMapping):
 
     def show_summary(self):
         for key, value in self.items():
-            print(f'{key}: {value}')
+            print(f'{key}: {value[0]} added by {value[1]} at {value[2]}')
 
     def _save_mapping(self, mapping, h5_obj):
         for key, value in mapping.items():
             if isinstance(value, Mapping):
                 # If this item is a dictionary, make recursive call
                 group = h5_obj.create_group(key)
-                self._save_mapping(value, group)
+                self._save_mapping(value[0], group)
             else:
-                dset = h5_obj.create_dataset(key, data=value)
-                dset.attrs['type'] = type(value).__name__
+                dset = h5_obj.create_dataset(key, data=value[0])
+                dset.attrs['type'] = type(value[0]).__name__
 
     def save(self, filename):
         with h5py.File(filename, 'w') as h5file:
