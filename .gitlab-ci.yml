@@ -1,12 +1,25 @@
 image: python:3.7
 
+# Change pip's cache directory to be inside the project directory since we can
+# only cache local items.
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+cache:
+  paths:
+    - .cache/pip
+    - venv/
+
 build-job:
   stage: build
   script:
+    - python3 -m venv venv
+    - source venv/bin/activate
     - pip install -U pip
     - pip install .[test]
 
 test-job:
   stage: test
   script:
+    - source venv/bin/activate
     - pytest tests
