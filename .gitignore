@@ -1,0 +1,6 @@
+*.h5
+*.rendered
+*.pyc
+*.egg-info
+__pycache__
+.DS_Store
