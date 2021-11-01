@@ -9,8 +9,7 @@ def test_undefined_template(run_in_tmpdir):
         fh.write("{{ variable }}")
 
     # Create plugin to build template
-    model_builder = ardent.TemplateModelBuilder('example_template')
-    plugin = ardent.ExamplePlugin(model_builder)
+    plugin = ardent.TemplatePlugin('example_template')
 
     # Passing model with 'variable' set should work
     model = ardent.Model(variable=1)
