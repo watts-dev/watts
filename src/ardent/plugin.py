@@ -88,7 +88,7 @@ class PluginSAM(Plugin):
         
         if os.path.isfile(self.SAM_exec) is False:
             raise RuntimeError("SAM executable missing")
-        os.system(SAM_exec+" -i "+self.sam_inp_name+" > "+self.sam_inp_name+".out")
+        os.system(self.SAM_exec+" -i "+self.sam_inp_name+" > "+self.sam_inp_name+".out")
 
     def postrun(self, model):
         print("post-run for SAM Plugin")
