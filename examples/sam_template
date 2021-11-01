@@ -7,7 +7,7 @@
   {#-
       Render the parameters
   #}
-  global_init_P = {{ He_Pressure }}
+  global_init_P = {{ "{:.3e}".format(He_Pressure) }}
   global_init_V = {{ Channel_mass_flow_rate * Velocity_multiplication_factor / He_density * Coolant_channel_XS }}
   gravity = '-9.8 0 0'
 []
