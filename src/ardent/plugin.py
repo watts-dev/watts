@@ -93,9 +93,6 @@ class PluginSAM(Plugin):
     def postrun(self, model):
         print("post-run for SAM Plugin")
         # TODO: find all '.cvs' files
-        # TODO: save results form CVS files into 'model'
-        
-
         csv_file_name = "SAM_csv.csv"
 
         if os.path.isfile(csv_file_name):
@@ -103,6 +100,7 @@ class PluginSAM(Plugin):
             read_file = csv.reader(cvs_file)
             out_press = None
             for row in read_file:
+                # TODO: save all results from CSV files - this example only save 1 result
                 if row[0] == "1":
                     model['max_Pcoolant'] = float(row[1])
 
