@@ -62,11 +62,14 @@ class ExamplePlugin(Plugin):
 class PluginSAM(Plugin):
     def  __init__(self, model_builder):
         self.model_builder = model_builder
+        self.sam_inp_name = "SAM.i"
+        self.sam_tmp_folder = "tmp_SAM"
+        self.SAM_exec = "../sam-opt-mpi"
 
     def workflow(self, model):
         prerun_crash = self.prerun(model)
         run_crash = self.run()
-        postrun_crash = self.postrun()
+        postrun_crash = self.postrun(model)
 
     def prerun(self, model):
         # Render the template
@@ -75,23 +78,34 @@ class PluginSAM(Plugin):
 
     def run(self):
         print("Run for SAM Plugin")
-        sam_inp_name = "SAM.i"
-        sam_tmp_folder = "tmp_SAM"
-        if os.path.exists(sam_tmp_folder):
-            shutil.rmtree(sam_tmp_folder)
-        os.mkdir(sam_tmp_folder)
 
-        shutil.copy("sam_template.rendered", sam_tmp_folder+"/"+sam_inp_name)
-        os.chdir(sam_tmp_folder)
-        SAM_exec = "../sam-opt-mpi"
-        if os.path.isfile(SAM_exec) is False:
+        if os.path.exists(self.sam_tmp_folder):
+            shutil.rmtree(self.sam_tmp_folder)
+        os.mkdir(self.sam_tmp_folder)
+
+        shutil.copy("sam_template.rendered", self.sam_tmp_folder+"/"+self.sam_inp_name)
+        os.chdir(self.sam_tmp_folder)
+        
+        if os.path.isfile(self.SAM_exec) is False:
             raise RuntimeError("SAM executable missing")
-        os.system(SAM_exec+" -i "+sam_inp_name+" > "+sam_inp_name+".out")
+        os.system(SAM_exec+" -i "+self.sam_inp_name+" > "+self.sam_inp_name+".out")
 
     def postrun(self, model):
         print("post-run for SAM Plugin")
         # TODO: find all '.cvs' files
         # TODO: save results form CVS files into 'model'
-        model['SAM_result'] = 0
+        
 
+        csv_file_name = "SAM_csv.csv"
+
+        if os.path.isfile(csv_file_name):
+            cvs_file = open(csv_file_name,'r')
+            read_file = csv.reader(cvs_file)
+            out_press = None
+            for row in read_file:
+                if row[0] == "1":
+                    model['max_Pcoolant'] = float(row[1])
+
+        os.chdir("../")
+        shutil.rmtree(self.sam_tmp_folder)
 
