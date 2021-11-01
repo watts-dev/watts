@@ -1,0 +1,5 @@
+# Because Dakota hides the real libmpi need to fixup the LD_LIBRARY_PATH using libmpifort
+SAM=/home/rhu/projects/SAM/sam-opt
+SAM_MPI=$(dirname  `ldd $SAM | grep libmpifort.so.12 | awk '{print $3}'`)
+export LD_LIBRARY_PATH=$SAM_MPI:$LD_LIBRARY_PATH
+$SAM $*

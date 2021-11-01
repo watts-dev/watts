@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+import os, sys, shutil
+import csv
 
 
 class Plugin(ABC):
@@ -42,24 +44,54 @@ class ExamplePlugin(Plugin):
 
     def workflow(self, model):
         prerun_crash = self.prerun(model)
-        if prerun_crash is False:
-            run_crash = self.run()
-            if run_crash is False:
-                postrun_crash = self.postrun()
+        run_crash = self.run()
+        postrun_crash = self.postrun()
 
     def prerun(self, model):
         # Render the template
-        prerun_crash = False
         print("Pre-run for Example Plugin")
         self.model_builder(model)
-        return prerun_crash
 
     def run(self):
-        run_crash = False
         print("Run for Example Plugin")
-        return run_crash
+        
 
     def postrun(self):
-        post_crash = False
         print("post-run for Example Plugin")
-        return post_crash
+
+class PluginSAM(Plugin):
+    def  __init__(self, model_builder):
+        self.model_builder = model_builder
+
+    def workflow(self, model):
+        prerun_crash = self.prerun(model)
+        run_crash = self.run()
+        postrun_crash = self.postrun()
+
+    def prerun(self, model):
+        # Render the template
+        print("Pre-run for SAM Plugin")
+        self.model_builder(model)
+
+    def run(self):
+        print("Run for SAM Plugin")
+        sam_inp_name = "SAM.i"
+        sam_tmp_folder = "tmp_SAM"
+        if os.path.exists(sam_tmp_folder):
+            shutil.rmtree(sam_tmp_folder)
+        os.mkdir(sam_tmp_folder)
+
+        shutil.copy("sam_template.rendered", sam_tmp_folder+"/"+sam_inp_name)
+        os.chdir(sam_tmp_folder)
+        SAM_exec = "../sam-opt-mpi"
+        if os.path.isfile(SAM_exec) is False:
+            raise RuntimeError("SAM executable missing")
+        os.system(SAM_exec+" -i "+sam_inp_name+" > "+sam_inp_name+".out")
+
+    def postrun(self, model):
+        print("post-run for SAM Plugin")
+        # TODO: find all '.cvs' files
+        # TODO: save results form CVS files into 'model'
+        model['SAM_result'] = 0
+
+

@@ -24,9 +24,7 @@ print()
 
 model_builder = ardent.TemplateModelBuilder('sam_template')
 
-plugin = ardent.ExamplePlugin(model_builder)
+plugin = ardent.PluginSAM(model_builder)
 plugin.workflow(model)
 
-# Show rendered template
-with open('sam_template.rendered', 'r') as f:
-    print(f.read())
+model.show_summary()
