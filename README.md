@@ -9,4 +9,13 @@ Advanced Reactor Design and Economics Analysis Framework (ARDENT) under developm
 - pip install -U pip
 - pip install -e .
 
+## Documentation
 
+To build the documentation, you can run:
+- cd doc
+- pip install -r requirements.txt
+- make html
+
+Then you can view the documentation with:
+- google-chrome build/html/index.html
+or replace google-chrome with your favorite browser.
