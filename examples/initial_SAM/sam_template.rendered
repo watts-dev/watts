@@ -1,0 +1,5 @@
+[GlobalParams]
+  global_init_P = 7000000.0
+  global_init_V = 0.0004888398671783278
+  gravity = '-9.8 0 0'
+[]
