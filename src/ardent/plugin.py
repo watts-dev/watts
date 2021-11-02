@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 
+from .template import TemplateModelBuilder
+
 
 class Plugin(ABC):
     def __init__(self, template_file):
@@ -29,9 +31,9 @@ class OpenmcPlugin(Plugin):
         self.model_builder(model)
 
 
-class ExamplePlugin(Plugin):
-    def  __init__(self, model_builder):
-        self.model_builder = model_builder
+class TemplatePlugin(Plugin):
+    def  __init__(self, template_file):
+        self.model_builder = TemplateModelBuilder(template_file)
 
     def prerun(self, model):
         # Render the template
