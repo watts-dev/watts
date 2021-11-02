@@ -6,7 +6,7 @@ Advanced Reactor Design and Economics Analysis Framework (ARDENT) under developm
 
 - git clone https://git-out.gss.anl.gov/nstauff/ARDENT
 - cd ARDENT
-- git checkout initial-work
+- pip install -U pip
 - pip install -e .
 
 

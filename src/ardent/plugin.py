@@ -4,6 +4,8 @@ from .template import TemplateModelBuilder
 
 
 class Plugin(ABC):
+    """Class defining the Plugin interface"""
+
     def __init__(self, template_file):
         ...
 
@@ -24,6 +26,8 @@ class Plugin(ABC):
 
 
 class OpenmcPlugin(Plugin):
+    """Plugin for running OpenMC"""
+
     def __init__(self, model_builder):
         self.model_builder = model_builder
 

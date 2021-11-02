@@ -4,6 +4,7 @@ import h5py
 import time
 
 class Model(MutableMapping):
+    """Model storing information that is read/written by plugins"""
     def __init__(self, *args, **kwargs):
         self._dict = dict(*args, **kwargs)
 
