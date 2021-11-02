@@ -5,9 +5,8 @@ import time
 
 class Model(MutableMapping):
     """Model storing information that is read/written by plugins"""
-
-    def __init__(self):
-        self._dict = {}
+    def __init__(self, *args, **kwargs):
+        self._dict = dict(*args, **kwargs)
 
     def __getitem__(self, key):
         return self._dict[key]
