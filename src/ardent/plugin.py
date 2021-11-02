@@ -2,8 +2,12 @@ from abc import ABC, abstractmethod
 import os, sys, shutil
 import csv
 
+from .template import TemplateModelBuilder
+
 
 class Plugin(ABC):
+    """Class defining the Plugin interface"""
+
     def __init__(self, template_file):
         ...
 
@@ -31,6 +35,8 @@ class Plugin(ABC):
 
 
 class OpenmcPlugin(Plugin):
+    """Plugin for running OpenMC"""
+
     def __init__(self, model_builder):
         self.model_builder = model_builder
 
@@ -38,9 +44,9 @@ class OpenmcPlugin(Plugin):
         self.model_builder(model)
 
 
-class ExamplePlugin(Plugin):
-    def  __init__(self, model_builder):
-        self.model_builder = model_builder
+class TemplatePlugin(Plugin):
+    def  __init__(self, template_file):
+        self.model_builder = TemplateModelBuilder(template_file)
 
     def workflow(self, model):
         prerun_crash = self.prerun(model)

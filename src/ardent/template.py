@@ -5,7 +5,11 @@ class TemplateModelBuilder:
     def __init__(self, template_file, **template_kwargs):
         self.template_file = template_file
         with open(template_file, 'r') as fh:
-            self.template = jinja2.Template(fh.read(), **template_kwargs)
+            self.template = jinja2.Template(
+                fh.read(),
+                undefined=jinja2.StrictUndefined,
+                **template_kwargs
+            )
 
     def __call__(self, model, filename=None):
         # Default rendered template filename

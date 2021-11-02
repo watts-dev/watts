@@ -4,3 +4,5 @@
 *.egg-info
 __pycache__
 .DS_Store
+doc/build/
+doc/source/reference/generated/
