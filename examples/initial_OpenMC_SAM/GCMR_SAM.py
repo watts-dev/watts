@@ -22,11 +22,7 @@ model.save('model.h5')
 model.show_summary()
 print()
 
-model_builder = ardent.TemplateModelBuilder('sam_template')
+plugin = ardent.PluginSAM('sam_template')
+plugin.workflow(model)
 
-plugin = ardent.ExamplePlugin(model_builder)
-plugin.prerun(model)
-
-# Show rendered template
-with open('sam_template.rendered', 'r') as f:
-    print(f.read())
+model.show_summary()
