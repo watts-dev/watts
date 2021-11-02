@@ -66,8 +66,8 @@ class TemplatePlugin(Plugin):
         print("post-run for Example Plugin")
 
 class PluginSAM(Plugin):
-    def  __init__(self, model_builder):
-        self.model_builder = model_builder
+    def  __init__(self, template_file):
+        self.model_builder = TemplateModelBuilder(template_file)
         self.sam_inp_name = "SAM.i"
         self.sam_tmp_folder = "tmp_SAM"
         self.SAM_exec = "../sam-opt-mpi"
