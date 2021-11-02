@@ -61,7 +61,6 @@ class TemplatePlugin(Plugin):
     def run(self):
         print("Run for Example Plugin")
         
-
     def postrun(self):
         print("post-run for Example Plugin")
 
@@ -73,9 +72,9 @@ class PluginSAM(Plugin):
         self.SAM_exec = "../sam-opt-mpi"
 
     def workflow(self, model):
-        prerun_crash = self.prerun(model)
-        run_crash = self.run()
-        postrun_crash = self.postrun(model)
+        self.prerun(model)
+        self.run()
+        self.postrun(model)
 
     def prerun(self, model):
         # Render the template
