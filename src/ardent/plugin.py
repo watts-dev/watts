@@ -17,13 +17,6 @@ class Plugin(ABC):
 
         # Run arbitrary user scripts
         ...
-        
-    @abstractmethod
-    def prerun(self, model):
-        # Fill in the template to create real inputs
-
-        # Run arbitrary user scripts
-        ...
 
     @abstractmethod
     def run(self):
@@ -68,10 +61,10 @@ class PluginSAM(Plugin):
     def  __init__(self, template_file):
         self.model_builder = TemplateModelBuilder(template_file)
         self.sam_inp_name = "SAM.i"
-        self.sam_tmp_folder = "tmp_SAM"
+        self.sam_tmp_folder = "tmp_SAM" # TODO: provide consistency in where we are running the calculation
         self.SAM_exec = "../sam-opt-mpi"
 
-    def workflow(self, model):
+    def workflow(self, model): # TODO: move this logic as part of the Plugin base class.
         self.prerun(model)
         self.run()
         self.postrun(model)
@@ -103,12 +96,11 @@ class PluginSAM(Plugin):
         if os.path.isfile(csv_file_name):
             cvs_file = open(csv_file_name,'r')
             read_file = csv.reader(cvs_file)
-            out_press = None
             for row in read_file:
                 # TODO: save all results from CSV files - this example only save 1 result
                 if row[0] == "1":
                     model['max_Pcoolant'] = float(row[1])
 
-        os.chdir("../")
+        os.chdir("../") # TODO: provide consistency in where we are running the calculation
         shutil.rmtree(self.sam_tmp_folder)
 
