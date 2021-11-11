@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import ardent
+import pytest
 import numpy as np
 
 
@@ -27,6 +28,10 @@ def test_model_roundtrip(run_in_tmpdir):
         'str': 'String inside dictionary'
     }
 
+    # Add duplicate key
+    with pytest.warns(UserWarning):
+        model['int_scalar'] = 8
+
     # Save to HDF5
     model.save('model.h5')
     assert Path('model.h5').is_file()
@@ -41,3 +46,6 @@ def test_model_roundtrip(run_in_tmpdir):
             np.testing.assert_equal(model[key], value)
         else:
             assert model[key] == value
+
+        # Test metadata
+        assert model.get_metadata(key) == new_model.get_metadata(key)

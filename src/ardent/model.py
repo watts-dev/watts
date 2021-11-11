@@ -1,18 +1,39 @@
-from collections.abc import MutableMapping, Mapping
+from collections.abc import MutableMapping, Mapping, Iterable
 
 import h5py
-import time
+from datetime import datetime
+from getpass import getuser
+from warnings import warn
 
 class Model(MutableMapping):
     """Model storing information that is read/written by plugins"""
     def __init__(self, *args, **kwargs):
-        self._dict = dict(*args, **kwargs)
+        self._dict = {}
+        self._metadata = {}
+
+        # Mimic the behavior of a normal dict object.
+        if args:
+            if isinstance(args, Mapping):
+                # dict(mapping)
+                for key, value in args.items():
+                    self[key] = value
+            elif isinstance(args, Iterable):
+                # dict(iterable)
+                for key, value in args:
+                    self[key] = value
+        elif kwargs:
+            # dict(**kwargs)
+            for key, value in kwargs.items():
+                self[key] = value
 
     def __getitem__(self, key):
         return self._dict[key]
 
     def __setitem__(self, key, value):
-        self._dict[key] = value #[value, "user", time.asctime(time.localtime(time.time()))]
+        if key in self._dict:
+            warn(f"Key {key} has already been added to model")
+        self._dict[key] = value
+        self._metadata[key] = (getuser(), datetime.now())
 
     def __delitem__(self, key):
         del self._dict[key]
@@ -23,19 +44,31 @@ class Model(MutableMapping):
     def __len__(self):
         return len(self._dict)
 
+    def get_metadata(self, key):
+        return self._metadata[key]
+
     def show_summary(self):
         for key, value in self.items():
-            print(f'{key}: {value} ')#added by {value[1]} at {value[2]}')
+            metadata = self._metadata[key]
+            print(f'{key}: {value} (added by {metadata[0]} at {metadata[1]})')
 
     def _save_mapping(self, mapping, h5_obj):
         for key, value in mapping.items():
             if isinstance(value, Mapping):
                 # If this item is a dictionary, make recursive call
                 group = h5_obj.create_group(key)
+                if isinstance(mapping, type(self)):
+                    metadata = self._metadata[key]
+                    group.attrs['user'] = metadata[0]
+                    group.attrs['time'] = metadata[1].isoformat()
                 self._save_mapping(value, group)
             else:
                 dset = h5_obj.create_dataset(key, data=value)
                 dset.attrs['type'] = type(value).__name__
+                if isinstance(mapping, type(self)):
+                    metadata = self._metadata[key]
+                    dset.attrs['user'] = metadata[0]
+                    dset.attrs['time'] = metadata[1].isoformat()
 
     def save(self, filename):
         with h5py.File(filename, 'w') as h5file:
@@ -62,9 +95,19 @@ class Model(MutableMapping):
                 else:
                     mapping[key] = value
 
+                if isinstance(h5_obj, h5py.File):
+                    user = obj.attrs['user']
+                    time = datetime.fromisoformat(obj.attrs['time'])
+                    self._metadata[key] = (user, time)
+
             elif isinstance(obj, h5py.Group):
                 # For groups, load the mapping recursively
                 mapping[key] = {}
+                if isinstance(h5_obj, h5py.File):
+                    user = obj.attrs['user']
+                    time = datetime.fromisoformat(obj.attrs['time'])
+                    self._metadata[key] = (user, time)
+
                 self._load_mapping(mapping[key], obj)
 
     def load(self, filename):
