@@ -24,67 +24,39 @@ pf = 40
 ax_ref = 20
 num_cpu = 60
 Lattice_pitch = 2.0
-Assembly_pitch = 9 * Lattice_pitch
+Assembly_pitch = 7.5 * 2 * Lattice_pitch / (math.cos( math.pi /6) * 2)
 fuel_rad = 0.90
 lbp_rad = 0.25
 mod_ext_rad = 0.90
-shell_thick = 0.05
+shell_thick = 0.05    # FeCrAl
+liner_thick = 0.007 # Cr
 cool_hole_rad = 0.60
-control_pin_rad = Lattice_pitch/2
+control_pin_rad = 0.99
 
+use_sab = True
+use_sab_BeO = True
+use_sab_YH2 = False
 
-
-
-def parse_trisos(triso_univ, num_particles, z_min, z_max, triso_locations_file):
-    
-    triso_locations = Path(__file__).parent / triso_locations_file
-    fh = open(triso_locations, 'r')
-
-    if num_particles == 'all':
-        lines_slice = slice(None)
-    else:
-        lines_slice = slice(0, int(num_particles))
-
-    # get all non-empty lines
-    lines = [line for line in fh if line != '\n']
-    trisos = []
-    num_part = 0
-    for line in lines[lines_slice]:
-        if line.strip():
-            vals = [float(v) for v in line.split()[:-1]]
-            center = vals[:3]
-            radius = vals[-1]
-#            print (center)
-            if center[-1] <= z_max and center[-1] >= z_min:
-              trisos.append(openmc.model.TRISO(radius, triso_univ, center))
-              num_part += 1
-
-    print ("Num particules modeled = %i"%num_part)
-    return trisos     
 
 def build_openmc_model():
     """ OpenMC Model """
-    use_sab = True
-    use_sab_YH2 = True
+
     num_particles = 'all'
 
     materials = []
-    # Fuel: - volumes are calculated with first step
-    fuel = openmc.Material(name="fuel", temperature=temp)
-    fuel.set_density('g/cm3', 10.744)
-    fuel.depleteable = True
-    fuel.add_nuclide('U235', 6.8794E-02, 'ao')
-    fuel.add_nuclide('U238', 2.7604E-01, 'ao')
-    fuel.add_nuclide('O16',  5.1724E-01, 'ao')
-    fuel.add_element('C',    1.3793E-01, 'ao')
-    materials.append(fuel)
 
-    boro = openmc.Material(name="B4C-LBP", temperature=temp)
-    boro.set_density('g/cm3', 2.47)
-    boro.add_nuclide('B10',  0.16, 'ao')
-    boro.add_nuclide('B11',  0.64, 'ao')
-    boro.add_element('C',    0.20, 'ao')
-    materials.append(boro)
+    homfuel = openmc.Material(name="homfuel", temperature=temp)
+    homfuel.set_density('g/cm3', 2.2767E+00)
+    homfuel.depleteable = True
+    homfuel.add_nuclide('U235', 4.0841E-02, 'wo')
+    homfuel.add_nuclide('U238', 1.6597E-01, 'wo')
+    homfuel.add_nuclide('O16',  7.0029E-01, 'wo')
+    homfuel.add_element('C',    2.0896E-02, 'wo')
+    homfuel.add_nuclide('Si28',  6.6155E-02, 'wo')
+    homfuel.add_nuclide('Si29',  3.4772E-03, 'wo')
+    homfuel.add_nuclide('Si30',  2.3671E-03, 'wo')
+    materials.append(homfuel)
+
 
     boro_ctr = openmc.Material(name="B4C-CTR", temperature=temp)
     boro_ctr.set_density('g/cm3', 2.47)
@@ -92,35 +64,6 @@ def build_openmc_model():
     boro_ctr.add_nuclide('B11',  0.64, 'ao')
     boro_ctr.add_element('C',    0.20, 'ao')
     materials.append(boro_ctr)
-
-    buffer = openmc.Material(name="buffer", temperature=temp)
-    buffer.set_density('g/cm3', 1.04)
-    buffer.add_element('C', 1.0, 'ao')
-    if use_sab:
-        buffer.add_s_alpha_beta('c_Graphite')
-    materials.append(buffer)
-
-    PyC1 = openmc.Material(name="PyC1", temperature=temp)
-    PyC1.set_density('g/cm3', 1.882)
-    PyC1.add_element('C', 1.0, 'ao')
-    if use_sab:
-        PyC1.add_s_alpha_beta('c_Graphite')
-    materials.append(PyC1)
-
-    PyC2 = openmc.Material(name="PyC2", temperature=temp)
-    PyC2.set_density('g/cm3', 1.882)
-    PyC2.add_element('C', 1.0, 'ao')
-    if use_sab:
-        PyC2.add_s_alpha_beta('c_Graphite')
-    materials.append(PyC2)
-
-    sic = openmc.Material(name="SiC", temperature=temp)
-    sic.set_density('g/cm3', 3.171)
-    sic.add_nuclide('Si28', 0.4611, 'ao')
-    sic.add_nuclide('Si29', 0.0234, 'ao')
-    sic.add_nuclide('Si30', 0.0154, 'ao')
-    sic.add_element('C', 0.5, 'ao')
-    materials.append(sic)
 
     matrix = openmc.Material(name="matrix", temperature=temp)
     matrix.set_density('g/cm3', 1.806)
@@ -134,15 +77,15 @@ def build_openmc_model():
     refl.set_density('g/cm3', 2.7987)
     refl.add_nuclide('Be9', 0.50, 'ao')
     refl.add_nuclide('O16', 0.50, 'ao')
-    if use_sab:
+    if use_sab_BeO:
         refl.add_s_alpha_beta('c_Be_in_BeO')
         refl.add_s_alpha_beta('c_O_in_BeO')
     materials.append(refl)
 
     yh2 = openmc.Material(name="moderator", temperature=temp)
     yh2.set_density('g/cm3', 4.30*0.95)
-    yh2.add_nuclide('Y89', 0.3333, 'ao')
-    yh2.add_nuclide('H1',  0.6666, 'ao')
+    yh2.add_nuclide('Y89', 0.357142857, 'ao')
+    yh2.add_nuclide('H1',  0.642857143, 'ao')
     if use_sab and use_sab_YH2:
         yh2.add_s_alpha_beta('c_H_in_YH2')
         yh2.add_s_alpha_beta('c_Y_in_YH2')
@@ -153,38 +96,25 @@ def build_openmc_model():
     coolant.add_nuclide('He4', 1, 'ao')
     materials.append(coolant)
 
+    Cr = openmc.Material(name="Cr", temperature=temp)
+    Cr.set_density('g/cm3', 7.19)
+    Cr.add_nuclide('Cr50', -4.345e-2, 'ao')
+    Cr.add_nuclide('Cr52', -83.789e-2, 'ao')
+    Cr.add_nuclide('Cr53', -9.501e-2, 'ao')
+    Cr.add_nuclide('Cr54', -2.365e-2, 'ao')
+    materials.append(Cr)
+
     shell_mod = openmc.Material(name="shell_mod", temperature=temp)
-    shell_mod.set_density('g/cm3', 7.54)
-    shell_mod.add_element('C',     1.9010E-03,'ao')
-    shell_mod.add_nuclide('Si28',  9.2693E-03,'ao')
-    shell_mod.add_nuclide('Si29',  4.7251E-04,'ao')
-    shell_mod.add_nuclide('Si30',  3.1166E-04,'ao')
-    shell_mod.add_nuclide('P31',   4.1322E-04,'ao')
-    shell_mod.add_nuclide('S32',   2.4710E-04,'ao')
-    shell_mod.add_nuclide('S33',   1.9511E-06,'ao')
-    shell_mod.add_nuclide('S34',   1.1056E-05,'ao')
-    shell_mod.add_nuclide('S36',   3.0016E-08,'ao')
-    shell_mod.add_nuclide('Cr50',  7.9116E-03,'ao')
-    shell_mod.add_nuclide('Cr52',  1.5257E-01,'ao')
-    shell_mod.add_nuclide('Cr53',  1.7300E-02,'ao')
-    shell_mod.add_nuclide('Cr54',  4.3063E-03,'ao')
-    shell_mod.add_nuclide('Mn55',  1.0280E-02,'ao')
-    shell_mod.add_nuclide('Fe54',  3.9029E-02,'ao')
-    shell_mod.add_nuclide('Fe56',  6.1213E-01,'ao')
-    shell_mod.add_nuclide('Fe57',  1.4144E-02,'ao')
-    shell_mod.add_nuclide('Fe58',  1.3343E-03,'ao')
-    shell_mod.add_nuclide('Ni58',  7.7516E-02,'ao')
-    shell_mod.add_nuclide('Ni60',  2.9859E-02,'ao')
-    shell_mod.add_nuclide('Ni61',  1.2981E-03,'ao')
-    shell_mod.add_nuclide('Ni62',  4.1389E-03,'ao')
-    shell_mod.add_nuclide('Ni64',  1.0544E-03,'ao')
-    shell_mod.add_nuclide('Mo92',  2.1259E-03,'ao')
-    shell_mod.add_nuclide('Mo94',  1.3299E-03,'ao')
-    shell_mod.add_nuclide('Mo95',  2.3030E-03,'ao')
-    shell_mod.add_nuclide('Mo96',  2.4191E-03,'ao')
-    shell_mod.add_nuclide('Mo97',  1.3903E-03,'ao')
-    shell_mod.add_nuclide('Mo98',  3.5249E-03,'ao')
-    shell_mod.add_nuclide('Mo100', 1.4135E-03,'ao')
+    shell_mod.set_density('g/cm3', 7.055) # FeCrAl
+    shell_mod.add_nuclide('Cr50',  20.0e-2 * 4.340E-02,'ao')
+    shell_mod.add_nuclide('Cr52',  20.0e-2 * 8.381E-01,'ao')
+    shell_mod.add_nuclide('Cr53',  20.0e-2 * 9.490E-02,'ao')
+    shell_mod.add_nuclide('Cr54',  20.0e-2 * 2.360E-02,'ao')
+    shell_mod.add_nuclide('Fe54',  75.5e-2 * 5.800E-02,'ao')
+    shell_mod.add_nuclide('Fe56',  75.5e-2 * 9.172E-01,'ao')
+    shell_mod.add_nuclide('Fe57',  75.5e-2 * 2.200E-02,'ao')
+    shell_mod.add_nuclide('Fe58',  75.5e-2 * 2.800E-03,'ao')
+    shell_mod.add_nuclide('Al27',  4.5e-2  * 1.000    ,'ao')
     materials.append(shell_mod)
 
     mat_dict = {}
@@ -197,27 +127,6 @@ def build_openmc_model():
         materials_file.append(mat)
         materials_file.export_to_xml()
 
-    # Create spheres for trisoparticules and cells associated
-
-
-    # Create TRISO universe
-    spheres = [openmc.Sphere(r=r*1e-4)
-            for r in [212.5, 312.5, 352.5, 387.5, 427.5]]
-    triso_cells = [openmc.Cell(fill=fuel, region=-spheres[0]),
-                openmc.Cell(fill=buffer, region=+spheres[0] & -spheres[1]),
-                openmc.Cell(fill=PyC1, region=+spheres[1] & -spheres[2]),
-                openmc.Cell(fill=sic, region=+spheres[2] & -spheres[3]),
-                openmc.Cell(fill=PyC2, region=+spheres[3] & -spheres[4]),
-                openmc.Cell(fill=matrix, region=+spheres[4])]
-    triso_univ = openmc.Universe(cells=triso_cells)
-
-    spheres_lbp = [openmc.Sphere(r=r*1e-4)
-            for r in [100, 118, 141]]
-    triso_lbp_cells = [openmc.Cell(fill=boro, region=-spheres_lbp[0]),
-                openmc.Cell(fill=buffer, region=+spheres_lbp[0] & -spheres_lbp[1]),
-                openmc.Cell(fill=PyC1, region=+spheres_lbp[1] & -spheres_lbp[2]),
-                openmc.Cell(fill=matrix, region=+spheres_lbp[2])]
-    triso_lbp_univ = openmc.Universe(cells=triso_lbp_cells)
 
 
     Z_min = 0
@@ -227,12 +136,6 @@ def build_openmc_model():
     Z_up_out = ax_ref+cl + shell_thick
     Z_max = cl+2*ax_ref
 
-    triso_fuel_locations_file = "TRISO_GEN/Part_fuel/PART_U900_PF40_R90.inp"
-    trisos_fuel = parse_trisos(triso_univ, num_particles, Z_cl, Z_up, triso_fuel_locations_file)
-
-    triso_lbp_locations_file = "TRISO_GEN/Part_bp/PART_U950_PF20_R25.inp"
-    trisos_lbp = parse_trisos(triso_lbp_univ, num_particles, Z_cl, Z_up, triso_lbp_locations_file)
-
     # Create cylinder for fuel and coolant
 
     min_x = openmc.XPlane(x0=-Assembly_pitch/2)
@@ -241,8 +144,9 @@ def build_openmc_model():
     max_y = openmc.YPlane(y0= Assembly_pitch/2)
 
     fuel_radius = openmc.ZCylinder(x0=0.0, y0=0.0, r=fuel_rad)
-    mod_rad_0 = openmc.ZCylinder(x0=0.0, y0=0.0, r=mod_ext_rad - shell_thick)                                        
-    mod_rad_1 = openmc.ZCylinder(x0=0.0, y0=0.0, r=mod_ext_rad)                                                  
+    mod_rad_0 = openmc.ZCylinder(x0=0.0, y0=0.0, r=mod_ext_rad - shell_thick - liner_thick)                                        
+    mod_rad_1a = openmc.ZCylinder(x0=0.0, y0=0.0, r=mod_ext_rad - shell_thick)                                                  
+    mod_rad_1b = openmc.ZCylinder(x0=0.0, y0=0.0, r=mod_ext_rad)                                                  
     cool_radius = openmc.ZCylinder(x0=0.0, y0=0.0, r=cool_hole_rad)                                             
     ctr_radius = openmc.ZCylinder(x0=0.0, y0=0.0, r=control_pin_rad)                                             
     lbp_radius = openmc.ZCylinder(x0=0.0, y0=0.0, r=lbp_rad)                                  
@@ -261,49 +165,23 @@ def build_openmc_model():
                                                         boundary_type = 'reflective')   # THIS SHOULD BE REFLECTIVE BONDARY
 
 
-    # Our last step is to actually create a lattice containing TRISO particles which can be done with the nifty 
-    # openmc.model.create_triso_lattice() function. This function requires that we give it a list of TRISO particles, 
-    # the lower-left coordinates of the lattice, the pitch of each lattice cell, the overall shape of the lattice
-    # (number of cells in each direction), and a background material.
-    box1 = openmc.Cell(region= +min_x & -max_x & +min_y & -max_y & +min_z & -max_z)
-    lower_left, upper_right = box1.region.bounding_box
-    shape = (20, 20, 100)
-    # print (shape)
-    pitch = (upper_right - lower_left)/shape
-    lattice_fuel = openmc.model.create_triso_lattice(trisos_fuel, lower_left, pitch, shape, mat_dict['matrix'])
-    box1.fill = lattice_fuel
-    univ_triso_fuel = openmc.Universe(cells=[box1])
-
-    box2 = openmc.Cell(region= +min_x & -max_x & +min_y & -max_y & +min_z & -max_z)
-    lower_left, upper_right = box2.region.bounding_box
-    lattice_lbp = openmc.model.create_triso_lattice(trisos_lbp, lower_left, pitch, shape, mat_dict['matrix'])
-    box2.fill = lattice_lbp
-    univ_triso_lbp = openmc.Universe(cells=[box2])
-
-
-    #  HERE WE NEED TO FILL  THE FUEL WITH THESE TRISOPARTICULES
-    fuel_cell_1 = openmc.Cell(name='Fuel Pin', fill=univ_triso_fuel , region=-fuel_radius & +sz_cl & -sz_up)
+    fuel_cell_1 = openmc.Cell(name='Fuel Pin', fill=homfuel , region=-fuel_radius & +sz_cl & -sz_up)
     fuel_cell_2 = openmc.Cell(name='matrix', fill=matrix , region=+fuel_radius  & +sz_cl & -sz_up)
     fuel_cell_3 = openmc.Cell(name='reflL', fill=refl , region=-sz_cl)
     fuel_cell_4 = openmc.Cell(name='reflO', fill=refl , region=+sz_up)
     fuel_universe= openmc.Universe(cells=(fuel_cell_1,fuel_cell_2,fuel_cell_3,fuel_cell_4))
 
-    lbp_cell_1 = openmc.Cell(name='LBP Pin', fill=univ_triso_lbp , region=-lbp_radius & +sz_cl & -sz_up)
-    lbp_cell_2 = openmc.Cell(name='matrix', fill=matrix , region=+lbp_radius  & +sz_cl & -sz_up)
-    lbp_cell_3 = openmc.Cell(name='reflL', fill=refl , region=-sz_cl)
-    lbp_cell_4 = openmc.Cell(name='reflO', fill=refl , region=+sz_up)
-    lbp_universe= openmc.Universe(cells=(lbp_cell_1,lbp_cell_2,lbp_cell_3,lbp_cell_4))
-
     mod_cell_1 = openmc.Cell(name='YH2', fill=yh2, region=-mod_rad_0  & +sz_cl & -sz_up )
-    mod_cell_2 = openmc.Cell(name='steel', fill=shell_mod , region=+mod_rad_0 & -mod_rad_1  & +sz_cl & -sz_up)
-    mod_cell_3 = openmc.Cell(name='matrix', fill=matrix , region=+mod_rad_1  & +sz_cl & -sz_up)
-    mod_cell_5 = openmc.Cell(name='Plug_L', fill=shell_mod , region=-mod_rad_1  & +sz_cl_out & -sz_cl)
-    mod_cell_6 = openmc.Cell(name='Plug_LR', fill=refl , region=+mod_rad_1  & +sz_cl_out & -sz_cl)
-    mod_cell_7 = openmc.Cell(name='Plug_U', fill=shell_mod , region=-mod_rad_1  & +sz_up & -sz_up_out)
-    mod_cell_8 = openmc.Cell(name='Plug_UR', fill=refl , region=+mod_rad_1  & +sz_up & -sz_up_out)
+    mod_cell_2a = openmc.Cell(name='Liner', fill=Cr , region=+mod_rad_0 & -mod_rad_1a  & +sz_cl & -sz_up)
+    mod_cell_2b = openmc.Cell(name='steel', fill=shell_mod , region=+mod_rad_1a & -mod_rad_1b  & +sz_cl & -sz_up)
+    mod_cell_3 = openmc.Cell(name='matrix', fill=matrix , region=+mod_rad_1b  & +sz_cl & -sz_up)
+    mod_cell_5 = openmc.Cell(name='Plug_L', fill=shell_mod , region=-mod_rad_1b  & +sz_cl_out & -sz_cl)
+    mod_cell_6 = openmc.Cell(name='Plug_LR', fill=refl , region=+mod_rad_1b  & +sz_cl_out & -sz_cl)
+    mod_cell_7 = openmc.Cell(name='Plug_U', fill=shell_mod , region=-mod_rad_1b  & +sz_up & -sz_up_out)
+    mod_cell_8 = openmc.Cell(name='Plug_UR', fill=refl , region=+mod_rad_1b  & +sz_up & -sz_up_out)
     mod_cell_9 = openmc.Cell(name='LowRef', fill=refl , region=-sz_cl_out)
     mod_cell_10 = openmc.Cell(name='UpRef', fill=refl , region=+sz_up)
-    mod_universe= openmc.Universe(cells=(mod_cell_1,mod_cell_2,mod_cell_3,mod_cell_5,mod_cell_6,mod_cell_7,mod_cell_8,mod_cell_9,mod_cell_10))
+    mod_universe= openmc.Universe(cells=(mod_cell_1,mod_cell_2a, mod_cell_2b,mod_cell_3,mod_cell_5,mod_cell_6,mod_cell_7,mod_cell_8,mod_cell_9,mod_cell_10))
 
     coolant_cell_1 = openmc.Cell(name='coolant', fill=coolant , region=-cool_radius)
     coolant_cell_2 = openmc.Cell(name='matrix', fill=matrix , region=+cool_radius  & +sz_cl & -sz_up)
@@ -311,12 +189,13 @@ def build_openmc_model():
     coolant_cell_4 = openmc.Cell(name='reflO', fill=refl , region=+cool_radius  &  +sz_up)
     coolant_universe= openmc.Universe(cells=(coolant_cell_1,coolant_cell_2,coolant_cell_3,coolant_cell_4))
 
-    ctr_cell_1a = openmc.Cell(name='coolant', fill=coolant , region=-ctr_radius & -cpin_low)
+    ctr_cell_1a = openmc.Cell(name='coolant', fill=coolant , region=-ctr_radius & +sz_cl & -cpin_low)
     ctr_cell_1b = openmc.Cell(name='abs', fill=boro_ctr , region=-ctr_radius & +cpin_low)
+    ctr_cell_1c = openmc.Cell(name='refl', fill=refl , region=-ctr_radius & -sz_cl)
     ctr_cell_2 = openmc.Cell(name='matrix', fill=matrix , region=+ctr_radius  & +sz_cl & -sz_up)
     ctr_cell_3 = openmc.Cell(name='reflL', fill=refl , region=+ctr_radius  &  -sz_cl)
     ctr_cell_4 = openmc.Cell(name='reflO', fill=refl , region=+ctr_radius  &  +sz_up)
-    ctr_universe= openmc.Universe(cells=(ctr_cell_1a,ctr_cell_1b,ctr_cell_2,ctr_cell_3,ctr_cell_4))
+    ctr_universe= openmc.Universe(cells=(ctr_cell_1a,ctr_cell_1b,ctr_cell_1c, ctr_cell_2,ctr_cell_3,ctr_cell_4))
 
     Graph_cell_1= openmc.Cell(name='Graph cell', fill=matrix)
     Graph_universe= openmc.Universe(cells=(Graph_cell_1,))
@@ -327,7 +206,7 @@ def build_openmc_model():
     assembly_description[5]=([ctr_universe])
     assembly_description[4] =([fuel_universe])*6
     assembly_description[3] =([fuel_universe]+[coolant_universe])*6
-    assembly_description[2] =([coolant_universe] + [fuel_universe] + [lbp_universe] + [coolant_universe] + [fuel_universe] + [mod_universe])*3
+    assembly_description[2] =([coolant_universe] + [fuel_universe] + [mod_universe] + [coolant_universe] + [fuel_universe] + [mod_universe])*3
     assembly_description[1] =([fuel_universe]+[fuel_universe]+[coolant_universe]+[fuel_universe])*6
     assembly_description[0] =([fuel_universe]+[coolant_universe]+[fuel_universe]+[fuel_universe]+[coolant_universe])*6
     #print (assembly_description)
@@ -359,9 +238,9 @@ def build_openmc_model():
 
     # Now let's define our simulation parameters. These will go into our
     # settings.xml via the SettingsFile object.
-    batches = 300
+    batches = 400
     inactive = 30
-    particles = 100000
+    particles = 10000
 
 
     # Instantiate a SettingsFile
@@ -395,15 +274,10 @@ def build_openmc_model():
     p1.basis = 'xy'
     p1.color_by = 'material'
     p1.col_spec = {
-        fuel.id: (255, 0, 0),
-        buffer.id: (255, 100, 0),
-        PyC1.id: (0, 200, 100),
-        PyC2.id: (200, 200, 0),
-        sic.id: (200, 200, 200),
+        homfuel.id: (255, 0, 0),
         matrix.id: (100, 100, 100),
         yh2.id: (20, 200, 50),
         boro_ctr.id: (200, 20, 50),
-        boro.id: (120,150,120),
         shell_mod.id: (150,150,150),
         coolant.id: (180,110,150),
         refl.id: (80,210,50)
@@ -416,15 +290,10 @@ def build_openmc_model():
     p2.basis ='yz'
     p2.color_by = 'material'
     p2.col_spec = {
-        fuel.id: (255, 0, 0),
-        buffer.id: (255, 100, 0),
-        PyC1.id: (0, 200, 100),
-        PyC2.id: (200, 200, 0),
-        sic.id: (200, 200, 200),
+        homfuel.id: (255, 0, 0),
         matrix.id: (100, 100, 100),
         yh2.id: (20, 200, 50),
         boro_ctr.id: (200, 20, 50),
-        boro.id: (120,150,120),
         shell_mod.id: (150,150,150),
         coolant.id: (180,110,150),
         refl.id: (80,210,50)
@@ -437,15 +306,10 @@ def build_openmc_model():
     p3.basis = 'xy'
     p3.color_by = 'material'
     p3.col_spec = {
-        fuel.id: (255, 0, 0),
-        buffer.id: (255, 100, 0),
-        PyC1.id: (0, 200, 100),
-        PyC2.id: (200, 200, 0),
-        sic.id: (200, 200, 200),
+        homfuel.id: (255, 0, 0),
         matrix.id: (100, 100, 100),
         yh2.id: (20, 200, 50),
         boro_ctr.id: (200, 20, 50),
-        boro.id: (120,150,120),
         shell_mod.id: (150,150,150),
         coolant.id: (180,110,150),
         refl.id: (80,210,50)
@@ -461,7 +325,6 @@ def build_openmc_model():
 
     # Run OpenMC
     openmc.run(threads=num_cpu)
-
-
+    # END OPENMC RUN
 
 build_openmc_model()
