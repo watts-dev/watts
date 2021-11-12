@@ -32,6 +32,11 @@ class Plugin(ABC):
     def postrun(self, model):
         ...
 
+    def workflow(self, model):
+        self.prerun(model)
+        self.run()
+        self.postrun(model)
+
 
 class OpenmcPlugin(Plugin):
     """Plugin for running OpenMC"""
@@ -76,11 +81,6 @@ class TemplatePlugin(Plugin):
     def  __init__(self, template_file):
         self.model_builder = TemplateModelBuilder(template_file)
 
-    def workflow(self, model):
-        prerun_crash = self.prerun(model)
-        run_crash = self.run()
-        postrun_crash = self.postrun()
-
     def prerun(self, model):
         # Render the template
         print("Pre-run for Example Plugin")
@@ -89,7 +89,7 @@ class TemplatePlugin(Plugin):
     def run(self):
         print("Run for Example Plugin")
 
-    def postrun(self):
+    def postrun(self, model):
         print("post-run for Example Plugin")
 
 
@@ -99,11 +99,6 @@ class PluginSAM(TemplatePlugin):
         self.sam_inp_name = "SAM.i"
         self.sam_tmp_folder = "tmp_SAM" # TODO: provide consistency in where we are running the calculation
         self.SAM_exec = "../sam-opt-mpi"
-
-    def workflow(self, model): # TODO: move this logic as part of the Plugin base class.
-        self.prerun(model)
-        self.run()
-        self.postrun(model)
 
     def prerun(self, model):
         # Render the template
