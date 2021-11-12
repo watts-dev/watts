@@ -24,13 +24,14 @@ pf = 40
 ax_ref = 20
 num_cpu = 60
 Lattice_pitch = 2.0
-Assembly_pitch = 9 * Lattice_pitch
+Assembly_pitch = 7.5 * 2 * Lattice_pitch / (math.cos( math.pi /6) * 2)
 fuel_rad = 0.90
 lbp_rad = 0.25
 mod_ext_rad = 0.90
-shell_thick = 0.05
+shell_thick = 0.05    # FeCrAl
+liner_thick = 0.007 # Cr
 cool_hole_rad = 0.60
-control_pin_rad = Lattice_pitch/2
+control_pin_rad = 0.99
 
 use_sab = True
 use_sab_BeO = True
