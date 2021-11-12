@@ -32,7 +32,9 @@ shell_thick = 0.05
 cool_hole_rad = 0.60
 control_pin_rad = Lattice_pitch/2
 
-
+use_sab = True
+use_sab_BeO = True
+use_sab_YH2 = False
 
 
 def build_openmc_model():
