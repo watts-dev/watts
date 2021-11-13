@@ -18,11 +18,12 @@ fuel_rad = 0.90 # cm
 model['FuelPin_rad'] = fuel_rad # cm
 model['Coolant_channel_diam'] = (cool_hole_rad * 2)/100 # in m
 model['Graphite_thickness'] = (Lattice_pitch - fuel_rad - cool_hole_rad) # cm
-model.save('model.h5')
-model.show_summary()
-print()
+# model.save('model.h5')
+# model.show_summary()
+# print()
 
 plugin = ardent.PluginSAM('sam_template')
 plugin.workflow(model)
 
 model.show_summary()
+model.save('model.h5')
