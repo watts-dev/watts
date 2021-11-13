@@ -1,6 +1,9 @@
 from abc import ABC, abstractmethod
 import os, sys, shutil
 import csv
+import pandas as pd
+import subprocess
+import numpy as np
 
 from .template import TemplateModelBuilder
 
@@ -57,6 +60,7 @@ class TemplatePlugin(Plugin):
     def postrun(self):
         print("post-run for Example Plugin")
 
+
 class PluginSAM(TemplatePlugin):
     def  __init__(self, template_file):
         super().__init__(template_file)
@@ -86,20 +90,36 @@ class PluginSAM(TemplatePlugin):
         
         if os.path.isfile(self.SAM_exec) is False:
             raise RuntimeError("SAM executable missing")
-        os.system(self.SAM_exec+" -i "+self.sam_inp_name+" > "+self.sam_inp_name+".out")
+
+        # Run SAM and stores error message to 'error_log.txt'
+        with open('../error_log.txt', "w") as outfile:
+            subprocess.run([self.SAM_exec + " -i "+self.sam_inp_name+" > "+self.sam_inp_name[:-2]+"_out.txt"], shell=True, stderr=outfile)
 
     def postrun(self, model):
         print("post-run for SAM Plugin")
-        # TODO: find all '.cvs' files
-        csv_file_name = "SAM_csv.csv"
+        self.save_SAM_csv(model)
 
+    def save_SAM_csv(self, model):
+        csv_file_name = self.sam_inp_name[:-2] + "_csv.csv"
+        # Save SAM's main output '.csv' files
         if os.path.isfile(csv_file_name):
-            cvs_file = open(csv_file_name,'r')
-            read_file = csv.reader(cvs_file)
-            for row in read_file:
-                # TODO: save all results from CSV files - this example only save 1 result
-                if row[0] == "1":
-                    model['max_Pcoolant'] = float(row[1])
+            csv_file_df = pd.read_csv(csv_file_name)
+            for column_name in csv_file_df.columns:
+                model[column_name] = np.array(csv_file_df[column_name])
+
+        # Read SAM's vector postprocesssor '.csv' files and save the parameters as individual array
+        exist_name = []
+        for file in os.listdir():
+            if file.startswith("SAM_csv_") and not file.endswith("_0000.csv"):
+                vector_csv_df = pd.read_csv(file)
+                csv_param = list(set(list(vector_csv_df.columns)) - set(set(["id", "x", "y", "z"])))
+                model[file[:-4]] = np.array(vector_csv_df[csv_param[0]]).astype(np.float64)
+                
+                for name in ["id", "x", "y", "z"]:
+                    new_name = file[:-8] + name
+                    if new_name not in exist_name:
+                        model[new_name] = np.array(vector_csv_df[name]).astype(np.float64)
+                        exist_name.append(file[:-8] + name)
 
         os.chdir("../") # TODO: provide consistency in where we are running the calculation
         shutil.rmtree(self.sam_tmp_folder)
