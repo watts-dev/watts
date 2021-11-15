@@ -1,9 +1,10 @@
 from collections.abc import MutableMapping, Mapping, Iterable
-
-import h5py
 from datetime import datetime
 from getpass import getuser
 from warnings import warn
+
+import h5py
+
 
 class Model(MutableMapping):
     """Model storing information that is read/written by plugins"""
@@ -30,10 +31,7 @@ class Model(MutableMapping):
         return self._dict[key]
 
     def __setitem__(self, key, value):
-        if key in self._dict:
-            warn(f"Key {key} has already been added to model")
-        self._dict[key] = value
-        self._metadata[key] = (getuser(), datetime.now())
+        self.set(key, value)
 
     def __delitem__(self, key):
         del self._dict[key]
@@ -43,6 +41,16 @@ class Model(MutableMapping):
 
     def __len__(self):
         return len(self._dict)
+
+    def set(self, key, value, *, user=None, time=None):
+        if user is None:
+            user = getuser()
+        if time is None:
+            time = datetime.now()
+        if key in self._dict:
+            warn(f"Key {key} has already been added to model")
+        self._dict[key] = value
+        self._metadata[key] = (user, time)
 
     def get_metadata(self, key):
         return self._metadata[key]

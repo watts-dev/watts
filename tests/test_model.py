@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import datetime
 
 import ardent
 import pytest
@@ -49,3 +50,13 @@ def test_model_roundtrip(run_in_tmpdir):
 
         # Test metadata
         assert model.get_metadata(key) == new_model.get_metadata(key)
+
+
+def test_model_set():
+    user = 'test_user'
+    time = datetime.now()
+    model = ardent.Model()
+    model.set('key', 7, user='test_user', time=time)
+
+    assert model['key'] == 7
+    assert model.get_metadata('key') == (user, time)
