@@ -74,7 +74,7 @@ class OpenmcPlugin(Plugin):
             'keff': keff.nominal_value,
             'keff_stdev': keff.std_dev
         }
-        model['openmc_results'] = results
+        model.set('openmc_results', results, user='plugin_openmc')
 
 
 class TemplatePlugin(Plugin):
@@ -132,7 +132,7 @@ class PluginSAM(TemplatePlugin):
         if os.path.isfile(csv_file_name):
             csv_file_df = pd.read_csv(csv_file_name)
             for column_name in csv_file_df.columns:
-                model[column_name] = np.array(csv_file_df[column_name])
+                model.set(column_name, np.array(csv_file_df[column_name]), user='plugin_sam')
 
         # Read SAM's vector postprocesssor '.csv' files and save the parameters as individual array
         exist_name = []
@@ -140,12 +140,12 @@ class PluginSAM(TemplatePlugin):
             if file.startswith("SAM_csv_") and not file.endswith("_0000.csv"):
                 vector_csv_df = pd.read_csv(file)
                 csv_param = list(set(list(vector_csv_df.columns)) - set(set(["id", "x", "y", "z"])))
-                model[file[:-4]] = np.array(vector_csv_df[csv_param[0]]).astype(np.float64)
+                model.set(file[:-4], np.array(vector_csv_df[csv_param[0]]).astype(np.float64), user='plugin_sam')
 
                 for name in ["id", "x", "y", "z"]:
                     new_name = file[:-8] + name
                     if new_name not in exist_name:
-                        model[new_name] = np.array(vector_csv_df[name]).astype(np.float64)
+                        model.set(new_name, np.array(vector_csv_df[name]).astype(np.float64), user='plugin_sam')
                         exist_name.append(file[:-8] + name)
 
         os.chdir("../") # TODO: provide consistency in where we are running the calculation
