@@ -91,11 +91,11 @@ def build_openmc_model(model):
         materials_file.export_to_xml()
 
     Z_min = 0
-    Z_cl = model['ax_ref']*100
+    Z_cl = model['ax_ref']
     Z_cl_out = model['ax_ref'] - model['shell_thick']
     Z_up = model['ax_ref'] + model['cl']
     Z_up_out = model['ax_ref'] + model['cl'] + model['shell_thick']
-    Z_max = model['cl'] + 2*model['ax_ref']
+    Z_max = model['cl'] + 2 * model['ax_ref']
 
     # Create cylinder for fuel and coolant
 

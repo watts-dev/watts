@@ -18,7 +18,7 @@ model['He_Pressure'] = 7e6    # Pa
 model['Tot_assembly_power'] = 250000 # W
 
 # Core design params
-model['ax_ref'] = 20
+model['ax_ref'] = 20 # cm
 model['num_cool_pins'] = 1*6+2*6+6*2/2
 model['num_fuel_pins'] = 6+6+6+3*6+2*6/2+6/3
 model['Height_FC'] = 2.0 # m
@@ -47,28 +47,23 @@ model['num_cpu'] = 60
 
 # SAM Workflow
 
-#sam_plugin = ardent.PluginSAM('sam_template')
-##sam_options = sam_plugin.options
-##sam_options.executable = ""
-##sam_options.calc_id = "cacl1"
-##sam_options.path = "/tmp/"
-#
-#
-#sam_plugin.workflow(model)#, sam_options)
-#
-#model.show_summary()
+sam_plugin = ardent.PluginSAM('sam_template')
+#sam_options = sam_plugin.options
+#sam_options.executable = ""
+#sam_options.calc_id = "cacl1"
+#sam_options.path = "/tmp/"
+
+
+sam_plugin.workflow(model)#, sam_options)
+model.show_summary()
 #model.save('model.h5') # TODO: is it necessary to save? Or should it be saved anyway after every post-processing (as part of an application Workflow)
 
 
-# OpenMC Workflow
+# Run OpenMC plugin
 openmc_plugin = ardent.OpenmcPlugin(build_openmc_model)
-openmc_plugin.prerun(model)
-openmc_plugin.run()
-openmc_plugin.postrun(model)
+openmc_plugin.workflow(model)
+
 
 # Save results
 model.show_summary()
-model.save('model.h5')
-
-
-
+model.save('gcmr_with_openmc.h5')
