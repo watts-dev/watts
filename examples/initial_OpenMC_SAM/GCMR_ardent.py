@@ -62,7 +62,9 @@ model['num_cpu'] = 60
 
 # OpenMC Workflow
 openmc_plugin = ardent.OpenmcPlugin(build_openmc_model)
-openmc_plugin.worflow(model)
+openmc_plugin.prerun(model)
+openmc_plugin.run()
+openmc_plugin.postrun(model)
 
 # Save results
 model.show_summary()
