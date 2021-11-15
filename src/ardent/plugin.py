@@ -32,7 +32,6 @@ class Plugin(ABC):
     def postrun(self, model):
         ...
 
-    @abstractmethod
     def workflow(self, model):
         self.prerun(model)
         self.run()
