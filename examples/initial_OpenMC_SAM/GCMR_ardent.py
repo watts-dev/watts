@@ -47,17 +47,17 @@ model['num_cpu'] = 60
 
 # SAM Workflow
 
-sam_plugin = ardent.PluginSAM('sam_template')
-#sam_options = sam_plugin.options
-#sam_options.executable = ""
-#sam_options.calc_id = "cacl1"
-#sam_options.path = "/tmp/"
-
-
-sam_plugin.workflow(model)#, sam_options)
-
-model.show_summary()
-model.save('model.h5') # TODO: is it necessary to save? Or should it be saved anyway after every post-processing (as part of an application Workflow)
+#sam_plugin = ardent.PluginSAM('sam_template')
+##sam_options = sam_plugin.options
+##sam_options.executable = ""
+##sam_options.calc_id = "cacl1"
+##sam_options.path = "/tmp/"
+#
+#
+#sam_plugin.workflow(model)#, sam_options)
+#
+#model.show_summary()
+#model.save('model.h5') # TODO: is it necessary to save? Or should it be saved anyway after every post-processing (as part of an application Workflow)
 
 
 # OpenMC Workflow
