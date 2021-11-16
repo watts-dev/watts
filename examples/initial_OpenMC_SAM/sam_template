@@ -163,7 +163,7 @@
     n_rods = {{ num_fuel_pins }}
     A = {{ total_XS_coolant_area_per_fuel_assembly }}
     Dh = {{ Coolant_channel_diam }}
-    length = {{ Height_FC/100 }}
+    length = {{ Height_FC }}
     n_elems = 100
     f = {{ F_blausius }}                               # User specified friction coefficient (Blausis f=(100 Re)^-0.25
     Hw = {{ H_sam }}                              # User specified heat transfer coefficient (Dittus-Boelter)
@@ -225,7 +225,7 @@
     type = LineValueSampler
     variable = velocity
     start_point = '0 0 0'
-    end_point = '0 {{ Height_FC/100 }} 0'
+    end_point = '0 {{ Height_FC }} 0'
     num_points = 21
     use_displaced_mesh = true
     sort_by = id

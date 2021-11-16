@@ -95,11 +95,11 @@ def build_openmc_model(model):
     Z_cl_out = model['ax_ref'] - model['shell_thick']
     Z_up = model['ax_ref'] + model['cl']
     Z_up_out = model['ax_ref'] + model['cl'] + model['shell_thick']
-    Z_max = model['cl'] + 2*model['ax_ref']
+    Z_max = model['cl'] + 2 * model['ax_ref']
 
     # Create cylinder for fuel and coolant
 
-    fuel_radius = openmc.ZCylinder(x0=0.0, y0=0.0, r=model['fuel_rad'])
+    fuel_radius = openmc.ZCylinder(x0=0.0, y0=0.0, r=model['FuelPin_rad'])
     mod_rad_0 = openmc.ZCylinder(x0=0.0, y0=0.0, r=model['mod_ext_rad'] - model['shell_thick'] - model['liner_thick'])
     mod_rad_1a = openmc.ZCylinder(x0=0.0, y0=0.0, r=model['mod_ext_rad'] - model['shell_thick'])
     mod_rad_1b = openmc.ZCylinder(x0=0.0, y0=0.0, r=model['mod_ext_rad'])
