@@ -52,14 +52,8 @@ class TemplatePlugin(Plugin):
             Model used to render template
         """
         # Render the template
-        print("Pre-run for Example Plugin")
         self.model_builder(model)
 
-    def run(self):
-        print("Run for Example Plugin")
-
-    def postrun(self, model: Model):
-        print("post-run for Example Plugin")
 
 
 

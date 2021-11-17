@@ -34,7 +34,7 @@ class PluginSAM(TemplatePlugin):
         """
         # Render the template
         print("Pre-run for SAM Plugin")
-        self.model_builder(model)
+        super().prerun(model)
 
     def run(self):
         """Run SAM"""
@@ -63,9 +63,9 @@ class PluginSAM(TemplatePlugin):
             Model to store SAM results in
         """
         print("post-run for SAM Plugin")
-        self.save_SAM_csv(model)
+        self._save_SAM_csv(model)
 
-    def save_SAM_csv(self, model):
+    def _save_SAM_csv(self, model):
         csv_file_name = self.sam_inp_name[:-2] + "_csv.csv"
         # Save SAM's main output '.csv' files
         if os.path.isfile(csv_file_name):
