@@ -1,3 +1,4 @@
+from collections import namedtuple
 from collections.abc import MutableMapping, Mapping, Iterable
 from datetime import datetime
 from getpass import getuser
@@ -19,6 +20,8 @@ _LOAD_FUNCS = {
     'int': int,
     'bool': bool
 }
+
+ModelMetadata = namedtuple('ModelMetadata', ['user', 'time'])
 
 
 class Model(MutableMapping):
@@ -84,9 +87,9 @@ class Model(MutableMapping):
         if key in self._dict:
             warn(f"Key {key} has already been added to model")
         self._dict[key] = value
-        self._metadata[key] = (user, time)
+        self._metadata[key] = ModelMetadata(user, time)
 
-    def get_metadata(self, key: Any) -> tuple:
+    def get_metadata(self, key: Any) -> ModelMetadata:
         """Get metadata associated with a key
 
         Parameters
@@ -105,17 +108,20 @@ class Model(MutableMapping):
         """Display a summary of key/value pairs"""
         for key, value in self.items():
             metadata = self._metadata[key]
-            print(f'{key}: {value} (added by {metadata[0]} at {metadata[1]})')
+            print(f'{key}: {value} (added by {metadata.user} at {metadata.time})')
 
     def _save_mapping(self, mapping, h5_obj):
+        # Helper function to add metadata
+        def add_metadata(obj, metadata):
+            obj.attrs['user'] = metadata.user
+            obj.attrs['time'] = metadata.time.isoformat()
+
         for key, value in mapping.items():
             if isinstance(value, Mapping):
                 # If this item is a dictionary, make recursive call
                 group = h5_obj.create_group(key)
                 if isinstance(mapping, type(self)):
-                    metadata = self._metadata[key]
-                    group.attrs['user'] = metadata[0]
-                    group.attrs['time'] = metadata[1].isoformat()
+                    add_metadata(group, self._metadata[key])
                 self._save_mapping(value, group)
             else:
                 # Convert type if necessary. If the type is not listed, return a
@@ -126,9 +132,7 @@ class Model(MutableMapping):
                 dset = h5_obj.create_dataset(key, data=file_value)
                 dset.attrs['type'] = type(value).__name__
                 if isinstance(mapping, type(self)):
-                    metadata = self._metadata[key]
-                    dset.attrs['user'] = metadata[0]
-                    dset.attrs['time'] = metadata[1].isoformat()
+                    add_metadata(dset, self._metadata[key])
 
     def save(self, filename: str):
         """Save model parameters to an HDF5 file
@@ -146,7 +150,7 @@ class Model(MutableMapping):
         def metadata_from_obj(obj):
             user = obj.attrs['user']
             time = datetime.fromisoformat(obj.attrs['time'])
-            return (user, time)
+            return ModelMetadata(user, time)
 
         for key, obj in h5_obj.items():
             if isinstance(obj, h5py.Dataset):
