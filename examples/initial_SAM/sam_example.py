@@ -14,7 +14,7 @@ model.save('model.h5')
 model.show_summary()
 print()
 
-plugin = ardent.TemplatePlugin('sam_template')
+plugin = ardent.PluginSAM('sam_template')
 plugin.prerun(model)
 
 # Show rendered template
