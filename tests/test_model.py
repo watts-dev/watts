@@ -4,6 +4,19 @@ from datetime import datetime
 import ardent
 import pytest
 import numpy as np
+import h5py
+
+def _compare_model(model, other):
+    # Make sure key/value pairs match original model
+    for key, value in other.items():
+        if isinstance(value, np.ndarray):
+            np.testing.assert_equal(model[key], value)
+        else:
+            assert model[key] == value
+            assert type(model[key]) == type(value)
+
+        # Test metadata
+        assert model.get_metadata(key) == other.get_metadata(key)
 
 
 def test_model_roundtrip(run_in_tmpdir):
@@ -46,16 +59,8 @@ def test_model_roundtrip(run_in_tmpdir):
     new_model = ardent.Model()
     new_model.load('model.h5')
 
-    # Make sure key/value pairs match original model
-    for key, value in new_model.items():
-        if isinstance(value, np.ndarray):
-            np.testing.assert_equal(model[key], value)
-        else:
-            assert model[key] == value
-            assert type(model[key]) == type(value)
-
-        # Test metadata
-        assert model.get_metadata(key) == new_model.get_metadata(key)
+    # Compare original model with one loaded from file
+    _compare_model(model, new_model)
 
 
 def test_model_set():
@@ -66,3 +71,22 @@ def test_model_set():
 
     assert model['key'] == 7
     assert model.get_metadata('key') == (user, time)
+
+
+def test_model_not_toplevel(run_in_tmpdir):
+    """Test saving/loading model when not at top-level of HDF5 file"""
+    model = ardent.Model(var_one=1, var_two='two', var_three=3.0)
+
+    # Write model to /mygroup within test.h5
+    with h5py.File('test.h5', 'w') as fh:
+        group = fh.create_group('mygroup')
+        model._save_mapping(model, group)
+
+    # Read model from /mygroup
+    with h5py.File('test.h5', 'r') as fh:
+        group = fh['mygroup']
+        new_model = ardent.Model()
+        new_model._load_mapping(new_model, group)
+
+    # Compare original model with one from group in file
+    _compare_model(model, new_model)

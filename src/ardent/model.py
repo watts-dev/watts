@@ -141,7 +141,13 @@ class Model(MutableMapping):
         with h5py.File(filename, 'w') as h5file:
             self._save_mapping(self, h5file)
 
-    def _load_mapping(self, mapping, h5_obj):
+    def _load_mapping(self, mapping, h5_obj, root=True):
+        # Helper function to get metadata
+        def metadata_from_obj(obj):
+            user = obj.attrs['user']
+            time = datetime.fromisoformat(obj.attrs['time'])
+            return (user, time)
+
         for key, obj in h5_obj.items():
             if isinstance(obj, h5py.Dataset):
                 # If dataset stores a string type, it needs to be decoded so
@@ -159,20 +165,16 @@ class Model(MutableMapping):
                 func = _LOAD_FUNCS.get(obj.attrs['type'], lambda x: x)
                 mapping[key] = func(value)
 
-                if isinstance(h5_obj, h5py.File):
-                    user = obj.attrs['user']
-                    time = datetime.fromisoformat(obj.attrs['time'])
-                    self._metadata[key] = (user, time)
+                if root:
+                    self._metadata[key] = metadata_from_obj(obj)
 
             elif isinstance(obj, h5py.Group):
                 # For groups, load the mapping recursively
                 mapping[key] = {}
-                if isinstance(h5_obj, h5py.File):
-                    user = obj.attrs['user']
-                    time = datetime.fromisoformat(obj.attrs['time'])
-                    self._metadata[key] = (user, time)
+                if root:
+                    self._metadata[key] = metadata_from_obj(obj)
 
-                self._load_mapping(mapping[key], obj)
+                self._load_mapping(mapping[key], obj, root=False)
 
     def load(self, filename: str):
         """Load model parameters from an HDF5 file
