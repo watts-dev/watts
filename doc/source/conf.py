@@ -31,7 +31,9 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx.ext.intersphinx',
+    'sphinx.ext.napoleon',
     'sphinx.ext.viewcode',
+    'sphinx_autodoc_typehints'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -45,6 +47,7 @@ exclude_patterns = []
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'numpy': ('https://numpy.org/doc/stable/', None),
+    'openmc': ('https://docs.openmc.org/en/stable/', None),
 }
 
 # -- Options for HTML output -------------------------------------------------
