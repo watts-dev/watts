@@ -6,7 +6,7 @@ from openmc_template import build_openmc_model
 
 model = ardent.Model()
 
-# TH params 
+# TH params
 
 model['He_inlet_temp'] = 600 + 273.15  # K
 model['He_outlet_temp'] = 850 + 273.15 # K
@@ -53,7 +53,7 @@ model.show_summary()
 # get temperature from SAM results
 model['temp'] = model['avg_Tgraphite'][-1]
 # Run OpenMC plugin
-openmc_plugin = ardent.OpenmcPlugin(build_openmc_model)
+openmc_plugin = ardent.PluginOpenMC(build_openmc_model)
 openmc_plugin.workflow(model)
 
 

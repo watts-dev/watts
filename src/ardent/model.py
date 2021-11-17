@@ -1,13 +1,20 @@
 from collections.abc import MutableMapping, Mapping, Iterable
 from datetime import datetime
 from getpass import getuser
+from typing import Any
 from warnings import warn
 
 import h5py
 
 
 class Model(MutableMapping):
-    """Model storing information that is read/written by plugins"""
+    """Model storing information that is read/written by plugins
+
+    The model class behaves like a normal Python dictionary except that it
+    stores metadata on (key, value) pairs and provides the ability to save/load
+    the data to an HDF5 file.
+
+    """
     def __init__(self, *args, **kwargs):
         self._dict = {}
         self._metadata = {}
@@ -42,7 +49,20 @@ class Model(MutableMapping):
     def __len__(self):
         return len(self._dict)
 
-    def set(self, key, value, *, user=None, time=None):
+    def set(self, key: Any, value: Any, *, user: str = None, time: datetime = None):
+        """Explicitly set a key/value pair with metadata
+
+        Parameters
+        ----------
+        key
+            Key used in dictionary
+        value
+            Corresponding value in dictionary
+        user
+            Username associated with key/value pair
+        time
+            Time associated with key/value pair
+        """
         if user is None:
             user = getuser()
         if time is None:
@@ -52,10 +72,23 @@ class Model(MutableMapping):
         self._dict[key] = value
         self._metadata[key] = (user, time)
 
-    def get_metadata(self, key):
+    def get_metadata(self, key: Any) -> tuple:
+        """Get metadata associated with a key
+
+        Parameters
+        ----------
+        key
+            Key to find metadata for
+
+        Returns
+        -------
+        Associated metadata
+
+        """
         return self._metadata[key]
 
     def show_summary(self):
+        """Display a summary of key/value pairs"""
         for key, value in self.items():
             metadata = self._metadata[key]
             print(f'{key}: {value} (added by {metadata[0]} at {metadata[1]})')
@@ -78,7 +111,14 @@ class Model(MutableMapping):
                     dset.attrs['user'] = metadata[0]
                     dset.attrs['time'] = metadata[1].isoformat()
 
-    def save(self, filename):
+    def save(self, filename: str):
+        """Save model parameters to an HDF5 file
+
+        Parameters
+        ----------
+        filename
+            Path to HDF5 file to write
+        """
         with h5py.File(filename, 'w') as h5file:
             self._save_mapping(self, h5file)
 
@@ -118,9 +158,14 @@ class Model(MutableMapping):
 
                 self._load_mapping(mapping[key], obj)
 
-    def load(self, filename):
+    def load(self, filename: str):
+        """Load model parameters from an HDF5 file
+
+        Parameters
+        ----------
+        filename
+            HDF5 file to load model from
+        """
         with h5py.File(filename, 'r') as h5file:
             self._load_mapping(self, h5file)
 
-# TODO: Relationship between state (for which results are dependent) and common
-# model

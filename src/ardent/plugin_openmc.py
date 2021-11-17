@@ -1,24 +1,54 @@
 from pathlib import Path
 import time
+from typing import Callable, Mapping
 
+from .model import Model
 from .plugin import Plugin
 
 
-class OpenmcPlugin(Plugin):
-    """Plugin for running OpenMC"""
+class PluginOpenMC(Plugin):
+    """Plugin for running OpenMC
 
-    def __init__(self, model_builder):
+    Parameters
+    ----------
+    model_builder
+        Function that generates an OpenMC model
+
+    """
+
+    def __init__(self, model_builder: Callable[[Model], None]):
         self.model_builder = model_builder
 
-    def prerun(self, model):
+    def prerun(self, model: Model) -> None:
+        """Generate OpenMC input files
+
+        Parameters
+        ----------
+        model
+            Model that is used by the OpenMC template
+        """
         self.model_builder(model)
 
-    def run(self, **kwargs):
+    def run(self, **kwargs: Mapping):
+        """Run OpenMC
+
+        Parameters
+        ----------
+        **kwargs
+            Keyword arguments passed on to :func:`openmc.run`
+        """
         import openmc
         self._run_time = time.time()
         openmc.run(**kwargs)
 
-    def postrun(self, model):
+    def postrun(self, model: Model):
+        """Collect information from OpenMC simulation and store in model
+
+        Parameters
+        ----------
+        model
+            Model to store simulation results in
+        """
         import openmc
         # Determine most recent statepoint
         tstart = self._run_time

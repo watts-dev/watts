@@ -6,6 +6,9 @@ API Reference
 .. autosummary::
    :toctree: generated
    :nosignatures:
+   :template: myclass.rst
 
    ardent.Model
-   ardent.OpenmcPlugin
+   ardent.Plugin
+   ardent.PluginOpenMC
+   ardent.PluginSAM

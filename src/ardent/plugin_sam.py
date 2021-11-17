@@ -5,22 +5,39 @@ import subprocess
 import numpy as np
 import pandas as pd
 
+from .model import Model
 from .plugin import TemplatePlugin
 
 
 class PluginSAM(TemplatePlugin):
-    def  __init__(self, template_file):
+    """Plugin for running SAM
+
+    Parameters
+    ----------
+    template_file
+        Templated SAM input
+    """
+    def  __init__(self, template_file: str):
         super().__init__(template_file)
         self.sam_inp_name = "SAM.i"
         self.sam_tmp_folder = "tmp_SAM" # TODO: provide consistency in where we are running the calculation
         self.SAM_exec = "../sam-opt-mpi"
 
-    def prerun(self, model):
+    def prerun(self, model: Model):
+        """Generate the SAM input based on the template
+
+        Parameters
+        ----------
+        model
+            Model used when rendering template
+
+        """
         # Render the template
         print("Pre-run for SAM Plugin")
-        self.model_builder(model)
+        super().prerun(model)
 
     def run(self):
+        """Run SAM"""
         print("Run for SAM Plugin")
 
         if os.path.exists(self.sam_tmp_folder):
@@ -37,11 +54,18 @@ class PluginSAM(TemplatePlugin):
         with open('../error_log.txt', "w") as outfile:
             subprocess.run([self.SAM_exec + " -i "+self.sam_inp_name+" > "+self.sam_inp_name[:-2]+"_out.txt"], shell=True, stderr=outfile)
 
-    def postrun(self, model):
-        print("post-run for SAM Plugin")
-        self.save_SAM_csv(model)
+    def postrun(self, model: Model):
+        """Read SAM results and store in model
 
-    def save_SAM_csv(self, model):
+        Parameters
+        ----------
+        model
+            Model to store SAM results in
+        """
+        print("post-run for SAM Plugin")
+        self._save_SAM_csv(model)
+
+    def _save_SAM_csv(self, model):
         csv_file_name = self.sam_inp_name[:-2] + "_csv.csv"
         # Save SAM's main output '.csv' files
         if os.path.isfile(csv_file_name):
