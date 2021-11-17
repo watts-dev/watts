@@ -219,6 +219,21 @@
     block = 'CH1:pipe'
     variable = pressure
   [../]
+  [./avg_Tcoolant]                         # Output maximum fluid temperature of block CH1:pipe
+    type = ElementAverageValue
+    block = 'CH1:pipe'
+    variable = temperature
+  [../]
+  [./avg_Tf]                               # Output maximum solid temperature of block CH1: solid:fuel
+    type = ElementAverageValue
+    block = 'CH1:solid:fuel'
+    variable = T_solid
+  [../]
+  [./avg_Tgraphite]                               # Output maximum solid temperature of block CH1: solid:fuel
+    type = ElementAverageValue
+    block = 'CH1:solid:graphite'
+    variable = T_solid
+  [../]
 []
 [VectorPostprocessors]
   [./vel]

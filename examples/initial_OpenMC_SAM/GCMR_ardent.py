@@ -40,7 +40,6 @@ model['use_sab_BeO'] = True
 model['use_sab_YH2'] = False
 
 # OpenMC params
-model['temp'] = (model['He_outlet_temp'] + model['He_inlet_temp'])/2 # TODO: replace with average of calculated results from SAM
 model['cl'] = model['Height_FC']*100 - 2 * model['ax_ref'] # cm
 model['pf'] = 40 # percent
 model['num_cpu'] = 60
@@ -48,17 +47,11 @@ model['num_cpu'] = 60
 # SAM Workflow
 
 sam_plugin = ardent.PluginSAM('sam_template')
-#sam_options = sam_plugin.options
-#sam_options.executable = ""
-#sam_options.calc_id = "cacl1"
-#sam_options.path = "/tmp/"
-
-
 sam_plugin.workflow(model)#, sam_options)
 model.show_summary()
-#model.save('model.h5') # TODO: is it necessary to save? Or should it be saved anyway after every post-processing (as part of an application Workflow)
 
-
+# get temperature from SAM results
+model['temp'] = model['avg_Tgraphite'][-1]
 # Run OpenMC plugin
 openmc_plugin = ardent.OpenmcPlugin(build_openmc_model)
 openmc_plugin.workflow(model)
