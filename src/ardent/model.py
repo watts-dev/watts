@@ -7,6 +7,20 @@ from warnings import warn
 import h5py
 
 
+_SAVE_FUNCS = {
+    'set': list
+}
+
+_LOAD_FUNCS = {
+    'tuple': tuple,
+    'list': list,
+    'set': set,
+    'float': float,
+    'int': int,
+    'bool': bool
+}
+
+
 class Model(MutableMapping):
     """Model storing information that is read/written by plugins
 
@@ -104,7 +118,12 @@ class Model(MutableMapping):
                     group.attrs['time'] = metadata[1].isoformat()
                 self._save_mapping(value, group)
             else:
-                dset = h5_obj.create_dataset(key, data=value)
+                # Convert type if necessary. If the type is not listed, return a
+                # "null" function that just returns the original value
+                func = _SAVE_FUNCS.get(type(value).__name__, lambda x: x)
+                file_value = func(value)
+
+                dset = h5_obj.create_dataset(key, data=file_value)
                 dset.attrs['type'] = type(value).__name__
                 if isinstance(mapping, type(self)):
                     metadata = self._metadata[key]
@@ -135,13 +154,10 @@ class Model(MutableMapping):
                 else:
                     value = obj[()]
 
-                # Convert to tuple/list if indicated
-                if obj.attrs['type'] == 'tuple':
-                    mapping[key] = tuple(value)
-                elif obj.attrs['type'] == 'list':
-                    mapping[key] = list(value)
-                else:
-                    mapping[key] = value
+                # Convert type if indicated. If the type is not listed, return a
+                # "null" function that just returns the original value
+                func = _LOAD_FUNCS.get(obj.attrs['type'], lambda x: x)
+                mapping[key] = func(value)
 
                 if isinstance(h5_obj, h5py.File):
                     user = obj.attrs['user']
@@ -168,4 +184,3 @@ class Model(MutableMapping):
         """
         with h5py.File(filename, 'r') as h5file:
             self._load_mapping(self, h5file)
-

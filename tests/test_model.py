@@ -12,14 +12,19 @@ def test_model_roundtrip(run_in_tmpdir):
     model['int_scalar'] = 7
     model['float_scalar'] = 6.022e23
     model['str_scalar'] = 'ARDENT is great'
+    model['bool_scalar'] = True
     model['list_int'] = [0, 1, 2]
     model['list_float'] = [10.0, 20.0, 30.0]
     model['list_str'] = ['PWR', 'BWR', 'SFR', 'LMFR']
     model['tuple_int'] = (0, 1, 2)
     model['tuple_float'] = (10.0, 20.0, 30.0)
     model['tuple_str'] = ('HEU', 'LEU', 'HALEU')
+    model['set_int'] = {5, 6, 3}
+    model['set_float'] = {1.5, 2.5, 3.5}
+    model['set_str'] = {'red', 'blue', 'green'}
     model['array_int'] = np.array([0, 1, 2])
     model['array_float'] = np.array([10., 20., 30.])
+    model['array_bool'] = np.array([True, False, False, True])
     # Numpy array of strings doesn't work because internally numpy uses UTF-32,
     # which is not supported in h5py
     #model['array_str'] = np.array(['ANL', 'ORNL', 'LANL'])
@@ -47,6 +52,7 @@ def test_model_roundtrip(run_in_tmpdir):
             np.testing.assert_equal(model[key], value)
         else:
             assert model[key] == value
+            assert type(model[key]) == type(value)
 
         # Test metadata
         assert model.get_metadata(key) == new_model.get_metadata(key)
