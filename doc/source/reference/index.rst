@@ -10,5 +10,5 @@ API Reference
 
    ardent.Model
    ardent.Plugin
-   ardent.OpenmcPlugin
+   ardent.PluginOpenMC
    ardent.PluginSAM

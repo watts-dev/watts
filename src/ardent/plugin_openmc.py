@@ -6,7 +6,7 @@ from .model import Model
 from .plugin import Plugin
 
 
-class OpenmcPlugin(Plugin):
+class PluginOpenMC(Plugin):
     """Plugin for running OpenMC
 
     Parameters
