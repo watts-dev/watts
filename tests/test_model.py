@@ -56,8 +56,7 @@ def test_model_roundtrip(run_in_tmpdir):
     assert Path('model.h5').is_file()
 
     # Load model from HDF5
-    new_model = ardent.Model()
-    new_model.load('model.h5')
+    new_model = ardent.Model.from_hdf5('model.h5')
 
     # Compare original model with one loaded from file
     _compare_model(model, new_model)
@@ -80,13 +79,12 @@ def test_model_not_toplevel(run_in_tmpdir):
     # Write model to /mygroup within test.h5
     with h5py.File('test.h5', 'w') as fh:
         group = fh.create_group('mygroup')
-        model._save_mapping(model, group)
+        model.save(group)
 
     # Read model from /mygroup
     with h5py.File('test.h5', 'r') as fh:
         group = fh['mygroup']
-        new_model = ardent.Model()
-        new_model._load_mapping(new_model, group)
+        new_model = ardent.Model.from_hdf5(group)
 
     # Compare original model with one from group in file
     _compare_model(model, new_model)

@@ -2,7 +2,7 @@ from collections import namedtuple
 from collections.abc import MutableMapping, Mapping, Iterable
 from datetime import datetime
 from getpass import getuser
-from typing import Any
+from typing import Any, Union
 from warnings import warn
 
 import h5py
@@ -134,16 +134,20 @@ class Model(MutableMapping):
                 if isinstance(mapping, type(self)):
                     add_metadata(dset, self._metadata[key])
 
-    def save(self, filename: str):
-        """Save model parameters to an HDF5 file
+    def save(self, filename_or_obj: Union[str, h5py.Group]):
+        """Save model parameters to an HDF5 file/group
 
         Parameters
         ----------
-        filename
-            Path to HDF5 file to write
+        filename_or_obj
+            Path to HDF5 file or HDF5 group object to write to
         """
-        with h5py.File(filename, 'w') as h5file:
-            self._save_mapping(self, h5file)
+        if isinstance(filename_or_obj, str):
+            with h5py.File(filename_or_obj, 'w') as h5file:
+                self._save_mapping(self, h5file)
+        else:
+            # If HDF5 file/group was passed, use it directly
+            self._save_mapping(self, filename_or_obj)
 
     def _load_mapping(self, mapping, h5_obj, root=True):
         # Helper function to get metadata
@@ -180,13 +184,30 @@ class Model(MutableMapping):
 
                 self._load_mapping(mapping[key], obj, root=False)
 
-    def load(self, filename: str):
+    def load(self, filename_or_obj: Union[str, h5py.Group]):
         """Load model parameters from an HDF5 file
 
         Parameters
         ----------
-        filename
-            HDF5 file to load model from
+        filename_or_obj
+            Path to HDF5 file or HDF5 group object to read from
         """
-        with h5py.File(filename, 'r') as h5file:
-            self._load_mapping(self, h5file)
+        if isinstance(filename_or_obj, str):
+            with h5py.File(filename_or_obj, 'r') as fh:
+                self._load_mapping(self, fh)
+        else:
+            # If HDF5 file/group was passed, use it directly
+            self._load_mapping(self, filename_or_obj)
+
+    @classmethod
+    def from_hdf5(cls, filename_or_obj: Union[str, h5py.Group]):
+        """Return model from HDF5 file/group
+
+        Parameters
+        ----------
+        filename_or_obj
+            Path to HDF5 file or HDF5 group object to read from
+        """
+        model = cls()
+        model.load(filename_or_obj)
+        return model

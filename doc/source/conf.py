@@ -48,6 +48,7 @@ intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'numpy': ('https://numpy.org/doc/stable/', None),
     'openmc': ('https://docs.openmc.org/en/stable/', None),
+    'h5py': ('https://docs.h5py.org/en/stable', None)
 }
 
 # -- Options for HTML output -------------------------------------------------
