@@ -1,10 +1,27 @@
+from collections import namedtuple
 from collections.abc import MutableMapping, Mapping, Iterable
 from datetime import datetime
 from getpass import getuser
-from typing import Any
+from typing import Any, Union
 from warnings import warn
 
 import h5py
+
+
+_SAVE_FUNCS = {
+    'set': list
+}
+
+_LOAD_FUNCS = {
+    'tuple': tuple,
+    'list': list,
+    'set': set,
+    'float': float,
+    'int': int,
+    'bool': bool
+}
+
+ModelMetadata = namedtuple('ModelMetadata', ['user', 'time'])
 
 
 class Model(MutableMapping):
@@ -70,9 +87,9 @@ class Model(MutableMapping):
         if key in self._dict:
             warn(f"Key {key} has already been added to model")
         self._dict[key] = value
-        self._metadata[key] = (user, time)
+        self._metadata[key] = ModelMetadata(user, time)
 
-    def get_metadata(self, key: Any) -> tuple:
+    def get_metadata(self, key: Any) -> ModelMetadata:
         """Get metadata associated with a key
 
         Parameters
@@ -91,38 +108,54 @@ class Model(MutableMapping):
         """Display a summary of key/value pairs"""
         for key, value in self.items():
             metadata = self._metadata[key]
-            print(f'{key}: {value} (added by {metadata[0]} at {metadata[1]})')
+            print(f'{key}: {value} (added by {metadata.user} at {metadata.time})')
 
     def _save_mapping(self, mapping, h5_obj):
+        # Helper function to add metadata
+        def add_metadata(obj, metadata):
+            obj.attrs['user'] = metadata.user
+            obj.attrs['time'] = metadata.time.isoformat()
+
         for key, value in mapping.items():
             if isinstance(value, Mapping):
                 # If this item is a dictionary, make recursive call
                 group = h5_obj.create_group(key)
                 if isinstance(mapping, type(self)):
-                    metadata = self._metadata[key]
-                    group.attrs['user'] = metadata[0]
-                    group.attrs['time'] = metadata[1].isoformat()
+                    add_metadata(group, self._metadata[key])
                 self._save_mapping(value, group)
             else:
-                dset = h5_obj.create_dataset(key, data=value)
+                # Convert type if necessary. If the type is not listed, return a
+                # "null" function that just returns the original value
+                func = _SAVE_FUNCS.get(type(value).__name__, lambda x: x)
+                file_value = func(value)
+
+                dset = h5_obj.create_dataset(key, data=file_value)
                 dset.attrs['type'] = type(value).__name__
                 if isinstance(mapping, type(self)):
-                    metadata = self._metadata[key]
-                    dset.attrs['user'] = metadata[0]
-                    dset.attrs['time'] = metadata[1].isoformat()
+                    add_metadata(dset, self._metadata[key])
 
-    def save(self, filename: str):
-        """Save model parameters to an HDF5 file
+    def save(self, filename_or_obj: Union[str, h5py.Group]):
+        """Save model parameters to an HDF5 file/group
 
         Parameters
         ----------
-        filename
-            Path to HDF5 file to write
+        filename_or_obj
+            Path to HDF5 file or HDF5 group object to write to
         """
-        with h5py.File(filename, 'w') as h5file:
-            self._save_mapping(self, h5file)
+        if isinstance(filename_or_obj, str):
+            with h5py.File(filename_or_obj, 'w') as h5file:
+                self._save_mapping(self, h5file)
+        else:
+            # If HDF5 file/group was passed, use it directly
+            self._save_mapping(self, filename_or_obj)
 
-    def _load_mapping(self, mapping, h5_obj):
+    def _load_mapping(self, mapping, h5_obj, root=True):
+        # Helper function to get metadata
+        def metadata_from_obj(obj):
+            user = obj.attrs['user']
+            time = datetime.fromisoformat(obj.attrs['time'])
+            return ModelMetadata(user, time)
+
         for key, obj in h5_obj.items():
             if isinstance(obj, h5py.Dataset):
                 # If dataset stores a string type, it needs to be decoded so
@@ -135,37 +168,46 @@ class Model(MutableMapping):
                 else:
                     value = obj[()]
 
-                # Convert to tuple/list if indicated
-                if obj.attrs['type'] == 'tuple':
-                    mapping[key] = tuple(value)
-                elif obj.attrs['type'] == 'list':
-                    mapping[key] = list(value)
-                else:
-                    mapping[key] = value
+                # Convert type if indicated. If the type is not listed, return a
+                # "null" function that just returns the original value
+                func = _LOAD_FUNCS.get(obj.attrs['type'], lambda x: x)
+                mapping[key] = func(value)
 
-                if isinstance(h5_obj, h5py.File):
-                    user = obj.attrs['user']
-                    time = datetime.fromisoformat(obj.attrs['time'])
-                    self._metadata[key] = (user, time)
+                if root:
+                    self._metadata[key] = metadata_from_obj(obj)
 
             elif isinstance(obj, h5py.Group):
                 # For groups, load the mapping recursively
                 mapping[key] = {}
-                if isinstance(h5_obj, h5py.File):
-                    user = obj.attrs['user']
-                    time = datetime.fromisoformat(obj.attrs['time'])
-                    self._metadata[key] = (user, time)
+                if root:
+                    self._metadata[key] = metadata_from_obj(obj)
 
-                self._load_mapping(mapping[key], obj)
+                self._load_mapping(mapping[key], obj, root=False)
 
-    def load(self, filename: str):
+    def load(self, filename_or_obj: Union[str, h5py.Group]):
         """Load model parameters from an HDF5 file
 
         Parameters
         ----------
-        filename
-            HDF5 file to load model from
+        filename_or_obj
+            Path to HDF5 file or HDF5 group object to read from
         """
-        with h5py.File(filename, 'r') as h5file:
-            self._load_mapping(self, h5file)
+        if isinstance(filename_or_obj, str):
+            with h5py.File(filename_or_obj, 'r') as fh:
+                self._load_mapping(self, fh)
+        else:
+            # If HDF5 file/group was passed, use it directly
+            self._load_mapping(self, filename_or_obj)
 
+    @classmethod
+    def from_hdf5(cls, filename_or_obj: Union[str, h5py.Group]):
+        """Return model from HDF5 file/group
+
+        Parameters
+        ----------
+        filename_or_obj
+            Path to HDF5 file or HDF5 group object to read from
+        """
+        model = cls()
+        model.load(filename_or_obj)
+        return model
