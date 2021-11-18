@@ -194,9 +194,9 @@ def build_openmc_model(model):
 
     # Now let's define our simulation parameters. These will go into our
     # settings.xml via the SettingsFile object.
-    batches = 400
+    batches = 100
     inactive = 30
-    particles = 10000
+    particles = 5000
 
     # Instantiate a SettingsFile
     settings_file = openmc.Settings()
