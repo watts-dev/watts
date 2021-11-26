@@ -1,22 +1,67 @@
+from math import cos, pi
 import ardent
 
+# from openmc_template import build_openmc_model
+
+
 model = ardent.Model()
-model['Velocity_multiplication_factor'] = 1.0
-model['He_inlet_temp'] = 590 + 273.15
-model['He_outlet_temp'] = 850 + 273.15
-model['He_cp'] = 5189.2
-model['He_density'] = 3.8815
-model['He_Pressure'] = 7e6
-model['Tot_reactor_power'] = 1000.0
-model['num_cool_pins'] = 10
-model['Coolant_channel_XS'] = 25.6
-model.save('model.h5')
+
+# TH params
+
+model['He_inlet_temp'] = 600 + 273.15  # K
+model['He_outlet_temp'] = 850 + 273.15 # K
+model['He_cp'] = 5189.2 # J/kg-K
+model['He_K'] =  0.32802   # W/m-K
+model['He_density'] = 3.8815   # kg/m3
+model['He_viscosity'] = 4.16e-5 # Pa.s
+model['He_Pressure'] = 7e6    # Pa
+model['Tot_assembly_power'] = 250000 # W
+
+# Core design params
+model['ax_ref'] = 20 # cm
+model['num_cool_pins'] = 1*6+2*6+6*2/2
+model['num_fuel_pins'] = 6+6+6+3*6+2*6/2+6/3
+model['Height_FC'] = 2.0 # m
+model['Lattice_pitch'] = 2.0
+model['FuelPin_rad'] = 0.90 # cm
+model['cool_hole_rad'] = 0.60 # cm
+model['Coolant_channel_diam'] = (model['cool_hole_rad'] * 2)/100 # in m
+model['Graphite_thickness'] = (model['Lattice_pitch'] - model['FuelPin_rad'] - model['cool_hole_rad']) # cm
+model['Assembly_pitch'] = 7.5 * 2 * model['Lattice_pitch'] / (cos(pi/6) * 2)
+model['lbp_rad'] = 0.25 # cm
+model['mod_ext_rad'] = 0.90 # cm
+model['shell_thick'] = 0.05   # FeCrAl
+model['liner_thick'] = 0.007  # Cr
+model['control_pin_rad'] = 0.99 # cm
+
+# Control use of S(a,b) tables
+model['use_sab'] = True
+model['use_sab_BeO'] = True
+model['use_sab_YH2'] = False
+
+# OpenMC params
+model['cl'] = model['Height_FC']*100 - 2 * model['ax_ref'] # cm
+model['pf'] = 40 # percent
+model['num_cpu'] = 60
+
+# SAM Workflow
+
+sam_plugin = ardent.PluginSAM('sam_template')
+sam_kwargs = {"calc_ID": "ID_1", 
+			  "SAM_save_path": "/Users/zhieejhiaooi/Documents/ANL/ARDENT/ARDENT/examples/initial_SAM/SAM_ID1", 
+			  "SAM_exec": "/Users/zhieejhiaooi/Documents/ANL/ARDENT/sam-opt-mpi"}
+sam_option = sam_plugin.options(**sam_kwargs)
+
+sam_plugin.workflow(model)#, sam_options)
 model.show_summary()
-print()
 
-plugin = ardent.PluginSAM('sam_template')
-plugin.prerun(model)
+# get temperature from SAM results
+# model['temp'] = model['avg_Tgraphite'][-1]
+# # Run OpenMC plugin
+# openmc_plugin = ardent.PluginOpenMC(build_openmc_model)
+# openmc_plugin.workflow(model)
 
-# Show rendered template
-with open('sam_template.rendered', 'r') as f:
-    print(f.read())
+
+# Save results
+model.show_summary()
+model.save('gcmr_sam.h5')
