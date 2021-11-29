@@ -38,10 +38,17 @@ class Model(MutableMapping):
 
         # Mimic the behavior of a normal dict object.
         if args:
+            assert len(args) == 1
+            args = args[0]
             if isinstance(args, Mapping):
                 # dict(mapping)
-                for key, value in args.items():
-                    self[key] = value
+                if hasattr(args, 'get_metadata'):
+                    for key, value in args.items():
+                        metadata = args.get_metadata(key)
+                        self.set(key, value, **metadata._asdict())
+                else:
+                    for key, value in args.items():
+                        self[key] = value
             elif isinstance(args, Iterable):
                 # dict(iterable)
                 for key, value in args:
