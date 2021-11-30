@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from .model import Model
+from .model import Parameters
 from .template import TemplateModelBuilder
 
 
@@ -19,7 +19,7 @@ class Plugin(ABC):
     def postrun(self, model):
         ...
 
-    def workflow(self, model: Model):
+    def workflow(self, model: Parameters):
         """Run the complete workflow for the plugin
 
         Parameters
@@ -43,7 +43,7 @@ class TemplatePlugin(Plugin):
     def  __init__(self, template_file: str):
         self.model_builder = TemplateModelBuilder(template_file)
 
-    def prerun(self, model: Model):
+    def prerun(self, model: Parameters):
         """Render the template based on model parameters
 
         Parameters

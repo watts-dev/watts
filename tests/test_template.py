@@ -18,13 +18,13 @@ def test_undefined_template(run_in_tmpdir):
     plugin = TemplatePlugin('example_template')
 
     # Passing model with 'variable' set should work
-    model = ardent.Model(variable=1)
+    model = ardent.Parameters(variable=1)
     plugin.prerun(model)
     with open('example_template.rendered', 'r') as fh:
         rendered = fh.read()
     assert rendered == '1'
 
     # Passing empty model should raise jinja2.UndefinedError
-    empty_model = ardent.Model()
+    empty_model = ardent.Parameters()
     with pytest.raises(jinja2.UndefinedError) as e:
         plugin.prerun(empty_model)

@@ -2,7 +2,7 @@ from pathlib import Path
 import time
 from typing import Callable, Mapping
 
-from .model import Model
+from .model import Parameters
 from .plugin import Plugin
 
 
@@ -16,10 +16,10 @@ class PluginOpenMC(Plugin):
 
     """
 
-    def __init__(self, model_builder: Callable[[Model], None]):
+    def __init__(self, model_builder: Callable[[Parameters], None]):
         self.model_builder = model_builder
 
-    def prerun(self, model: Model) -> None:
+    def prerun(self, model: Parameters) -> None:
         """Generate OpenMC input files
 
         Parameters
@@ -41,7 +41,7 @@ class PluginOpenMC(Plugin):
         self._run_time = time.time()
         openmc.run(**kwargs)
 
-    def postrun(self, model: Model):
+    def postrun(self, model: Parameters):
         """Collect information from OpenMC simulation and store in model
 
         Parameters

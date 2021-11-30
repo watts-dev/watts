@@ -4,7 +4,7 @@ import ardent
 from openmc_template import build_openmc_model
 
 
-model = ardent.Model()
+model = ardent.Parameters()
 
 # TH params
 

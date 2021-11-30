@@ -21,7 +21,7 @@ def _compare_model(model, other):
 
 def test_model_roundtrip(run_in_tmpdir):
     # Create a model with various datatypes
-    model = ardent.Model()
+    model = ardent.Parameters()
     model['int_scalar'] = 7
     model['float_scalar'] = 6.022e23
     model['str_scalar'] = 'ARDENT is great'
@@ -56,7 +56,7 @@ def test_model_roundtrip(run_in_tmpdir):
     assert Path('model.h5').is_file()
 
     # Load model from HDF5
-    new_model = ardent.Model.from_hdf5('model.h5')
+    new_model = ardent.Parameters.from_hdf5('model.h5')
 
     # Compare original model with one loaded from file
     _compare_model(model, new_model)
@@ -65,7 +65,7 @@ def test_model_roundtrip(run_in_tmpdir):
 def test_model_set():
     user = 'test_user'
     time = datetime.now()
-    model = ardent.Model()
+    model = ardent.Parameters()
     model.set('key', 7, user='test_user', time=time)
 
     assert model['key'] == 7
@@ -74,7 +74,7 @@ def test_model_set():
 
 def test_model_not_toplevel(run_in_tmpdir):
     """Test saving/loading model when not at top-level of HDF5 file"""
-    model = ardent.Model(var_one=1, var_two='two', var_three=3.0)
+    model = ardent.Parameters(var_one=1, var_two='two', var_three=3.0)
 
     # Write model to /mygroup within test.h5
     with h5py.File('test.h5', 'w') as fh:
@@ -84,7 +84,7 @@ def test_model_not_toplevel(run_in_tmpdir):
     # Read model from /mygroup
     with h5py.File('test.h5', 'r') as fh:
         group = fh['mygroup']
-        new_model = ardent.Model.from_hdf5(group)
+        new_model = ardent.Parameters.from_hdf5(group)
 
     # Compare original model with one from group in file
     _compare_model(model, new_model)

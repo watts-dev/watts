@@ -5,7 +5,7 @@ import subprocess
 import numpy as np
 import pandas as pd
 
-from .model import Model
+from .model import Parameters
 from .plugin import TemplatePlugin
 
 
@@ -32,7 +32,7 @@ class PluginSAM(TemplatePlugin):
         self.sam_inp_name = "SAM.i"
         self.sam_tmp_folder = "tmp_SAM" # TODO: provide consistency in here we are running the calculation
 
-    def prerun(self, model: Model):
+    def prerun(self, model: Parameters):
         """Generate the SAM input based on the template
 
         Parameters
@@ -77,7 +77,7 @@ class PluginSAM(TemplatePlugin):
                     for line in infile:
                         outfile.write(line)
 
-    def postrun(self, model: Model):
+    def postrun(self, model: Parameters):
         """Read SAM results and store in model
 
         Parameters

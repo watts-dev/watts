@@ -24,7 +24,7 @@ _LOAD_FUNCS = {
 ModelMetadata = namedtuple('ModelMetadata', ['user', 'time'])
 
 
-class Model(MutableMapping):
+class Parameters(MutableMapping):
     """Model storing information that is read/written by plugins
 
     The model class behaves like a normal Python dictionary except that it
