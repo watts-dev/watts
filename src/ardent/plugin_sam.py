@@ -20,22 +20,16 @@ class PluginSAM(TemplatePlugin):
     def  __init__(self, template_file: str):
         super().__init__(template_file)
 
-    def options(self, SAM_exec, calc_ID, SAM_save_path):
+    def options(self, SAM_exec):
         """Input SAM user-specified options
 
         Parameters
         ----------
         SAM_exec
             Path to SAM executable
-        calc_ID
-            ID for SAM calculation
-        SAM_save_path
-            Path to save SAM output and log files
         """
         self.SAM_exec = SAM_exec
-        self.calc_ID = calc_ID
-        self.SAM_save_path = SAM_save_path # Doesn't do anything at this moment
-        self.sam_inp_name = "SAM_" + self.calc_ID + ".i"
+        self.sam_inp_name = "SAM.i"
         self.sam_tmp_folder = "tmp_SAM" # TODO: provide consistency in here we are running the calculation
 
     def prerun(self, model: Model):
@@ -59,7 +53,7 @@ class PluginSAM(TemplatePlugin):
             shutil.rmtree(self.sam_tmp_folder)
         os.mkdir(self.sam_tmp_folder)
 
-        log_file_name = "SAM_log_" + self.calc_ID + ".txt"
+        log_file_name = "SAM_log.txt"
         if os.path.isfile(log_file_name):
             os.remove(log_file_name)
 
@@ -71,8 +65,6 @@ class PluginSAM(TemplatePlugin):
             if os.path.isfile(self.SAM_exec) is False:
                 outfile.write("SAM executable is missing. \n")
                 raise RuntimeError("SAM executable missing. Please specify path to SAM executable. ")
-            else:
-                outfile.write("SAM executable exists. Running SAM. \n")
 
         # Run SAM and store  error message to SAM log file
         with open("../" + log_file_name, "a+") as outfile:

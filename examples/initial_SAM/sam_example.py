@@ -47,10 +47,8 @@ model['num_cpu'] = 60
 # SAM Workflow
 
 sam_plugin = ardent.PluginSAM('sam_template')
-sam_kwargs = {"calc_ID": "ID_1", 
-			  "SAM_save_path": "/Users/zhieejhiaooi/Documents/ANL/ARDENT/ARDENT/examples/initial_SAM/SAM_ID1", 
-			  "SAM_exec": "/Users/zhieejhiaooi/Documents/ANL/ARDENT/sam-opt-mpi"}
-sam_option = sam_plugin.options(**sam_kwargs)
+sam_exec = "../../sam-opt-mpi"  # Path to SAM executable
+sam_option = sam_plugin.options(SAM_exec=sam_exec)
 
 sam_plugin.workflow(model)#, sam_options)
 model.show_summary()
