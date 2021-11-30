@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 from .database import Database
 from .fileutils import cd_tmpdir
-from .model import Parameters
+from .parameters import Parameters
 from .results import Results
 from .template import TemplateModelBuilder
 

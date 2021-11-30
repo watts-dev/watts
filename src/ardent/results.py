@@ -5,8 +5,8 @@ from typing import List
 import h5py
 
 import ardent
-from .model import Parameters
 from .fileutils import PathLike, open_file
+from .parameters import Parameters
 
 
 class Results:

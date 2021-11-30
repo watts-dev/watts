@@ -5,7 +5,7 @@ import subprocess
 import numpy as np
 import pandas as pd
 
-from .model import Parameters
+from .parameters import Parameters
 from .plugin import TemplatePlugin
 
 

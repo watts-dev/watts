@@ -8,7 +8,7 @@ from typing import Callable, Mapping, List
 import h5py
 
 from .fileutils import PathLike
-from .model import Parameters
+from .parameters import Parameters
 from .plugin import Plugin
 from .results import Results
 
