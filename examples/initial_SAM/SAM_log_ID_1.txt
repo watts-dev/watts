@@ -1,0 +1,158 @@
+SAM executable exists. Running SAM. 
+
+
+[31m
+*** Warning, This code is deprecated and will be removed in future versions:
+***** Invalid Object: NodalMaxValue *****
+Expired on Mon Sep 27 02:00:00 2021
+Update your application using the 'NodalExtremeValue' object[39m
+Stack frames: 22
+0: 0   libmesh_opt.0.dylib                 0x00000001062c1dd5 libMesh::print_trace(std::__1::basic_ostream<char, std::__1::char_traits<char> >&) + 1141
+1: 1   libmoose-opt.0.dylib                0x000000010523ebfa void moose::internal::mooseDeprecatedStream<libMesh::BasicOStreamProxy<char, std::__1::char_traits<char> >, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > >(libMesh::BasicOStreamProxy<char, std::__1::char_traits<char> >&, bool, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> >&&) + 826
+2: 2   libmoose-opt.0.dylib                0x0000000105894db7 Factory::deprecatedMessage(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> >) + 839
+3: 3   libmoose-opt.0.dylib                0x0000000105894fde Factory::getValidParams(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&) + 94
+4: 4   libmoose-opt.0.dylib                0x000000010541be23 MooseObjectAction::MooseObjectAction(InputParameters) + 643
+5: 5   libsam-opt.0.dylib                  0x000000010219152b SAMObjectAction::SAMObjectAction(InputParameters) + 59
+6: 6   libsam-opt.0.dylib                  0x000000010219cf4c std::__1::__compressed_pair_elem<SAMAddPostprocessorAction, 1, false>::__compressed_pair_elem<InputParameters const&, 0ul>(std::__1::piecewise_construct_t, std::__1::tuple<InputParameters const&>, std::__1::__tuple_indices<0ul>) + 76
+7: 7   libsam-opt.0.dylib                  0x000000010219cdce std::__1::shared_ptr<Action> moose::internal::buildAct<SAMAddPostprocessorAction>(InputParameters const&) + 78
+8: 8   libmoose-opt.0.dylib                0x00000001054161b8 ActionFactory::create(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, InputParameters&) + 280
+9: 9   libmoose-opt.0.dylib                0x000000010523dc4d Parser::walkRaw(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> >, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> >, hit::Node*) + 1341
+10: 10  libmoose-opt.0.dylib                0x0000000105234dde Parser::walk(std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > const&, hit::Node*) + 334
+11: 11  libhit-opt.0.dylib                  0x000000010170d0b1 hit::Node::walk(hit::Walker*, hit::NodeType, hit::TraversalOrder) + 161
+12: 12  libhit-opt.0.dylib                  0x000000010170d0f0 hit::Node::walk(hit::Walker*, hit::NodeType, hit::TraversalOrder) + 224
+13: 13  libhit-opt.0.dylib                  0x000000010170d0f0 hit::Node::walk(hit::Walker*, hit::NodeType, hit::TraversalOrder) + 224
+14: 14  libmoose-opt.0.dylib                0x00000001052416bd Parser::parse(std::__1::vector<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> >, std::__1::allocator<std::__1::basic_string<char, std::__1::char_traits<char>, std::__1::allocator<char> > > > const&) + 3981
+15: 15  libmoose-opt.0.dylib                0x0000000105907131 MooseApp::setupOptions() + 11457
+16: 16  libsam-opt.0.dylib                  0x00000001021f4b27 SamApp::setupOptions() + 119
+17: 17  libmoose-opt.0.dylib                0x0000000105903510 MooseApp::run() + 2720
+18: 18  sam-opt                             0x000000010155dc5c main + 124
+19: 19  dyld                                0x000000010ce814fe start + 462
+20: 20  ???                                 0x0000000000000000 0x0 + 0
+21: 21  sam-opt                             0x0000000101551000 __dso_handle + 0
+
+AddComponent: ReactorPower reactor
+AddComponent: PBCoreChannel CH1
+
+*** Warning ***
+D_heated / Dh > 1.5 or D_heated < Dh occured in: CH1:pipe. Please check your input parameters!
+
+AddComponent: PBTDJ inlet
+AddComponent: PBTDV outlet
+Create mesh...   Building internal mesh...OK
+Build SAM Displaced Mesh... OK
+Checking system integrity... OK
+Add Variables... OK
+Initialize Variable Values... OK
+Add Component Physics... OK
+Framework Information:
+MOOSE Version:           git commit c6dbc2add8 on 2021-11-09
+LibMesh Version:         c3a9eae9c19b69f9e96df2d04036e22209218f89
+PETSc Version:           3.14.2
+SLEPc Version:           3.14.0
+Current Time:            Fri Nov 26 13:14:54 2021
+Executable Timestamp:    Wed Nov 10 19:13:54 2021
+
+Parallelism:
+  Num Processors:          1
+  Num Threads:             1
+
+Mesh: 
+  Parallel Type:           replicated
+  Mesh Dimension:          1
+  Spatial Dimension:       3
+  Nodes:                   6262
+  Elems:                   6160
+  Num Subdomains:          3
+
+Nonlinear System:
+  Num DOFs:                6565
+  Num Local DOFs:          6565
+  Variables:               "T_solid" { "Tw" "pressure" "temperature" "velocity" } 
+  Finite Element Types:    "LAGRANGE" "LAGRANGE" 
+  Approximation Orders:    "FIRST" "FIRST" 
+
+Auxiliary System:
+  Num DOFs:                304
+  Num Local DOFs:          304
+  Variables:               { "JxW" "heat_transfer_coefficient" } "reactor:power" "rho" 
+  Finite Element Types:    "LAGRANGE" "SCALAR" "LAGRANGE" 
+  Approximation Orders:    "FIRST" "FIRST" "FIRST" 
+
+Execution Information:
+  Executioner:             Steady
+  Solver Mode:             Preconditioned JFNK
+  PETSc Preconditioner:    lu 
+  MOOSE Preconditioner:    SMP
+
+[31mLEGACY MODES ENABLED:[39m
+ This application uses the legacy material output option: material properties are output only on TIMESTEP_END, not INITIAL. To remove this message, set 'use_legacy_material_output' to false in this application. If there are gold output files that contain material property output for which output occurs on INITIAL, then these will generate diffs due to zero values being stored, and these tests should be re-golded.
+[39m
+
+Postprocessor Values:
++----------------+----------------+----------------+----------------+----------------+----------------+
+| time           | max_Pcoolant   | max_Tcoolant   | max_Tf         | max_Tgraphite  | max_Tw         |
++----------------+----------------+----------------+----------------+----------------+----------------+
+|   0.000000e+00 |   7.000000e+06 |   8.731500e+02 |   8.731500e+02 |   8.731500e+02 |   8.731500e+02 |
++----------------+----------------+----------------+----------------+----------------+----------------+
+
+
+Scalar Variable Values:
++----------------+----------------+
+| time           | reactor:power  |
++----------------+----------------+
+|   0.000000e+00 |   2.500000e+05 |
++----------------+----------------+
+
+ 0 Nonlinear |R| = [32m4.627715e+02[39m
+ 1 Nonlinear |R| = [32m4.103021e+02[39m
+ 2 Nonlinear |R| = [32m1.951027e+02[39m
+ 3 Nonlinear |R| = [32m1.181824e+02[39m
+ 4 Nonlinear |R| = [32m1.167810e-01[39m
+ 5 Nonlinear |R| = [32m8.797711e-05[39m
+ 6 Nonlinear |R| = [32m2.128419e-07[39m
+[32m Solve Converged![39m
+
+Outlier Variable Residual Norms:
+  pressure: [31m2.128402e-07[39m
+
+Postprocessor Values:
++----------------+----------------+----------------+----------------+----------------+----------------+
+| time           | max_Pcoolant   | max_Tcoolant   | max_Tf         | max_Tgraphite  | max_Tw         |
++----------------+----------------+----------------+----------------+----------------+----------------+
+|   0.000000e+00 |   7.000000e+06 |   8.731500e+02 |   8.731500e+02 |   8.731500e+02 |   8.731500e+02 |
+|   1.000000e+00 |   7.000400e+06 |   1.126754e+03 |   4.316301e+03 |   3.596072e+03 |   3.285244e+03 |
++----------------+----------------+----------------+----------------+----------------+----------------+
+
+
+Scalar Variable Values:
++----------------+----------------+
+| time           | reactor:power  |
++----------------+----------------+
+|   0.000000e+00 |   2.500000e+05 |
+|   1.000000e+00 |   2.500000e+05 |
++----------------+----------------+
+
+
+
+Performance Graph:
+------------------------------------------------------------------------------------------------------------------------------------------------
+|                   Section                  | Calls |   Self(s)  |   Avg(s)   |    %   | Mem(MB) |  Total(s)  |   Avg(s)   |    %   | Mem(MB) |
+------------------------------------------------------------------------------------------------------------------------------------------------
+| SamApp (main)                              |     1 |      0.010 |      0.010 |   0.93 |       2 |      1.083 |      1.083 | 100.00 |      48 |
+|   FEProblem::computeUserObjects            |     2 |      0.015 |      0.008 |   1.40 |       0 |      0.015 |      0.008 |   1.40 |       0 |
+|   FEProblem::outputStep                    |     2 |      0.000 |      0.000 |   0.03 |       0 |      0.094 |      0.047 |   8.69 |       6 |
+|     Exodus::outputStep                     |     2 |      0.026 |      0.013 |   2.36 |       5 |      0.026 |      0.013 |   2.36 |       5 |
+|   Steady::PicardSolve                      |     1 |      0.000 |      0.000 |   0.03 |       0 |      0.702 |      0.702 |  64.83 |       8 |
+|     FEProblem::computeUserObjects          |     2 |      0.022 |      0.011 |   1.99 |       2 |      0.022 |      0.011 |   1.99 |       2 |
+|     FEProblem::outputStep                  |     1 |      0.000 |      0.000 |   0.01 |       0 |      0.000 |      0.000 |   0.01 |       0 |
+|     FEProblem::solve                       |     1 |      0.012 |      0.012 |   1.11 |       4 |      0.680 |      0.680 |  62.80 |       6 |
+|       FEProblem::computeResidualInternal   |     1 |      0.000 |      0.000 |   0.00 |       0 |      0.013 |      0.013 |   1.24 |       0 |
+|         FEProblem::computeUserObjects      |     1 |      0.000 |      0.000 |   0.00 |       0 |      0.000 |      0.000 |   0.00 |       0 |
+|         AuxiliarySystem::computeScalarVars |     1 |      0.000 |      0.000 |   0.00 |       0 |      0.000 |      0.000 |   0.00 |       0 |
+|       FEProblem::computeResidualInternal   |    42 |      0.000 |      0.000 |   0.04 |       0 |      0.533 |      0.013 |  49.26 |       2 |
+|         FEProblem::computeUserObjects      |    42 |      0.000 |      0.000 |   0.03 |       0 |      0.000 |      0.000 |   0.03 |       0 |
+|         AuxiliarySystem::computeScalarVars |    42 |      0.001 |      0.000 |   0.12 |       0 |      0.001 |      0.000 |   0.12 |       0 |
+|       FEProblem::computeJacobianInternal   |     6 |      0.000 |      0.000 |   0.01 |       0 |      0.120 |      0.020 |  11.12 |       0 |
+|   Steady::final                            |     1 |      0.000 |      0.000 |   0.01 |       0 |      0.000 |      0.000 |   0.02 |       0 |
+|     FEProblem::outputStep                  |     1 |      0.000 |      0.000 |   0.01 |       0 |      0.000 |      0.000 |   0.01 |       0 |
+------------------------------------------------------------------------------------------------------------------------------------------------
