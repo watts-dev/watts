@@ -1,6 +1,9 @@
 from abc import ABC, abstractmethod
 
+from .database import Database
+from .fileutils import cd_tmpdir
 from .model import Parameters
+from .results import Results
 from .template import TemplateModelBuilder
 
 
@@ -16,20 +19,51 @@ class Plugin(ABC):
         ...
 
     @abstractmethod
-    def postrun(self, model):
+    def postrun(self, model) -> Results:
         ...
 
-    def workflow(self, model: Parameters):
+    @staticmethod
+    def _get_unique_dir(path, name):
+        if not (path / name).exists():
+            return path / name
+
+        # Try adding number as suffix
+        i = 1
+        while True:
+            unique_name = f"{name}_{i}"
+            if not (path / unique_name).exists():
+                return path / unique_name
+            i += 1
+
+    def workflow(self, model: Parameters, name='Workflow'):
         """Run the complete workflow for the plugin
 
         Parameters
         ----------
         model
             Model that is used in generating inputs and storing results
+        name
+            Unique name for workflow
         """
-        self.prerun(model)
-        self.run()
-        self.postrun(model)
+        db = Database()
+
+        # Create new directory for results
+        workflow_path = self._get_unique_dir(db.path, name)
+        workflow_path.mkdir()
+
+        with cd_tmpdir():
+            # Run workflow in temporary directory
+            self.prerun(model)
+            self.run()
+            result = self.postrun(model)
+
+            # Move files to results directory
+            result.move_files(workflow_path)
+
+        # Add result to database
+        db.add_result(result)
+
+        return result
 
 
 class TemplatePlugin(Plugin):
