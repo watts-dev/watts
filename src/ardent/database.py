@@ -1,6 +1,7 @@
 from pathlib import Path
 import shutil
 from typing import List, Union
+from warnings import warn
 
 import platformdirs
 
@@ -58,7 +59,10 @@ class Database:
         # Read previous results
         self._results = []
         for dir in sorted(self.path.iterdir(), key=lambda x: x.stat().st_ctime):
-            self._results.append(Results.from_hdf5(dir / ".result_info.h5"))
+            try:
+                self._results.append(Results.from_hdf5(dir / ".result_info.h5"))
+            except Exception:
+                warn(f"Could not read results from {dir}")
 
         # Add instance to class-wide dictionary
         Database._instances[path] = self
@@ -107,8 +111,8 @@ class Database:
 
     def clear(self):
         """Remove all results from database"""
-        for result in self.results:
-            shutil.rmtree(result.base_path)
+        for dir in self.path.iterdir():
+            shutil.rmtree(dir)
         self.results.clear()
 
     def show_summary(self):
