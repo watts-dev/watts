@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from pathlib import Path
 
 from .database import Database
 from .fileutils import cd_tmpdir
@@ -23,7 +24,7 @@ class Plugin(ABC):
         ...
 
     @staticmethod
-    def _get_unique_dir(path, name):
+    def _get_unique_dir(path: Path, name: str) -> Path:
         if not (path / name).exists():
             return path / name
 
@@ -47,17 +48,15 @@ class Plugin(ABC):
         """
         db = Database()
 
-        # Create new directory for results
-        workflow_path = self._get_unique_dir(db.path, name)
-        workflow_path.mkdir()
-
         with cd_tmpdir():
             # Run workflow in temporary directory
             self.prerun(model)
             self.run()
             result = self.postrun(model)
 
-            # Move files to results directory
+            # Create new directory for results and move files there
+            workflow_path = self._get_unique_dir(db.path, name)
+            workflow_path.mkdir()
             result.move_files(workflow_path)
 
         # Add result to database
