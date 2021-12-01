@@ -4,6 +4,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import time
+from typing import List
 
 import h5py
 import numpy as np
@@ -16,7 +17,28 @@ from .results import Results
 
 
 class ResultsSAM(Results):
-    def __init__(self, params: Parameters, time, inputs, outputs):
+    """SAM simulation results
+
+    Parameters
+    ----------
+    params
+        Model parameters used to generate inputs
+    time
+        Time at which workflow was run
+    inputs
+        List of input files
+    outputs
+        List of output files
+
+    Attributes
+    ----------
+    stdout
+        Standard output from SAM run
+    csv_data
+        Dictionary with data from .csv files
+    """
+    def __init__(self, params: Parameters, time: datetime,
+                 inputs: List[PathLike], outputs: List[PathLike]):
         super().__init__('SAM', params, time, inputs, outputs)
         self.csv_data = self._save_SAM_csv()
 
@@ -142,12 +164,16 @@ class PluginSAM(TemplatePlugin):
             )
 
     def postrun(self, model: Parameters) -> ResultsSAM:
-        """Read SAM results and store in model
+        """Read SAM results and create results object
 
         Parameters
         ----------
         model
-            Model to store SAM results in
+            Model used to create SAM model
+
+        Returns
+        -------
+        SAM results object
         """
         print("post-run for SAM Plugin")
 

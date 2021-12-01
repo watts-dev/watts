@@ -118,12 +118,16 @@ class PluginOpenMC(Plugin):
         self._stdout = output.getvalue()
 
     def postrun(self, model: Parameters) -> ResultsOpenMC:
-        """Collect information from OpenMC simulation and store in model
+        """Collect information from OpenMC simulation and create results object
 
         Parameters
         ----------
         model
-            Model to store simulation results in
+            Model used to create OpenMC model
+
+        Returns
+        -------
+        OpenMC results object
         """
         def files_since(pattern, time):
             matches = []

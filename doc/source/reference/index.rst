@@ -15,3 +15,4 @@ API Reference
    ardent.PluginSAM
    ardent.Results
    ardent.ResultsOpenMC
+   ardent.ResultsSAM
