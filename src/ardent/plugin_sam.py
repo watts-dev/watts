@@ -55,7 +55,7 @@ class ResultsSAM(Results):
 
         """
         input_file = self.inputs[0]
-        csv_file = self.base_path / f"{input_file.stem}_csv.csv"
+        csv_file = input_file.with_name(f"{input_file.stem}_csv.csv")
 
         # Save SAM's main output '.csv' files
         csv_data = {}
@@ -113,6 +113,7 @@ class PluginSAM(TemplatePlugin):
     def  __init__(self, template_file: str):
         super().__init__(template_file)
         self._sam_exec = 'sam-opt'
+        self.sam_inp_name = "SAM.i"
 
     @property
     def sam_exec(self):
@@ -133,7 +134,6 @@ class PluginSAM(TemplatePlugin):
             Path to SAM executable
         """
         self.sam_exec = sam_exec
-        self.sam_inp_name = "SAM.i"
 
     def prerun(self, params: Parameters):
         """Generate the SAM input based on the template
