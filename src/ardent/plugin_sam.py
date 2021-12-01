@@ -75,7 +75,6 @@ class PluginSAM(TemplatePlugin):
         """
         self.sam_exec = sam_exec
         self.sam_inp_name = "SAM.i"
-        self.sam_tmp_folder = "tmp_SAM" # TODO: provide consistency in here we are running the calculation
 
     def prerun(self, model: Parameters):
         """Generate the SAM input based on the template
@@ -95,25 +94,20 @@ class PluginSAM(TemplatePlugin):
         """Run SAM"""
         print("Run for SAM Plugin")
 
-        if os.path.exists(self.sam_tmp_folder):
-            shutil.rmtree(self.sam_tmp_folder)
-        os.mkdir(self.sam_tmp_folder)
-
         log_file_name = "SAM_log.txt"
         if os.path.isfile(log_file_name):
             os.remove(log_file_name)
 
-        shutil.copy("sam_template.rendered", self.sam_tmp_folder+"/"+self.sam_inp_name)
-        os.chdir(self.sam_tmp_folder)
+        shutil.copy("sam_template.rendered", self.sam_inp_name)
 
         # Run SAM and store  error message to SAM log file
-        with open("../" + log_file_name, "a+") as outfile:
+        with open(log_file_name, "a+") as outfile:
             subprocess.run([str(self.sam_exec) + " -i "+self.sam_inp_name+" > "+self.sam_inp_name[:-2]+"_out.txt"], shell=True, stderr=outfile)
 
         # Copy SAM output to SAM log file
         if os.path.isfile(self.sam_inp_name[:-2]+"_out.txt"):
             with open(self.sam_inp_name[:-2]+"_out.txt") as infile:
-                with open("../" + log_file_name, "a+") as outfile:
+                with open(log_file_name, "a+") as outfile:
                     for line in infile:
                         outfile.write(line)
 
@@ -129,7 +123,9 @@ class PluginSAM(TemplatePlugin):
         self._save_SAM_csv(model)
 
         time = datetime.fromtimestamp(self._run_time * 1e-9)
-        return ResultsSAM(model, time, [], [])
+        inputs = ['SAM.i']
+        outputs = ['SAM_out.txt', 'SAM_log.txt', 'SAM_csv.csv']
+        return ResultsSAM(model, time, inputs, outputs)
 
     def _save_SAM_csv(self, model):
         """Read all SAM '.csv' files and store in model
@@ -159,6 +155,3 @@ class PluginSAM(TemplatePlugin):
                     if new_name not in exist_name:
                         model.set(new_name, np.array(vector_csv_df[name]).astype(np.float64), user='plugin_sam')
                         exist_name.append(file[:-8] + name)
-
-        os.chdir("../") # TODO: provide consistency in where we are running the calculation
-        shutil.rmtree(self.sam_tmp_folder)
