@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
+import shutil
 
 from .database import Database
 from .fileutils import cd_tmpdir
@@ -57,7 +58,13 @@ class Plugin(ABC):
             # Create new directory for results and move files there
             workflow_path = self._get_unique_dir(db.path, name)
             workflow_path.mkdir()
-            result.move_files(workflow_path)
+            try:
+                result.move_files(workflow_path)
+            except Exception:
+                # If error occurred, make sure we remove results directory so it
+                # doesn't pollute database
+                shutil.rmtree(workflow_path)
+                raise
 
         # Add result to database
         db.add_result(result)
