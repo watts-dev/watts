@@ -17,7 +17,7 @@ class Results:
     plugin
         Name of the plugin that created the results
     params
-        Model parameters used to generate inputs
+        Parameters used to generate inputs
     time
         Time at which workflow was run
     inputs

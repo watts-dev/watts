@@ -21,15 +21,15 @@ _LOAD_FUNCS = {
     'bool': bool
 }
 
-ModelMetadata = namedtuple('ModelMetadata', ['user', 'time'])
+ParametersMetadata = namedtuple('ParametersMetadata', ['user', 'time'])
 
 
 class Parameters(MutableMapping):
-    """Model storing information that is read/written by plugins
+    """User parameters used to generate inputs that are created by plugins
 
-    The model class behaves like a normal Python dictionary except that it
-    stores metadata on (key, value) pairs and provides the ability to save/load
-    the data to an HDF5 file.
+    This class behaves like a normal Python dictionary except that it stores
+    metadata on (key, value) pairs and provides the ability to save/load the
+    data to an HDF5 file.
 
     """
     def __init__(self, *args, **kwargs):
@@ -92,11 +92,11 @@ class Parameters(MutableMapping):
         if time is None:
             time = datetime.now()
         if key in self._dict:
-            warn(f"Key {key} has already been added to model")
+            warn(f"Key {key} has already been added to parameters")
         self._dict[key] = value
-        self._metadata[key] = ModelMetadata(user, time)
+        self._metadata[key] = ParametersMetadata(user, time)
 
-    def get_metadata(self, key: Any) -> ModelMetadata:
+    def get_metadata(self, key: Any) -> ParametersMetadata:
         """Get metadata associated with a key
 
         Parameters
@@ -142,7 +142,7 @@ class Parameters(MutableMapping):
                     add_metadata(dset, self._metadata[key])
 
     def save(self, filename_or_obj: Union[str, h5py.Group]):
-        """Save model parameters to an HDF5 file/group
+        """Save parameters to an HDF5 file/group
 
         Parameters
         ----------
@@ -161,7 +161,7 @@ class Parameters(MutableMapping):
         def metadata_from_obj(obj):
             user = obj.attrs['user']
             time = datetime.fromisoformat(obj.attrs['time'])
-            return ModelMetadata(user, time)
+            return ParametersMetadata(user, time)
 
         for key, obj in h5_obj.items():
             if isinstance(obj, h5py.Dataset):
@@ -192,7 +192,7 @@ class Parameters(MutableMapping):
                 self._load_mapping(mapping[key], obj, root=False)
 
     def load(self, filename_or_obj: Union[str, h5py.Group]):
-        """Load model parameters from an HDF5 file
+        """Load parameters from an HDF5 file
 
         Parameters
         ----------
@@ -208,13 +208,13 @@ class Parameters(MutableMapping):
 
     @classmethod
     def from_hdf5(cls, filename_or_obj: Union[str, h5py.Group]):
-        """Return model from HDF5 file/group
+        """Return parameters from HDF5 file/group
 
         Parameters
         ----------
         filename_or_obj
             Path to HDF5 file or HDF5 group object to read from
         """
-        model = cls()
-        model.load(filename_or_obj)
-        return model
+        params = cls()
+        params.load(filename_or_obj)
+        return params

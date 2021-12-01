@@ -22,7 +22,7 @@ class ResultsSAM(Results):
     Parameters
     ----------
     params
-        Model parameters used to generate inputs
+        Parameters used to generate inputs
     time
         Time at which workflow was run
     inputs
@@ -135,19 +135,19 @@ class PluginSAM(TemplatePlugin):
         self.sam_exec = sam_exec
         self.sam_inp_name = "SAM.i"
 
-    def prerun(self, model: Parameters):
+    def prerun(self, params: Parameters):
         """Generate the SAM input based on the template
 
         Parameters
         ----------
-        model
-            Model used when rendering template
+        params
+            Parameters used when rendering template
 
         """
         self._run_time = time.time_ns()
         # Render the template
         print("Pre-run for SAM Plugin")
-        super().prerun(model, filename=self.sam_inp_name)
+        super().prerun(params, filename=self.sam_inp_name)
 
     def run(self):
         """Run SAM"""
@@ -163,13 +163,13 @@ class PluginSAM(TemplatePlugin):
                 stderr=subprocess.STDOUT
             )
 
-    def postrun(self, model: Parameters) -> ResultsSAM:
+    def postrun(self, params: Parameters) -> ResultsSAM:
         """Read SAM results and create results object
 
         Parameters
         ----------
-        model
-            Model used to create SAM model
+        params
+            Parameters used to create SAM model
 
         Returns
         -------
@@ -180,5 +180,5 @@ class PluginSAM(TemplatePlugin):
         time = datetime.fromtimestamp(self._run_time * 1e-9)
         inputs = ['SAM.i']
         outputs = [p for p in Path.cwd().iterdir() if p.name not in inputs]
-        return ResultsSAM(model, time, inputs, outputs)
+        return ResultsSAM(params, time, inputs, outputs)
 

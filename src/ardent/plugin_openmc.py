@@ -19,7 +19,7 @@ class ResultsOpenMC(Results):
     Parameters
     ----------
     params
-        Model parameters used to generate inputs
+        Parameters used to generate inputs
     time
         Time at which workflow was run
     inputs
@@ -93,16 +93,16 @@ class PluginOpenMC(Plugin):
     def __init__(self, model_builder: Callable[[Parameters], None]):
         self.model_builder = model_builder
 
-    def prerun(self, model: Parameters) -> None:
+    def prerun(self, params: Parameters) -> None:
         """Generate OpenMC input files
 
         Parameters
         ----------
-        model
-            Model that is used by the OpenMC template
+        params
+            Parameters used by the OpenMC template
         """
         self._run_time = time.time_ns()
-        self.model_builder(model)
+        self.model_builder(params)
 
     def run(self, **kwargs: Mapping):
         """Run OpenMC
@@ -117,13 +117,13 @@ class PluginOpenMC(Plugin):
             openmc.run(**kwargs)
         self._stdout = output.getvalue()
 
-    def postrun(self, model: Parameters) -> ResultsOpenMC:
+    def postrun(self, params: Parameters) -> ResultsOpenMC:
         """Collect information from OpenMC simulation and create results object
 
         Parameters
         ----------
-        model
-            Model used to create OpenMC model
+        params
+            Parameters used to create OpenMC model
 
         Returns
         -------
@@ -150,5 +150,5 @@ class PluginOpenMC(Plugin):
         outputs.extend(files_since('statepoint.*.h5', self._run_time))
 
         time = datetime.fromtimestamp(self._run_time * 1e-9)
-        return ResultsOpenMC(model, time, inputs, outputs, self._stdout)
+        return ResultsOpenMC(params, time, inputs, outputs, self._stdout)
 

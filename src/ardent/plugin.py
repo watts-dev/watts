@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
 import shutil
+from typing import Optional
 
 from .database import Database
 from .fileutils import cd_tmpdir
@@ -13,7 +14,7 @@ class Plugin(ABC):
     """Class defining the Plugin interface"""
 
     @abstractmethod
-    def prerun(self, model):
+    def prerun(self, params):
         ...
 
     @abstractmethod
@@ -21,7 +22,7 @@ class Plugin(ABC):
         ...
 
     @abstractmethod
-    def postrun(self, model) -> Results:
+    def postrun(self, params) -> Results:
         ...
 
     @staticmethod
@@ -37,23 +38,27 @@ class Plugin(ABC):
                 return path / unique_name
             i += 1
 
-    def workflow(self, model: Parameters, name='Workflow'):
+    def workflow(self, params: Parameters, name='Workflow') -> Results:
         """Run the complete workflow for the plugin
 
         Parameters
         ----------
-        model
-            Model that is used in generating inputs and storing results
+        params
+            Parameters used in generating inputs
         name
             Unique name for workflow
+
+        Returns
+        -------
+        Results from running workflow
         """
         db = Database()
 
         with cd_tmpdir():
             # Run workflow in temporary directory
-            self.prerun(model)
+            self.prerun(params)
             self.run()
-            result = self.postrun(model)
+            result = self.postrun(params)
 
             # Create new directory for results and move files there
             workflow_path = self._get_unique_dir(db.path, name)
@@ -83,14 +88,15 @@ class TemplatePlugin(Plugin):
     def  __init__(self, template_file: str):
         self.model_builder = TemplateModelBuilder(template_file)
 
-    def prerun(self, model: Parameters, **kwargs):
+    def prerun(self, params: Parameters, filename: Optional[str] = None):
         """Render the template based on model parameters
 
         Parameters
         ----------
-        model
-            Model used to render template
+        params
+            Parameters used to render template
+        filename
+            Keyword arguments passed to the
         """
         # Render the template
-        print("Pre-run for Example Plugin")
-        self.model_builder(model, **kwargs)
+        self.model_builder(params, filename=filename)
