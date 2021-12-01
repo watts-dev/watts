@@ -1,8 +1,6 @@
 from math import cos, pi
 import ardent
 
-# from openmc_template import build_openmc_model
-
 
 model = ardent.Parameters()
 
@@ -47,19 +45,11 @@ model['num_cpu'] = 60
 # SAM Workflow
 
 sam_plugin = ardent.PluginSAM('sam_template')
-sam_exec = "../../sam-opt-mpi"  # Path to SAM executable
+sam_exec = "sam-opt"  # Path to SAM executable
 sam_option = sam_plugin.options(sam_exec=sam_exec)
 
 sam_plugin.workflow(model)#, sam_options)
 model.show_summary()
 
-# get temperature from SAM results
-# model['temp'] = model['avg_Tgraphite'][-1]
-# # Run OpenMC plugin
-# openmc_plugin = ardent.PluginOpenMC(build_openmc_model)
-# openmc_plugin.workflow(model)
-
-
 # Save results
-model.show_summary()
 model.save('gcmr_sam.h5')
