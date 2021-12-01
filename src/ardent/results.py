@@ -27,13 +27,13 @@ class Results:
     """
 
     def __init__(self, plugin: str, params: Parameters, time: datetime,
-                 inputs: List[Path], outputs: List[Path]):
+                 inputs: List[PathLike], outputs: List[PathLike]):
         self.base_path = Path.cwd()
         self.plugin = plugin
         self.parameters = Parameters(params)
         self.time = time
-        self.inputs = inputs
-        self.outputs = outputs
+        self.inputs = [Path(p) for p in inputs]
+        self.outputs = [Path(p) for p in outputs]
 
     def move_files(self, dst: PathLike):
         """Move input/output files to different directory
