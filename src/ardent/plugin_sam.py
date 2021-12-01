@@ -19,6 +19,10 @@ class ResultsSAM(Results):
     def __init__(self, params: Parameters, time, inputs, outputs):
         super().__init__('SAM', params, time, inputs, outputs)
 
+    @property
+    def stdout(self):
+        return (self.base_path / "SAM_log.txt").read_text()
+
     def save(self, filename: PathLike):
         """Save results to an HDF5 file
 
@@ -88,28 +92,21 @@ class PluginSAM(TemplatePlugin):
         self._run_time = time.time_ns()
         # Render the template
         print("Pre-run for SAM Plugin")
-        super().prerun(model)
+        super().prerun(model, filename=self.sam_inp_name)
 
     def run(self):
         """Run SAM"""
         print("Run for SAM Plugin")
 
-        log_file_name = "SAM_log.txt"
-        if os.path.isfile(log_file_name):
-            os.remove(log_file_name)
-
-        shutil.copy("sam_template.rendered", self.sam_inp_name)
+        log_file = Path("SAM_log.txt")
 
         # Run SAM and store  error message to SAM log file
-        with open(log_file_name, "a+") as outfile:
-            subprocess.run([str(self.sam_exec) + " -i "+self.sam_inp_name+" > "+self.sam_inp_name[:-2]+"_out.txt"], shell=True, stderr=outfile)
-
-        # Copy SAM output to SAM log file
-        if os.path.isfile(self.sam_inp_name[:-2]+"_out.txt"):
-            with open(self.sam_inp_name[:-2]+"_out.txt") as infile:
-                with open(log_file_name, "a+") as outfile:
-                    for line in infile:
-                        outfile.write(line)
+        with log_file.open("w") as outfile:
+            subprocess.run(
+                [self.sam_exec, "-i", self.sam_inp_name],
+                stdout=outfile,
+                stderr=subprocess.STDOUT
+            )
 
     def postrun(self, model: Parameters) -> ResultsSAM:
         """Read SAM results and store in model
@@ -124,7 +121,7 @@ class PluginSAM(TemplatePlugin):
 
         time = datetime.fromtimestamp(self._run_time * 1e-9)
         inputs = ['SAM.i']
-        outputs = ['SAM_out.txt', 'SAM_log.txt', 'SAM_csv.csv']
+        outputs = [p for p in Path.cwd().iterdir() if p.name not in inputs]
         return ResultsSAM(model, time, inputs, outputs)
 
     def _save_SAM_csv(self, model):

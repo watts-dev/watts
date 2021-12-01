@@ -83,7 +83,7 @@ class TemplatePlugin(Plugin):
     def  __init__(self, template_file: str):
         self.model_builder = TemplateModelBuilder(template_file)
 
-    def prerun(self, model: Parameters):
+    def prerun(self, model: Parameters, **kwargs):
         """Render the template based on model parameters
 
         Parameters
@@ -93,4 +93,4 @@ class TemplatePlugin(Plugin):
         """
         # Render the template
         print("Pre-run for Example Plugin")
-        self.model_builder(model)
+        self.model_builder(model, **kwargs)
