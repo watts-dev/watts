@@ -18,10 +18,43 @@ from .results import Results
 class ResultsSAM(Results):
     def __init__(self, params: Parameters, time, inputs, outputs):
         super().__init__('SAM', params, time, inputs, outputs)
+        self.csv_data = self._save_SAM_csv()
 
     @property
-    def stdout(self):
+    def stdout(self) -> str:
         return (self.base_path / "SAM_log.txt").read_text()
+
+    def _save_SAM_csv(self) -> dict:
+        """Read all SAM '.csv' files and return results in a dictionary
+
+        Returns
+        -------
+        Results from SAM .csv files
+
+        """
+        input_file = self.inputs[0]
+        csv_file = self.base_path / f"{input_file.stem}_csv.csv"
+
+        # Save SAM's main output '.csv' files
+        csv_data = {}
+        if csv_file.exists():
+            csv_file_df = pd.read_csv(csv_file)
+            for column_name in csv_file_df.columns:
+                csv_data[column_name] =  np.array(csv_file_df[column_name])
+
+        # Read SAM's vector postprocesssor '.csv' files and save the parameters as individual array
+        for output in self.outputs:
+            if output.name.startswith(f"{input_file.stem}_csv_") and not output.name.endswith("_0000.csv"):
+                vector_csv_df = pd.read_csv(output)
+                csv_param = list(set(vector_csv_df.columns) - {"id", "x", "y", "z"})
+                csv_data[output.stem] = np.array(vector_csv_df[csv_param[0]], dtype=float)
+
+                for name in ("id", "x", "y", "z"):
+                    new_name = output.name[:-8] + name
+                    if new_name not in csv_data:
+                        csv_data[new_name] = np.array(vector_csv_df[name], dtype=float)
+
+        return csv_data
 
     def save(self, filename: PathLike):
         """Save results to an HDF5 file
@@ -117,38 +150,9 @@ class PluginSAM(TemplatePlugin):
             Model to store SAM results in
         """
         print("post-run for SAM Plugin")
-        self._save_SAM_csv(model)
 
         time = datetime.fromtimestamp(self._run_time * 1e-9)
         inputs = ['SAM.i']
         outputs = [p for p in Path.cwd().iterdir() if p.name not in inputs]
         return ResultsSAM(model, time, inputs, outputs)
 
-    def _save_SAM_csv(self, model):
-        """Read all SAM '.csv' files and store in model
-
-        Parameters
-        ----------
-        model
-            Model to store SAM results in
-        """
-        csv_file_name = self.sam_inp_name[:-2] + "_csv.csv"
-        # Save SAM's main output '.csv' files
-        if os.path.isfile(csv_file_name):
-            csv_file_df = pd.read_csv(csv_file_name)
-            for column_name in csv_file_df.columns:
-                model.set(column_name, np.array(csv_file_df[column_name]), user='plugin_sam')
-
-        # Read SAM's vector postprocesssor '.csv' files and save the parameters as individual array
-        exist_name = []
-        for file in os.listdir():
-            if file.startswith(self.sam_inp_name[:-2] + "_csv_") and not file.endswith("_0000.csv"):
-                vector_csv_df = pd.read_csv(file)
-                csv_param = list(set(list(vector_csv_df.columns)) - set(set(["id", "x", "y", "z"])))
-                model.set(file[:-4], np.array(vector_csv_df[csv_param[0]]).astype(np.float64), user='plugin_sam')
-
-                for name in ["id", "x", "y", "z"]:
-                    new_name = file[:-8] + name
-                    if new_name not in exist_name:
-                        model.set(new_name, np.array(vector_csv_df[name]).astype(np.float64), user='plugin_sam')
-                        exist_name.append(file[:-8] + name)
