@@ -86,6 +86,10 @@ class Results:
             plugin = h5file.attrs['plugin']
             if plugin == 'OpenMC':
                 result = ardent.ResultsOpenMC._from_hdf5(h5file)
+            elif plugin == 'SAM':
+                result = ardent.ResultsSAM._from_hdf5(h5file)
+            else:
+                raise RuntimeError(f"Unrecognized plugin in results: {plugin}")
 
         result.base_path = Path(filename).parent
         return result

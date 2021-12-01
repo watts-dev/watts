@@ -1,12 +1,45 @@
+from datetime import datetime
 import os
 import shutil
 import subprocess
+import time
 
+import h5py
 import numpy as np
 import pandas as pd
 
+from .fileutils import PathLike
 from .parameters import Parameters
 from .plugin import TemplatePlugin
+from .results import Results
+
+
+class ResultsSAM(Results):
+    def __init__(self, params: Parameters, time, inputs, outputs):
+        super().__init__('SAM', params, time, inputs, outputs)
+
+    def save(self, filename: PathLike):
+        """Save results to an HDF5 file
+
+        Parameters
+        ----------
+        filename
+            File to save results to
+        """
+        with h5py.File(filename, 'w') as h5file:
+            super()._save(h5file)
+
+    @classmethod
+    def _from_hdf5(cls, obj: h5py.Group):
+        """Load results from an HDF5 file
+
+        Parameters
+        ----------
+        obj
+            HDF5 group to load results from
+        """
+        time, parameters, inputs, outputs = Results._load(obj)
+        return cls(parameters, time, inputs, outputs)
 
 
 class PluginSAM(TemplatePlugin):
@@ -41,6 +74,7 @@ class PluginSAM(TemplatePlugin):
             Model used when rendering template
 
         """
+        self._run_time = time.time_ns()
         # Render the template
         print("Pre-run for SAM Plugin")
         super().prerun(model)
@@ -61,10 +95,11 @@ class PluginSAM(TemplatePlugin):
         os.chdir(self.sam_tmp_folder)
 
         # Check if SAM executable exists.
+        # TODO: Check this at time SAM_exec is set
         with open("../" + log_file_name, "a+") as outfile:
-            if os.path.isfile(self.SAM_exec) is False:
+            if shutil.which(self.SAM_exec) is None:
                 outfile.write("SAM executable is missing. \n")
-                raise RuntimeError("SAM executable missing. Please specify path to SAM executable. ")
+                raise RuntimeError("SAM executable missing. Please specify path to SAM executable.")
 
         # Run SAM and store  error message to SAM log file
         with open("../" + log_file_name, "a+") as outfile:
@@ -77,7 +112,7 @@ class PluginSAM(TemplatePlugin):
                     for line in infile:
                         outfile.write(line)
 
-    def postrun(self, model: Parameters):
+    def postrun(self, model: Parameters) -> ResultsSAM:
         """Read SAM results and store in model
 
         Parameters
@@ -87,6 +122,9 @@ class PluginSAM(TemplatePlugin):
         """
         print("post-run for SAM Plugin")
         self._save_SAM_csv(model)
+
+        time = datetime.fromtimestamp(self._run_time * 1e-9)
+        return ResultsSAM(model, time, [], [])
 
     def _save_SAM_csv(self, model):
         """Read all SAM '.csv' files and store in model
