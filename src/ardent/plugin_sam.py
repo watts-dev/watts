@@ -1,5 +1,6 @@
 from datetime import datetime
 import os
+from pathlib import Path
 import shutil
 import subprocess
 import time
@@ -52,8 +53,19 @@ class PluginSAM(TemplatePlugin):
     """
     def  __init__(self, template_file: str):
         super().__init__(template_file)
+        self._sam_exec = 'sam-opt'
 
-    def options(self, SAM_exec):
+    @property
+    def sam_exec(self):
+        return self._sam_exec
+
+    @sam_exec.setter
+    def sam_exec(self, exe: PathLike):
+        if shutil.which(exe) is None:
+            raise RuntimeError(f"SAM executable '{exe}' is missing.")
+        self._sam_exec = Path(exe)
+
+    def options(self, sam_exec):
         """Input SAM user-specified options
 
         Parameters
@@ -61,7 +73,7 @@ class PluginSAM(TemplatePlugin):
         SAM_exec
             Path to SAM executable
         """
-        self.SAM_exec = SAM_exec
+        self.sam_exec = sam_exec
         self.sam_inp_name = "SAM.i"
         self.sam_tmp_folder = "tmp_SAM" # TODO: provide consistency in here we are running the calculation
 
@@ -94,16 +106,9 @@ class PluginSAM(TemplatePlugin):
         shutil.copy("sam_template.rendered", self.sam_tmp_folder+"/"+self.sam_inp_name)
         os.chdir(self.sam_tmp_folder)
 
-        # Check if SAM executable exists.
-        # TODO: Check this at time SAM_exec is set
-        with open("../" + log_file_name, "a+") as outfile:
-            if shutil.which(self.SAM_exec) is None:
-                outfile.write("SAM executable is missing. \n")
-                raise RuntimeError("SAM executable missing. Please specify path to SAM executable.")
-
         # Run SAM and store  error message to SAM log file
         with open("../" + log_file_name, "a+") as outfile:
-            subprocess.run([self.SAM_exec + " -i "+self.sam_inp_name+" > "+self.sam_inp_name[:-2]+"_out.txt"], shell=True, stderr=outfile)
+            subprocess.run([str(self.sam_exec) + " -i "+self.sam_inp_name+" > "+self.sam_inp_name[:-2]+"_out.txt"], shell=True, stderr=outfile)
 
         # Copy SAM output to SAM log file
         if os.path.isfile(self.sam_inp_name[:-2]+"_out.txt"):
