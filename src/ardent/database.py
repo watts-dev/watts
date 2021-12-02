@@ -54,7 +54,7 @@ class Database:
 
         # Create database directory if it doesn't already
         path = Path(path)
-        path.mkdir(exist_ok=True)
+        path.mkdir(parents=True, exist_ok=True)
         self._path = path
 
         # Read previous results
