@@ -34,7 +34,7 @@
     type = PiecewiseLinear                   # Function type
     axis = x                                 # X-co-ordinate is used for x
     x = ' 0.0 0.5 1.0 1.5 2.0'
-    y = ' {{model['Initial_Power_Distrib'][0] model['Initial_Power_Distrib'][1] model['Initial_Power_Distrib'][2] model['Initial_Power_Distrib'][3] model['Initial_Power_Distrib'][4]}}'
+    y = ' {{ Init_P_1 Init_P_2 Init_P_3 Init_P_4 Init_P_5 }}'
   [../]
   [./kf]             #fuel thermal conductivity (UO2); x- Temperature [K], y- Thermal condiuctivity [W/m-K]
     type = PiecewiseLinear
