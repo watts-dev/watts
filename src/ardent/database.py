@@ -37,8 +37,9 @@ class Database:
 
         # If this class has already been instantiated before, return the
         # corresponding instance
-        if path in Database._instances:
-            return Database._instances[path]
+        abs_path = Path(path).resolve()
+        if abs_path in Database._instances:
+            return Database._instances[abs_path]
         else:
             return super().__new__(cls)
 
@@ -65,7 +66,7 @@ class Database:
                 warn(f"Could not read results from {dir}")
 
         # Add instance to class-wide dictionary
-        Database._instances[path] = self
+        Database._instances[path.resolve()] = self
 
     @property
     def path(self) -> Path:
