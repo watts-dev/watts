@@ -47,6 +47,7 @@ params['num_cpu'] = 60
 # SAM Workflow
 
 sam_plugin = ardent.PluginSAM('sam_template')
+sam_plugin._sam_exec = "../../sam-opt-mpi"
 sam_result = sam_plugin.workflow(params)#, sam_options)
 params.show_summary()
 
