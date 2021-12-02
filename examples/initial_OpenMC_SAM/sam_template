@@ -164,7 +164,7 @@
     A = {{ total_XS_coolant_area_per_fuel_assembly }}
     Dh = {{ Coolant_channel_diam }}
     length = {{ Height_FC }}
-    zone_length = '{{ Height_FC/5  Height_FC/5 Height_FC/5 Height_FC/5 Height_FC/5 }}'
+    zone_length = '{{ Height_FC/5 }} {{ Height_FC/5 }} {{ Height_FC/5 }} {{ Height_FC/5 }} {{ Height_FC/5 }}'
     elem_numbers_axial = '20 20 20 20 20'
     zone_names = 'ax1 ax2 ax3 ax4 ax5'
     f = {{ F_blausius }}                               # User specified friction coefficient (Blausis f=(100 Re)^-0.25
