@@ -16,7 +16,11 @@ model['He_density'] = 3.8815   # kg/m3
 model['He_viscosity'] = 4.16e-5 # Pa.s
 model['He_Pressure'] = 7e6    # Pa
 model['Tot_assembly_power'] = 250000 # W
-model['Initial_Power_Distrib'] = [1,1,1,1,1] # Fraction
+model['Init_P_1'] = 1 # Fraction
+model['Init_P_2'] = 1 # Fraction
+model['Init_P_3'] = 1 # Fraction
+model['Init_P_4'] = 1 # Fraction
+model['Init_P_5'] = 1 # Fraction
 
 # Core design params
 model['ax_ref'] = 20 # cm
