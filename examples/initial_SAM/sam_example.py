@@ -47,7 +47,7 @@ model['num_cpu'] = 60
 # SAM Workflow
 
 sam_plugin = ardent.PluginSAM('sam_template')
-sam_exec = "../../sam-opt-mpi"  # Path to SAM executable
+sam_exec = "../../sam-opt-mpi"  # Path to SAM executable - absolute or relative to temp file.
 sam_option = sam_plugin.options(SAM_exec=sam_exec)
 
 sam_plugin.workflow(model)#, sam_options)

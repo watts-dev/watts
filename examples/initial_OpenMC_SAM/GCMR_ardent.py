@@ -51,7 +51,6 @@ model['pf'] = 40 # percent
 # SAM Workflow
 
 sam_plugin = ardent.PluginSAM('sam_template')
-sam_plugin.sam_tmp_folder = "tmp_SAM"
 sam_exec = "../../sam-opt-mpi"  # Path to SAM executable
 sam_option = sam_plugin.options(SAM_exec=sam_exec)
 sam_plugin.workflow(model)#, sam_options)
