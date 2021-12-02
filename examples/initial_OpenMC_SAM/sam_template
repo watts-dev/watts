@@ -34,7 +34,7 @@
     type = PiecewiseLinear                   # Function type
     axis = x                                 # X-co-ordinate is used for x
     x = ' 0.0 0.5 1.0 1.5 2.0'
-    y = ' 1.0 1.0 1.0 1.0 1.0'
+    y = ' {{model['Initial_Power_Distrib'][0] model['Initial_Power_Distrib'][1] model['Initial_Power_Distrib'][2] model['Initial_Power_Distrib'][3] model['Initial_Power_Distrib'][4]}}'
   [../]
   [./kf]             #fuel thermal conductivity (UO2); x- Temperature [K], y- Thermal condiuctivity [W/m-K]
     type = PiecewiseLinear
@@ -164,7 +164,9 @@
     A = {{ total_XS_coolant_area_per_fuel_assembly }}
     Dh = {{ Coolant_channel_diam }}
     length = {{ Height_FC }}
-    n_elems = 100
+    zone_length = '{{ Height_FC/5  Height_FC/5 Height_FC/5 Height_FC/5 Height_FC/5 }}'
+    elem_numbers_axial = '20 20 20 20 20'
+    zone_names = 'ax1 ax2 ax3 ax4 ax5'
     f = {{ F_blausius }}                               # User specified friction coefficient (Blausis f=(100 Re)^-0.25
     Hw = {{ H_sam }}                              # User specified heat transfer coefficient (Dittus-Boelter)
     HT_surface_area_density = {{ surface_area_den }}      # Heat transfer surface area density, Ph/Ac
@@ -227,6 +229,31 @@
   [./avg_Tf]                               # Output maximum solid temperature of block CH1: solid:fuel
     type = ElementAverageValue
     block = 'CH1:solid:fuel'
+    variable = T_solid
+  [../]
+  [./avg_Tf1]                               # Output maximum solid temperature of block CH1: solid:fuel
+    type = ElementAverageValue
+    block = 'CH1:ax1:fuel'
+    variable = T_solid
+  [../]
+  [./avg_Tf2]                               # Output maximum solid temperature of block CH1: solid:fuel
+    type = ElementAverageValue
+    block = 'CH1:ax2:fuel'
+    variable = T_solid
+  [../]
+  [./avg_Tf3]                               # Output maximum solid temperature of block CH1: solid:fuel
+    type = ElementAverageValue
+    block = 'CH1:ax3:fuel'
+    variable = T_solid
+  [../]
+  [./avg_Tf4]                               # Output maximum solid temperature of block CH1: solid:fuel
+    type = ElementAverageValue
+    block = 'CH1:ax4:fuel'
+    variable = T_solid
+  [../]
+  [./avg_Tf5]                               # Output maximum solid temperature of block CH1: solid:fuel
+    type = ElementAverageValue
+    block = 'CH1:ax5:fuel'
     variable = T_solid
   [../]
   [./avg_Tgraphite]                               # Output maximum solid temperature of block CH1: solid:fuel

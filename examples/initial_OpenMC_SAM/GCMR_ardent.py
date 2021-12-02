@@ -16,6 +16,7 @@ model['He_density'] = 3.8815   # kg/m3
 model['He_viscosity'] = 4.16e-5 # Pa.s
 model['He_Pressure'] = 7e6    # Pa
 model['Tot_assembly_power'] = 250000 # W
+model['Initial_Power_Distrib'] = [1,1,1,1,1] # Fraction
 
 # Core design params
 model['ax_ref'] = 20 # cm
@@ -42,7 +43,6 @@ model['use_sab_YH2'] = False
 # OpenMC params
 model['cl'] = model['Height_FC']*100 - 2 * model['ax_ref'] # cm
 model['pf'] = 40 # percent
-model['num_cpu'] = 60
 
 # SAM Workflow
 
