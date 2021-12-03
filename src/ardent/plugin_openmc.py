@@ -26,8 +26,6 @@ class ResultsOpenMC(Results):
         List of input files
     outputs
         List of output files
-    stdout
-        Standard output from OpenMC run
 
     Attributes
     ----------
@@ -35,12 +33,13 @@ class ResultsOpenMC(Results):
         K-effective value from the final statepoint
     statepoints
         List of statepoint files
+    stdout
+        Standard output from OpenMC run
     """
 
     def __init__(self, params: Parameters, time: datetime,
-                 inputs: List[Path], outputs: List[Path], stdout: str):
+                 inputs: List[Path], outputs: List[Path]):
         super().__init__('OpenMC', params, time, inputs, outputs)
-        self.stdout = stdout
 
     @property
     def statepoints(self) -> List[Path]:
@@ -54,6 +53,10 @@ class ResultsOpenMC(Results):
         with openmc.StatePoint(last_statepoint) as sp:
             return sp.k_combined
 
+    @property
+    def stdout(self) -> str:
+        return (self.base_path / "OpenMC_log.txt").read_text()
+
     def save(self, filename: PathLike):
         """Save results to an HDF5 file
 
@@ -64,7 +67,6 @@ class ResultsOpenMC(Results):
         """
         with h5py.File(filename, 'w') as h5file:
             super()._save(h5file)
-            h5file.create_dataset('stdout', data=self.stdout)
 
     @classmethod
     def _from_hdf5(cls, obj: h5py.Group):
@@ -76,8 +78,7 @@ class ResultsOpenMC(Results):
             HDF5 group to load results from
         """
         time, parameters, inputs, outputs = Results._load(obj)
-        stdout = obj['stdout'][()].decode()
-        return cls(parameters, time, inputs, outputs, stdout)
+        return cls(parameters, time, inputs, outputs)
 
 
 class PluginOpenMC(Plugin):
@@ -101,6 +102,7 @@ class PluginOpenMC(Plugin):
         params
             Parameters used by the OpenMC template
         """
+        print("Pre-run for OpenMC Plugin")
         self._run_time = time.time_ns()
         self.model_builder(params)
 
@@ -112,10 +114,10 @@ class PluginOpenMC(Plugin):
         **kwargs
             Keyword arguments passed on to :func:`openmc.run`
         """
+        print("Run for OpenMC Plugin")
         import openmc
-        with redirect_stdout(StringIO()) as output:
+        with open('OpenMC_log.txt', 'w') as f, redirect_stdout(f):
             openmc.run(**kwargs)
-        self._stdout = output.getvalue()
 
     def postrun(self, params: Parameters) -> ResultsOpenMC:
         """Collect information from OpenMC simulation and create results object
@@ -129,6 +131,8 @@ class PluginOpenMC(Plugin):
         -------
         OpenMC results object
         """
+        print("Post-run for OpenMC Plugin")
+
         def files_since(pattern, time):
             matches = []
             for p in Path.cwd().glob(pattern):
@@ -144,11 +148,12 @@ class PluginOpenMC(Plugin):
         inputs = files_since('*.xml', self._run_time)
 
         # Get list of all output files
-        outputs = files_since('tallies.out', self._run_time)
+        outputs = ['OpenMC_log.txt']
+        outputs.extend(files_since('tallies.out', self._run_time))
         outputs.extend(files_since('source.*.h5', self._run_time))
         outputs.extend(files_since('particle.*.h5', self._run_time))
         outputs.extend(files_since('statepoint.*.h5', self._run_time))
 
         time = datetime.fromtimestamp(self._run_time * 1e-9)
-        return ResultsOpenMC(params, time, inputs, outputs, self._stdout)
+        return ResultsOpenMC(params, time, inputs, outputs)
 

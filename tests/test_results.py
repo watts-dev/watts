@@ -19,11 +19,12 @@ def test_results_openmc(run_in_tmpdir):
     # Create fake output files
     sp = Path('statepoint.50.h5')
     sp.touch()
-    outputs = [sp]
+    log_file = Path('OpenMC_log.txt')
+    log_file.write_text("this is output\n")
+    outputs = [sp, log_file]
 
-    stdout = "this is output"
 
-    results = ardent.ResultsOpenMC(params, now, inputs, outputs, stdout)
+    results = ardent.ResultsOpenMC(params, now, inputs, outputs)
 
     # Sanity checks
     assert results.plugin == 'OpenMC'
@@ -31,7 +32,7 @@ def test_results_openmc(run_in_tmpdir):
     assert results.time == now
     assert results.inputs == inputs
     assert results.outputs == outputs
-    assert results.stdout == stdout
+    assert results.stdout == "this is output\n"
 
     # Other attributes
     assert len(results.statepoints) == 1

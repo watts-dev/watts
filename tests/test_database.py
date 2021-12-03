@@ -10,7 +10,6 @@ def get_result():
         time=datetime.now(),
         inputs=['geometry.xml'],
         outputs=['statepoint.50.h5'],
-        stdout="",
     )
 
 
