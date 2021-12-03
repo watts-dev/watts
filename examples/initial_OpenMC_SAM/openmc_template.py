@@ -4,12 +4,12 @@ import openmc
 import openmc.model
 
 
-def build_openmc_model(model):
+def build_openmc_model(params):
     """ OpenMC Model """
 
     materials = []
 
-    homfuel = openmc.Material(name="homfuel", temperature=model['temp'])
+    homfuel = openmc.Material(name="homfuel", temperature=params['temp'])
     homfuel.set_density('g/cm3', 2.2767E+00)
     homfuel.add_nuclide('U235', 4.0841E-02, 'wo')
     homfuel.add_nuclide('U238', 1.6597E-01, 'wo')
@@ -21,45 +21,45 @@ def build_openmc_model(model):
     materials.append(homfuel)
 
 
-    boro_ctr = openmc.Material(name="B4C-CTR", temperature=model['temp'])
+    boro_ctr = openmc.Material(name="B4C-CTR", temperature=params['temp'])
     boro_ctr.set_density('g/cm3', 2.47)
     boro_ctr.add_nuclide('B10',  0.16, 'ao')
     boro_ctr.add_nuclide('B11',  0.64, 'ao')
     boro_ctr.add_element('C',    0.20, 'ao')
     materials.append(boro_ctr)
 
-    matrix = openmc.Material(name="matrix", temperature=model['temp'])
+    matrix = openmc.Material(name="matrix", temperature=params['temp'])
     matrix.set_density('g/cm3', 1.806)
     matrix.add_element('C', 1.0 - 0.0000003, 'ao')
     matrix.add_nuclide('B10', 0.0000003, 'ao')
-    if model['use_sab']:
+    if params['use_sab']:
         matrix.add_s_alpha_beta('c_Graphite')
     materials.append(matrix)
 
-    refl = openmc.Material(name="BeO", temperature=model['temp'])
+    refl = openmc.Material(name="BeO", temperature=params['temp'])
     refl.set_density('g/cm3', 2.7987)
     refl.add_nuclide('Be9', 0.50, 'ao')
     refl.add_nuclide('O16', 0.50, 'ao')
-    if model['use_sab_BeO']:
+    if params['use_sab_BeO']:
         refl.add_s_alpha_beta('c_Be_in_BeO')
         refl.add_s_alpha_beta('c_O_in_BeO')
     materials.append(refl)
 
-    yh2 = openmc.Material(name="moderator", temperature=model['temp'])
+    yh2 = openmc.Material(name="moderator", temperature=params['temp'])
     yh2.set_density('g/cm3', 4.30*0.95)
     yh2.add_nuclide('Y89', 0.357142857, 'ao')
     yh2.add_nuclide('H1',  0.642857143, 'ao')
-    if model['use_sab'] and model['use_sab_YH2']:
+    if params['use_sab'] and params['use_sab_YH2']:
         yh2.add_s_alpha_beta('c_H_in_YH2')
         yh2.add_s_alpha_beta('c_Y_in_YH2')
     materials.append(yh2)
 
-    coolant = openmc.Material(name="coolant", temperature=model['temp'])
+    coolant = openmc.Material(name="coolant", temperature=params['temp'])
     coolant.set_density('g/cm3', 0.00365)
     coolant.add_nuclide('He4', 1, 'ao')
     materials.append(coolant)
 
-    Cr = openmc.Material(name="Cr", temperature=model['temp'])
+    Cr = openmc.Material(name="Cr", temperature=params['temp'])
     Cr.set_density('g/cm3', 7.19)
     Cr.add_nuclide('Cr50', -4.345e-2, 'ao')
     Cr.add_nuclide('Cr52', -83.789e-2, 'ao')
@@ -67,7 +67,7 @@ def build_openmc_model(model):
     Cr.add_nuclide('Cr54', -2.365e-2, 'ao')
     materials.append(Cr)
 
-    shell_mod = openmc.Material(name="shell_mod", temperature=model['temp'])
+    shell_mod = openmc.Material(name="shell_mod", temperature=params['temp'])
     shell_mod.set_density('g/cm3', 7.055) # FeCrAl
     shell_mod.add_nuclide('Cr50',  20.0e-2 * 4.340E-02,'ao')
     shell_mod.add_nuclide('Cr52',  20.0e-2 * 8.381E-01,'ao')
@@ -91,23 +91,23 @@ def build_openmc_model(model):
         materials_file.export_to_xml()
 
     Z_min = 0
-    Z_cl = model['ax_ref']
-    Z_cl_out = model['ax_ref'] - model['shell_thick']
-    Z_up = model['ax_ref'] + model['cl']
-    Z_up_out = model['ax_ref'] + model['cl'] + model['shell_thick']
-    Z_max = model['cl'] + 2 * model['ax_ref']
+    Z_cl = params['ax_ref']
+    Z_cl_out = params['ax_ref'] - params['shell_thick']
+    Z_up = params['ax_ref'] + params['cl']
+    Z_up_out = params['ax_ref'] + params['cl'] + params['shell_thick']
+    Z_max = params['cl'] + 2 * params['ax_ref']
 
     # Create cylinder for fuel and coolant
 
-    fuel_radius = openmc.ZCylinder(x0=0.0, y0=0.0, r=model['FuelPin_rad'])
-    mod_rad_0 = openmc.ZCylinder(x0=0.0, y0=0.0, r=model['mod_ext_rad'] - model['shell_thick'] - model['liner_thick'])
-    mod_rad_1a = openmc.ZCylinder(x0=0.0, y0=0.0, r=model['mod_ext_rad'] - model['shell_thick'])
-    mod_rad_1b = openmc.ZCylinder(x0=0.0, y0=0.0, r=model['mod_ext_rad'])
-    cool_radius = openmc.ZCylinder(x0=0.0, y0=0.0, r=model['cool_hole_rad'])
-    ctr_radius = openmc.ZCylinder(x0=0.0, y0=0.0, r=model['control_pin_rad'])
-    lbp_radius = openmc.ZCylinder(x0=0.0, y0=0.0, r=model['lbp_rad'])
+    fuel_radius = openmc.ZCylinder(x0=0.0, y0=0.0, r=params['FuelPin_rad'])
+    mod_rad_0 = openmc.ZCylinder(x0=0.0, y0=0.0, r=params['mod_ext_rad'] - params['shell_thick'] - params['liner_thick'])
+    mod_rad_1a = openmc.ZCylinder(x0=0.0, y0=0.0, r=params['mod_ext_rad'] - params['shell_thick'])
+    mod_rad_1b = openmc.ZCylinder(x0=0.0, y0=0.0, r=params['mod_ext_rad'])
+    cool_radius = openmc.ZCylinder(x0=0.0, y0=0.0, r=params['cool_hole_rad'])
+    ctr_radius = openmc.ZCylinder(x0=0.0, y0=0.0, r=params['control_pin_rad'])
+    lbp_radius = openmc.ZCylinder(x0=0.0, y0=0.0, r=params['lbp_rad'])
 
-    pin_pitch = model['Lattice_pitch']
+    pin_pitch = params['Lattice_pitch']
 
     min_z=openmc.ZPlane(z0=Z_min, boundary_type='vacuum')
     max_z=openmc.ZPlane(z0=Z_max, boundary_type='vacuum')
@@ -117,7 +117,7 @@ def build_openmc_model(model):
     sz_up_out=openmc.ZPlane(z0=Z_up_out)
     cpin_low =openmc.ZPlane(z0=Z_up)
 
-    Hex_Pitch = openmc.model.hexagonal_prism(orientation='x',edge_length=model['Assembly_pitch']/sqrt(3),origin=(0.0, 0.0),
+    Hex_Pitch = openmc.model.hexagonal_prism(orientation='x',edge_length=params['Assembly_pitch']/sqrt(3),origin=(0.0, 0.0),
                                                         boundary_type = 'reflective')   # THIS SHOULD BE REFLECTIVE BONDARY
 
 
@@ -209,8 +209,8 @@ def build_openmc_model(model):
     settings_file.temperature = {'method' : 'interpolation'}
 
     source = openmc.Source()
-    ll = [-model['Assembly_pitch']/4, -model['Assembly_pitch']/4, Z_min]
-    ur = [model['Assembly_pitch']/4, model['Assembly_pitch']/4, Z_max]
+    ll = [-params['Assembly_pitch']/4, -params['Assembly_pitch']/4, Z_min]
+    ur = [params['Assembly_pitch']/4, params['Assembly_pitch']/4, Z_max]
     source.space = openmc.stats.Box(ll, ur)
     source.strength = 1.0
     settings_file.source = source
@@ -220,7 +220,7 @@ def build_openmc_model(model):
     settings_file.export_to_xml()
 
     # Create a plots.xml file
-    radius = model['Assembly_pitch']/sqrt(3)
+    radius = params['Assembly_pitch']/sqrt(3)
     p1 = openmc.Plot()
     p1.origin = (0, 0, (Z_max-Z_min)/2)
     p1.width = (radius*2, radius*2)

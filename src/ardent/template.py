@@ -1,21 +1,28 @@
+from pathlib import Path
+from typing import Optional
+
 import jinja2
+
+from .fileutils import PathLike
+from .parameters import Parameters
 
 
 class TemplateModelBuilder:
-    def __init__(self, template_file, **template_kwargs):
-        self.template_file = template_file
-        with open(template_file, 'r') as fh:
-            self.template = jinja2.Template(
-                fh.read(),
-                undefined=jinja2.StrictUndefined,
-                **template_kwargs
-            )
+    def __init__(self, template_file: PathLike, **template_kwargs):
+        self.template_file = Path(template_file)
+        self.template = jinja2.Template(
+            self.template_file.read_text(),
+            undefined=jinja2.StrictUndefined,
+            **template_kwargs
+        )
 
-    def __call__(self, model, filename=None):
+    def __call__(self, params: Parameters, filename: Optional[PathLike] = None):
         # Default rendered template filename
         if filename is None:
-            filename = self.template_file + '.rendered'
+            name = self.template_file.name
+            out_path = self.template_file.with_name(f'{name}.rendered')
+        else:
+            out_path = Path(filename)
 
         # Render template and write to file
-        with open(filename, 'w') as fh:
-            fh.write(self.template.render(**model))
+        out_path.write_text(self.template.render(**params))
