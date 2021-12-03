@@ -44,23 +44,23 @@ params['cl'] = params['Height_FC']*100 - 2 * params['ax_ref'] # cm
 params['pf'] = 40 # percent
 params['num_cpu'] = 60
 
+# printout params
+params.show_summary()
+
 # SAM Workflow
 
 sam_plugin = ardent.PluginSAM('sam_template')
 sam_plugin._sam_exec = "/home/rhu/projects/SAM/sam-opt"
 sam_result = sam_plugin.workflow(params)#, sam_options)
-params.show_summary()
-
-# Add average graphite temperature to parameters
-params['avg_Tgraphite'] = sam_result.csv_data['avg_Tgraphite']
+for key in sam_result.csv_data:
+    print (key, sam_result.csv_data[key])
 
 # get temperature from SAM results
-params['temp'] = params['avg_Tgraphite'][-1]
+params['temp'] = sam_result.csv_data['avg_Tgraphite'][-1]
 # Run OpenMC plugin
 openmc_plugin = ardent.PluginOpenMC(build_openmc_model)
-openmc_plugin.workflow(params)
+openmc_result = openmc_plugin.workflow(params)
+print (openmc_result.keff)
 
 
-# Save results
-params.show_summary()
-params.save('gcmr_with_openmc.h5')
+
