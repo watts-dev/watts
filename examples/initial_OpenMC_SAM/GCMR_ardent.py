@@ -54,13 +54,17 @@ sam_plugin._sam_exec = "/home/rhu/projects/SAM/sam-opt"
 sam_result = sam_plugin.workflow(params)#, sam_options)
 for key in sam_result.csv_data:
     print (key, sam_result.csv_data[key])
+print (sam_result.inputs)
+print (sam_result.outputs)
 
 # get temperature from SAM results
 params['temp'] = sam_result.csv_data['avg_Tgraphite'][-1]
 # Run OpenMC plugin
 openmc_plugin = ardent.PluginOpenMC(build_openmc_model)
 openmc_result = openmc_plugin.workflow(params)
-print (openmc_result.keff)
+print ("KEFF = ", openmc_result.keff)
+print (openmc_result.inputs)
+print (openmc_result.outputs)
 
 
 
