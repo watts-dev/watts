@@ -175,7 +175,7 @@ class PluginSAM(TemplatePlugin):
         -------
         SAM results object
         """
-        print("post-run for SAM Plugin")
+        print("Post-run for SAM Plugin")
 
         time = datetime.fromtimestamp(self._run_time * 1e-9)
         inputs = ['SAM.i']

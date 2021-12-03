@@ -101,6 +101,7 @@ class PluginOpenMC(Plugin):
         params
             Parameters used by the OpenMC template
         """
+        print("Pre-run for OpenMC Plugin")
         self._run_time = time.time_ns()
         self.model_builder(params)
 
@@ -112,6 +113,7 @@ class PluginOpenMC(Plugin):
         **kwargs
             Keyword arguments passed on to :func:`openmc.run`
         """
+        print("Run for OpenMC Plugin")
         import openmc
         with redirect_stdout(StringIO()) as output:
             openmc.run(**kwargs)
@@ -129,6 +131,8 @@ class PluginOpenMC(Plugin):
         -------
         OpenMC results object
         """
+        print("Post-run for OpenMC Plugin")
+
         def files_since(pattern, time):
             matches = []
             for p in Path.cwd().glob(pattern):
