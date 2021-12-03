@@ -1,5 +1,6 @@
 from datetime import datetime
 from pathlib import Path
+import shutil
 from typing import List
 
 import h5py
@@ -46,11 +47,15 @@ class Results:
         """
 
         dst_path = Path(dst)
-        # Move input/output files and change base
+        # Move input/output files and change base -- note that trying to use the
+        # Path.replace method doesn't work across filesystems, so instead we use
+        # shutil.move
         for i, input in enumerate(self.inputs):
-            self.inputs[i] = input.rename(dst_path / input.name)
+            shutil.move(str(input), str(dst_path / input.name))
+            self.inputs[i] = dst_path / input.name
         for i, output in enumerate(self.outputs):
-            self.outputs[i] = output.rename(dst_path / output.name)
+            shutil.move(str(output), str(dst_path / output.name))
+            self.outputs[i] = dst_path / output.name
         self.base_path = dst_path
 
     def _save(self, obj: h5py.Group):
