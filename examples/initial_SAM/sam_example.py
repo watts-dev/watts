@@ -45,8 +45,17 @@ params['num_cpu'] = 60
 # SAM Workflow
 
 sam_plugin = ardent.PluginSAM('sam_template')
-sam_exec = "sam-opt"  # Path to SAM executable
-sam_option = sam_plugin.options(sam_exec=sam_exec)
+sam_exec = "../../sam-opt-mpi"  # Path to SAM executable - absolute or relative to temp file.
+sam_option = sam_plugin.options(SAM_exec=sam_exec)
+
+sam_plugin.workflow(model)#, sam_options)
+model.show_summary()
+
+# get temperature from SAM results
+# model['temp'] = model['avg_Tgraphite'][-1]
+# # Run OpenMC plugin
+# openmc_plugin = ardent.PluginOpenMC(build_openmc_model)
+# openmc_plugin.workflow(model)
 
 sam_plugin.workflow(params)#, sam_options)
 params.show_summary()
