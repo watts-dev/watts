@@ -8,7 +8,11 @@ API Reference
    :nosignatures:
    :template: myclass.rst
 
-   ardent.Model
+   ardent.Database
+   ardent.Parameters
    ardent.Plugin
    ardent.PluginOpenMC
    ardent.PluginSAM
+   ardent.Results
+   ardent.ResultsOpenMC
+   ardent.ResultsSAM
