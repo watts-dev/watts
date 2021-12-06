@@ -63,7 +63,13 @@ print (sam_result.inputs)
 print (sam_result.outputs)
 
 # get temperature from SAM results
-params['temp'] = sam_result.csv_data['avg_Tgraphite'][-1]
+params['temp'] = (sam_result.csv_data['avg_Tgraphite_1'][-1]+sam_result.csv_data['avg_Tgraphite_2'][-1]+sam_result.csv_data['avg_Tgraphite_3'][-1]+sam_result.csv_data['avg_Tgraphite_4'][-1]+sam_result.csv_data['avg_Tgraphite_5'][-1])/5
+params['temp_F1'] = sam_result.csv_data['avg_Tf_1'][-1]
+params['temp_F2'] = sam_result.csv_data['avg_Tf_2'][-1]
+params['temp_F3'] = sam_result.csv_data['avg_Tf_3'][-1]
+params['temp_F4'] = sam_result.csv_data['avg_Tf_4'][-1]
+params['temp_F5'] = sam_result.csv_data['avg_Tf_5'][-1]
+
 # Run OpenMC plugin
 openmc_plugin = ardent.PluginOpenMC(build_openmc_model)
 openmc_result = openmc_plugin.workflow(params)
