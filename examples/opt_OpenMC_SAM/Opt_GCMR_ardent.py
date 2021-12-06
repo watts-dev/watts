@@ -2,7 +2,7 @@ from math import cos, pi
 import ardent
 from scipy.optimize import minimize
 
-from ../initial_OpenMC_SAM/openmc_template import build_openmc_model
+from openmc_template import build_openmc_model
 
 
 params = ardent.Parameters()
