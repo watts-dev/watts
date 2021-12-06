@@ -54,7 +54,7 @@ params.show_summary()
 
 # SAM Workflow
 
-sam_plugin = ardent.PluginSAM('sam_template')
+sam_plugin = ardent.PluginSAM('../initial_SAM/sam_template')
 sam_plugin._sam_exec = "/home/rhu/projects/SAM/sam-opt"
 sam_result = sam_plugin.workflow(params)#, sam_options)
 for key in sam_result.csv_data:

@@ -30,12 +30,21 @@
 []
 [Functions]
   active = 'power_dist kf cpf kclad cpclad rhoclad kgraphite cpgraphite rhographite kHe cpHe rhoHe muHe HHe beta_fn'
+  # [./power_dist]                                # Function name
+  #   type = PiecewiseLinear                   # Function type
+  #   axis = x                                 # X-co-ordinate is used for x
+  #   x = ' 0.0 0.5 1.0 1.5 2.0'
+  #   y = ' {{ Init_P_1 }} {{ Init_P_2 }} {{ Init_P_3 }} {{ Init_P_4 }} {{ Init_P_5 }}'
+  # [../]
+
   [./power_dist]                                # Function name
     type = PiecewiseLinear                   # Function type
     axis = x                                 # X-co-ordinate is used for x
     x = ' 0.0 0.5 1.0 1.5 2.0'
     y = ' 1.0 1.0 1.0 1.0 1.0'
   [../]
+
+
   [./kf]             #fuel thermal conductivity (UO2); x- Temperature [K], y- Thermal condiuctivity [W/m-K]
     type = PiecewiseLinear
     x ='600 700 800 900 1000 1100 1200 1300 1400 1500'
@@ -106,6 +115,14 @@
     x = '300  2000'
     y = '0    0'
   [../]
+
+  [./T_max_fuel]
+    type = ParsedFunction
+    value = Tf1+Tf2
+    vars = 'Tf1 Tf2'
+    vals = 'max_Tf_1 max_Tf_2'
+  [../]
+
 []
 [EOS]
   [./eos]
@@ -154,17 +171,18 @@
     type = ReactorPower
     initial_power = {{ Tot_assembly_power }}                      # Initial total reactor power
   [../]
+
   [./CH1]                                    # Component name
     type = PBCoreChannel                     # PBCorechannel component
     eos = eos                                # The equation-of-state name
-    position = '0 0 0'
+    position = '0 {{Height_FC/5 * 0}} 0'
     orientation = '0 1 0'
     assembly_type = Block-Channel
     n_rods = {{ num_fuel_pins }}
     A = {{ total_XS_coolant_area_per_fuel_assembly }}
     Dh = {{ Coolant_channel_diam }}
-    length = {{ Height_FC/100 }}
-    n_elems = 100
+    length = {{ Height_FC/5 }}
+    n_elems = 20
     f = {{ F_blausius }}                               # User specified friction coefficient (Blausis f=(100 Re)^-0.25
     Hw = {{ H_sam }}                              # User specified heat transfer coefficient (Dittus-Boelter)
     HT_surface_area_density = {{ surface_area_den }}      # Heat transfer surface area density, Ph/Ac
@@ -175,9 +193,136 @@
     width_of_hs = '{{FuelPin_rad/100}} {{ Graphite_thickness/100 }}'          # The width of all heat structures
     elem_number_of_hs = '50 10'                                         # The element numbers of all heat structures
     material_hs = 'fuel-mat graphite-mat'   # The material used for all heat structures
-    power_fraction = '1.0 0.0'                         # The power fractions of all heat structures
+    power_fraction = '0.2 0.0'                         # The power fractions of all heat structures
     power_shape_function = power_dist                                # the axial power shape function name
   [../]
+
+  [./CH2]                                    # Component name
+    type = PBCoreChannel                     # PBCorechannel component
+    eos = eos                                # The equation-of-state name
+    position = '0 {{Height_FC/5 * 1}} 0'
+    orientation = '0 1 0'
+    assembly_type = Block-Channel
+    n_rods = {{ num_fuel_pins }}
+    A = {{ total_XS_coolant_area_per_fuel_assembly }}
+    Dh = {{ Coolant_channel_diam }}
+    length = {{ Height_FC/5 }}
+    n_elems = 20
+    f = {{ F_blausius }}                               # User specified friction coefficient (Blausis f=(100 Re)^-0.25
+    Hw = {{ H_sam }}                              # User specified heat transfer coefficient (Dittus-Boelter)
+    HT_surface_area_density = {{ surface_area_den }}      # Heat transfer surface area density, Ph/Ac
+    name_of_hs = 'fuel graphite'              # Heat structure names
+    Ts_init = {{ He_inlet_temp }}                               # Initial structure temeprature
+    n_heatstruct = 2                               # Number of heat structures
+    fuel_type = cylinder                          # Fuel geometric type, cylinder or plate
+    width_of_hs = '{{FuelPin_rad/100}} {{ Graphite_thickness/100 }}'          # The width of all heat structures
+    elem_number_of_hs = '50 10'                                         # The element numbers of all heat structures
+    material_hs = 'fuel-mat graphite-mat'   # The material used for all heat structures
+    power_fraction = '0.2 0.0'                         # The power fractions of all heat structures
+    power_shape_function = power_dist                                # the axial power shape function name
+  [../]
+
+  [./CH3]                                    # Component name
+    type = PBCoreChannel                     # PBCorechannel component
+    eos = eos                                # The equation-of-state name
+    position = '0 {{Height_FC/5 * 2}} 0'
+    orientation = '0 1 0'
+    assembly_type = Block-Channel
+    n_rods = {{ num_fuel_pins }}
+    A = {{ total_XS_coolant_area_per_fuel_assembly }}
+    Dh = {{ Coolant_channel_diam }}
+    length = {{ Height_FC/5 }}
+    n_elems = 20
+    f = {{ F_blausius }}                               # User specified friction coefficient (Blausis f=(100 Re)^-0.25
+    Hw = {{ H_sam }}                              # User specified heat transfer coefficient (Dittus-Boelter)
+    HT_surface_area_density = {{ surface_area_den }}      # Heat transfer surface area density, Ph/Ac
+    name_of_hs = 'fuel graphite'              # Heat structure names
+    Ts_init = {{ He_inlet_temp }}                               # Initial structure temeprature
+    n_heatstruct = 2                               # Number of heat structures
+    fuel_type = cylinder                          # Fuel geometric type, cylinder or plate
+    width_of_hs = '{{FuelPin_rad/100}} {{ Graphite_thickness/100 }}'          # The width of all heat structures
+    elem_number_of_hs = '50 10'                                         # The element numbers of all heat structures
+    material_hs = 'fuel-mat graphite-mat'   # The material used for all heat structures
+    power_fraction = '0.2 0.0'                         # The power fractions of all heat structures
+    power_shape_function = power_dist                                # the axial power shape function name
+  [../]
+
+  [./CH4]                                    # Component name
+    type = PBCoreChannel                     # PBCorechannel component
+    eos = eos                                # The equation-of-state name
+    position = '0 {{Height_FC/5 * 3}} 0'
+    orientation = '0 1 0'
+    assembly_type = Block-Channel
+    n_rods = {{ num_fuel_pins }}
+    A = {{ total_XS_coolant_area_per_fuel_assembly }}
+    Dh = {{ Coolant_channel_diam }}
+    length = {{ Height_FC/5 }}
+    n_elems = 20
+    f = {{ F_blausius }}                               # User specified friction coefficient (Blausis f=(100 Re)^-0.25
+    Hw = {{ H_sam }}                              # User specified heat transfer coefficient (Dittus-Boelter)
+    HT_surface_area_density = {{ surface_area_den }}      # Heat transfer surface area density, Ph/Ac
+    name_of_hs = 'fuel graphite'              # Heat structure names
+    Ts_init = {{ He_inlet_temp }}                               # Initial structure temeprature
+    n_heatstruct = 2                               # Number of heat structures
+    fuel_type = cylinder                          # Fuel geometric type, cylinder or plate
+    width_of_hs = '{{FuelPin_rad/100}} {{ Graphite_thickness/100 }}'          # The width of all heat structures
+    elem_number_of_hs = '50 10'                                         # The element numbers of all heat structures
+    material_hs = 'fuel-mat graphite-mat'   # The material used for all heat structures
+    power_fraction = '0.2 0.0'                         # The power fractions of all heat structures
+    power_shape_function = power_dist                                # the axial power shape function name
+  [../]
+
+  [./CH5]                                    # Component name
+    type = PBCoreChannel                     # PBCorechannel component
+    eos = eos                                # The equation-of-state name
+    position = '0 {{Height_FC/5 * 4}} 0'
+    orientation = '0 1 0'
+    assembly_type = Block-Channel
+    n_rods = {{ num_fuel_pins }}
+    A = {{ total_XS_coolant_area_per_fuel_assembly }}
+    Dh = {{ Coolant_channel_diam }}
+    length = {{ Height_FC/5 }}
+    n_elems = 20
+    f = {{ F_blausius }}                               # User specified friction coefficient (Blausis f=(100 Re)^-0.25
+    Hw = {{ H_sam }}                              # User specified heat transfer coefficient (Dittus-Boelter)
+    HT_surface_area_density = {{ surface_area_den }}      # Heat transfer surface area density, Ph/Ac
+    name_of_hs = 'fuel graphite'              # Heat structure names
+    Ts_init = {{ He_inlet_temp }}                               # Initial structure temeprature
+    n_heatstruct = 2                               # Number of heat structures
+    fuel_type = cylinder                          # Fuel geometric type, cylinder or plate
+    width_of_hs = '{{FuelPin_rad/100}} {{ Graphite_thickness/100 }}'          # The width of all heat structures
+    elem_number_of_hs = '50 10'                                         # The element numbers of all heat structures
+    material_hs = 'fuel-mat graphite-mat'   # The material used for all heat structures
+    power_fraction = '0.2 0.0'                         # The power fractions of all heat structures
+    power_shape_function = power_dist                                # the axial power shape function name
+  [../]
+
+  [./junc_CH1_CH2]
+    type = PBSingleJunction
+    eos = eos 
+    inputs = 'CH1(out)'
+    outputs = 'CH2(in)'
+  [../]
+  [./junc_CH2_CH3]
+    type = PBSingleJunction
+    eos = eos 
+    inputs = 'CH2(out)'
+    outputs = 'CH3(in)'
+  [../]
+  [./junc_CH3_CH4]
+    type = PBSingleJunction
+    eos = eos 
+    inputs = 'CH3(out)'
+    outputs = 'CH4(in)'
+  [../]
+  [./junc_CH4_CH5]
+    type = PBSingleJunction
+    eos = eos 
+    inputs = 'CH4(out)'
+    outputs = 'CH5(in)'
+  [../]
+
+
   [./inlet] #Boundary components
     type = PBTDJ
     input = 'CH1(in)'
@@ -187,13 +332,26 @@
   [../]
   [./outlet]
     type = PBTDV
-    input = 'CH1(out)'
+    input = 'CH5(out)'
     p_bc = '{{ He_Pressure }}'
     T_bc = {{ He_outlet_temp }}
     eos = eos
   [../]
 []
 [Postprocessors]
+
+#  [max_Tf]
+#    type = ParsedPostprocessor
+#    function = 'max(max(max_Tf_1,max_Tf_2),max(max_Tf_3,max(max_Tf_4,max_Tf_5)))'
+#    pp_names = 'max_Tf_1 max_Tf_2 max_Tf_3 max_Tf_4 max_Tf_5'
+#  []
+#
+#  [avg_Tgraphite]
+#    type = ParsedPostprocessor
+#    function = '(avg_Tgraphite_1+avg_Tgraphite_2+avg_Tgraphite_3+avg_Tgraphite_4+avg_Tgraphite_5)/5'
+#    pp_names = 'avg_Tgraphite_1 avg_Tgraphite_2 avg_Tgraphite_3 avg_Tgraphite_4 avg_Tgraphite_5'
+#  []
+
   [./max_Tcoolant]                         # Output maximum fluid temperature of block CH1:pipe
     type = NodalMaxValue
     block = 'CH1:pipe'
@@ -204,20 +362,159 @@
     block = 'CH1:pipe'
     variable = Tw
   [../]
-  [./max_Tf]                               # Output maximum solid temperature of block CH1: solid:fuel
+  [./max_Tf_1]                               # Output maximum solid temperature of block CH1: solid:fuel
     type = NodalMaxValue
     block = 'CH1:solid:fuel'
     variable = T_solid
   [../]
-  [./max_Tgraphite]                               # Output maximum solid temperature of block CH1: solid:fuel
+  [./max_Tf_2]                               # Output maximum solid temperature of block CH1: solid:fuel
+    type = NodalMaxValue
+    block = 'CH2:solid:fuel'
+    variable = T_solid
+  [../]
+  [./max_Tf_3]                               # Output maximum solid temperature of block CH1: solid:fuel
+    type = NodalMaxValue
+    block = 'CH3:solid:fuel'
+    variable = T_solid
+  [../]
+  [./max_Tf_4]                               # Output maximum solid temperature of block CH1: solid:fuel
+    type = NodalMaxValue
+    block = 'CH4:solid:fuel'
+    variable = T_solid
+  [../]
+  [./max_Tf_5]                               # Output maximum solid temperature of block CH1: solid:fuel
+    type = NodalMaxValue
+    block = 'CH5:solid:fuel'
+    variable = T_solid
+  [../]
+  [./max_Tgraphite_1]                               # Output maximum solid temperature of block CH1: solid:fuel
     type = NodalMaxValue
     block = 'CH1:solid:graphite'
     variable = T_solid
   [../]
-  [./max_Pcoolant]                         # Output maximum fluid temperature of block CH1:pipe
+  [./max_Tgraphite_2]                               # Output maximum solid temperature of block CH1: solid:fuel
+    type = NodalMaxValue
+    block = 'CH2:solid:graphite'
+    variable = T_solid
+  [../]
+  [./max_Tgraphite_3]                               # Output maximum solid temperature of block CH1: solid:fuel
+    type = NodalMaxValue
+    block = 'CH3:solid:graphite'
+    variable = T_solid
+  [../]
+  [./max_Tgraphite_4]                               # Output maximum solid temperature of block CH1: solid:fuel
+    type = NodalMaxValue
+    block = 'CH4:solid:graphite'
+    variable = T_solid
+  [../]
+  [./max_Tgraphite_5]                               # Output maximum solid temperature of block CH1: solid:fuel
+    type = NodalMaxValue
+    block = 'CH5:solid:graphite'
+    variable = T_solid
+  [../]
+
+  [./max_Pcoolant_1]                         # Output maximum fluid temperature of block CH1:pipe
     type = NodalMaxValue
     block = 'CH1:pipe'
     variable = pressure
+  [../]
+  [./max_Pcoolant_2]                         # Output maximum fluid temperature of block CH1:pipe
+    type = NodalMaxValue
+    block = 'CH2:pipe'
+    variable = pressure
+  [../]
+  [./max_Pcoolant_3]                         # Output maximum fluid temperature of block CH1:pipe
+    type = NodalMaxValue
+    block = 'CH3:pipe'
+    variable = pressure
+  [../]
+  [./max_Pcoolant_4]                         # Output maximum fluid temperature of block CH1:pipe
+    type = NodalMaxValue
+    block = 'CH4:pipe'
+    variable = pressure
+  [../]
+  [./max_Pcoolant_5]                         # Output maximum fluid temperature of block CH1:pipe
+    type = NodalMaxValue
+    block = 'CH5:pipe'
+    variable = pressure
+  [../]
+
+  [./avg_Tcoolant_1]                         # Output maximum fluid temperature of block CH1:pipe
+    type = ElementAverageValue
+    block = 'CH1:pipe'
+    variable = temperature
+  [../]
+  [./avg_Tcoolant_2]                         # Output maximum fluid temperature of block CH1:pipe
+    type = ElementAverageValue
+    block = 'CH2:pipe'
+    variable = temperature
+  [../]
+  [./avg_Tcoolant_3]                         # Output maximum fluid temperature of block CH1:pipe
+    type = ElementAverageValue
+    block = 'CH3:pipe'
+    variable = temperature
+  [../]
+  [./avg_Tcoolant_4]                         # Output maximum fluid temperature of block CH1:pipe
+    type = ElementAverageValue
+    block = 'CH4:pipe'
+    variable = temperature
+  [../]
+  [./avg_Tcoolant_5]                         # Output maximum fluid temperature of block CH1:pipe
+    type = ElementAverageValue
+    block = 'CH5:pipe'
+    variable = temperature
+  [../]
+
+  [./avg_Tf_1]                               # Output maximum solid temperature of block CH1: solid:fuel
+    type = ElementAverageValue
+    block = 'CH1:solid:fuel'
+    variable = T_solid
+  [../]
+  [./avg_Tf_2]                               # Output maximum solid temperature of block CH1: solid:fuel
+    type = ElementAverageValue
+    block = 'CH2:solid:fuel'
+    variable = T_solid
+  [../]
+  [./avg_Tf_3]                               # Output maximum solid temperature of block CH1: solid:fuel
+    type = ElementAverageValue
+    block = 'CH3:solid:fuel'
+    variable = T_solid
+  [../]
+  [./avg_Tf_4]                               # Output maximum solid temperature of block CH1: solid:fuel
+    type = ElementAverageValue
+    block = 'CH4:solid:fuel'
+    variable = T_solid
+  [../]
+  [./avg_Tf_5]                               # Output maximum solid temperature of block CH1: solid:fuel
+    type = ElementAverageValue
+    block = 'CH5:solid:fuel'
+    variable = T_solid
+  [../]
+
+  [./avg_Tgraphite_1]                               # Output maximum solid temperature of block CH1: solid:fuel
+    type = ElementAverageValue
+    block = 'CH1:solid:graphite'
+    variable = T_solid
+  [../]
+  [./avg_Tgraphite_2]                               # Output maximum solid temperature of block CH1: solid:fuel
+    type = ElementAverageValue
+    block = 'CH2:solid:graphite'
+    variable = T_solid
+  [../]
+  [./avg_Tgraphite_3]                               # Output maximum solid temperature of block CH1: solid:fuel
+    type = ElementAverageValue
+    block = 'CH3:solid:graphite'
+    variable = T_solid
+  [../]
+  [./avg_Tgraphite_4]                               # Output maximum solid temperature of block CH1: solid:fuel
+    type = ElementAverageValue
+    block = 'CH4:solid:graphite'
+    variable = T_solid
+  [../]
+  [./avg_Tgraphite_5]                               # Output maximum solid temperature of block CH1: solid:fuel
+    type = ElementAverageValue
+    block = 'CH5:solid:graphite'
+    variable = T_solid
   [../]
 []
 [VectorPostprocessors]
@@ -225,7 +522,7 @@
     type = LineValueSampler
     variable = velocity
     start_point = '0 0 0'
-    end_point = '0 {{ Height_FC/100 }} 0'
+    end_point = '0 {{ Height_FC/5 }} 0'
     num_points = 21
     use_displaced_mesh = true
     sort_by = id

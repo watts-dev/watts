@@ -2,7 +2,7 @@ from math import cos, pi
 import ardent
 from scipy.optimize import minimize
 
-from openmc_template import build_openmc_model
+from ../initial_OpenMC_SAM/openmc_template import build_openmc_model
 
 
 params = ardent.Parameters()
@@ -15,6 +15,13 @@ params['He_density'] = 3.8815   # kg/m3
 params['He_viscosity'] = 4.16e-5 # Pa.s
 params['He_Pressure'] = 7e6    # Pa
 params['Tot_assembly_power'] = 250000 # W
+
+params['Init_P_1'] = 1 # Fraction
+params['Init_P_2'] = 1 # Fraction
+params['Init_P_3'] = 1 # Fraction
+params['Init_P_4'] = 1 # Fraction
+params['Init_P_5'] = 1 # Fraction
+
 # Core design params
 params['ax_ref'] = 20 # cm
 params['num_cool_pins'] = 1*6+2*6+6*2/2
@@ -51,13 +58,19 @@ def calc_workflow(X):
     print ("FuelPin_rad / cool_hole_rad", X[0], X[1])
 
     # SAM workflow
-    sam_plugin = ardent.PluginSAM('sam_template')
+    sam_plugin = ardent.PluginSAM('../initial_SAM/sam_template')
     sam_plugin._sam_exec = "/home/rhu/projects/SAM/sam-opt"
     sam_result = sam_plugin.workflow(params)#, sam_options)
     print ("MaxTfuel / AvgTfuel= ", sam_result.csv_data['max_Tf'][-1], sam_result.csv_data['avg_Tf'][-1])
 
     # get temperature from SAM results
-    params['temp'] = sam_result.csv_data['avg_Tgraphite'][-1]
+    params['temp'] = (sam_result.csv_data['avg_Tgraphite_1'][-1]+sam_result.csv_data['avg_Tgraphite_2'][-1]+sam_result.csv_data['avg_Tgraphite_3'][-1]+sam_result.csv_data['avg_Tgraphite_4'][-1]+sam_result.csv_data['avg_Tgraphite_5'][-1])/5
+    params['temp_F1'] = sam_result.csv_data['avg_Tf_1'][-1]
+    params['temp_F2'] = sam_result.csv_data['avg_Tf_2'][-1]
+    params['temp_F3'] = sam_result.csv_data['avg_Tf_3'][-1]
+    params['temp_F4'] = sam_result.csv_data['avg_Tf_4'][-1]
+    params['temp_F5'] = sam_result.csv_data['avg_Tf_5'][-1]
+
     # Run OpenMC plugin
     openmc_plugin = ardent.PluginOpenMC(build_openmc_model)
     openmc_result = openmc_plugin.workflow(params)
@@ -67,8 +80,8 @@ def calc_workflow(X):
     return fitness
 
 
-# optimization function
-res = minimize(calc_workflow, X, method ='SLSQP', bounds=((0.5, 1.0), (0.5, 1.0)), options={'maxiter': 100, 'iprint': 1, 'disp': False, 'eps': 0.01})
+# optimization function - only 10 maximum iterations to make it run quick!
+res = minimize(calc_workflow, X, method ='SLSQP', bounds=((0.5, 1.0), (0.5, 1.0)), options={'maxiter': 10, 'iprint': 1, 'disp': False, 'eps': 0.01})
 X = res.x
 print ("optimum X(FuelPin_rad, cool_hole_rad) = ", X)
 

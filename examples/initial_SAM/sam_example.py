@@ -15,6 +15,12 @@ params['He_viscosity'] = 4.16e-5 # Pa.s
 params['He_Pressure'] = 7e6    # Pa
 params['Tot_assembly_power'] = 250000 # W
 
+params['Init_P_1'] = 1 # Fraction
+params['Init_P_2'] = 1 # Fraction
+params['Init_P_3'] = 1 # Fraction
+params['Init_P_4'] = 1 # Fraction
+params['Init_P_5'] = 1 # Fraction
+
 # Core design params
 params['ax_ref'] = 20 # cm
 params['num_cool_pins'] = 1*6+2*6+6*2/2
