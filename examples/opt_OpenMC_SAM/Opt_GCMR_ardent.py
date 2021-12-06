@@ -61,7 +61,9 @@ def calc_workflow(X):
     sam_plugin = ardent.PluginSAM('../initial_SAM/sam_template')
     sam_plugin._sam_exec = "/home/rhu/projects/SAM/sam-opt"
     sam_result = sam_plugin.workflow(params)#, sam_options)
-    print ("MaxTfuel / AvgTfuel= ", sam_result.csv_data['max_Tf'][-1], sam_result.csv_data['avg_Tf'][-1])
+    max_Tf = max(sam_result.csv_data['max_Tf_1'][-1],sam_result.csv_data['max_Tf_2'][-1],sam_result.csv_data['max_Tf_3'][-1],sam_result.csv_data['max_Tf_4'][-1],sam_result.csv_data['max_Tf_5'][-1])
+    avg_Tf = (sam_result.csv_data['max_Tf_1'][-1]+sam_result.csv_data['max_Tf_2'][-1]+sam_result.csv_data['max_Tf_3'][-1]+sam_result.csv_data['max_Tf_4'][-1]+sam_result.csv_data['max_Tf_5'][-1])/5
+    print ("MaxTfuel / AvgTfuel= ", max_Tf, avg_Tf)
 
     # get temperature from SAM results
     params['temp'] = (sam_result.csv_data['avg_Tgraphite_1'][-1]+sam_result.csv_data['avg_Tgraphite_2'][-1]+sam_result.csv_data['avg_Tgraphite_3'][-1]+sam_result.csv_data['avg_Tgraphite_4'][-1]+sam_result.csv_data['avg_Tgraphite_5'][-1])/5
@@ -76,7 +78,7 @@ def calc_workflow(X):
     openmc_result = openmc_plugin.workflow(params)
     print ("KEFF = ", openmc_result.keff)
 
-    fitness = abs(openmc_result.keff.n - 1) + (sam_result.csv_data['max_Tf'][-1]/sam_result.csv_data['avg_Tf'][-1])
+    fitness = abs(openmc_result.keff.n - 1) + (max_Tf/avg_Tf)
     return fitness
 
 
