@@ -47,4 +47,7 @@ params['num_cpu'] = 60
 sam_plugin = ardent.PluginSAM('sam_template')
 sam_plugin._sam_exec = "/home/rhu/projects/SAM/sam-opt"
 sam_result = sam_plugin.workflow(params)#, sam_options)
-
+for key in sam_result.csv_data:
+    print (key, sam_result.csv_data[key])
+print (sam_result.inputs)
+print (sam_result.outputs)

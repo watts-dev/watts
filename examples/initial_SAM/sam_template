@@ -256,38 +256,6 @@
   [../]
 []
 
-# [Executioner]
-#     type                           = Transient
-#     #petsc_options_iname = '-ksp_gmres_restart'
-#     #petsc_options_value = '100'
-
-#     dt                             = 1
-#     dtmin                          = 1 #1.e-5
-#     start_time                     = -10 #-1000
-#     end_time                       = 0
-#     dtmax                          = 3600 #100.0
-#     nl_rel_tol                     = 1e-7 #1e-8
-#     l_tol                = 1e-5 #1e-07
-#     nl_abs_tol                     = 1e-5 #1e-6
-#     nl_max_its                     = 30
-#     #l_tol                          = 1e-6
-#     l_max_its                      = 200
-
-#   [./TimeStepper]
-#     type = IterationAdaptiveDT
-#     growth_factor = 1.25
-#     optimal_iterations = 8
-#     linear_iteration_ratio = 150
-#     dt = 1
-#     cutback_factor = 0.8
-#     cutback_factor_at_failure = 0.8
-#   [../]
-#     [./Quadrature]
-#         type = SIMPSON
-#         order = SECOND
-#     [../]
-# []
-
 [Outputs]
   print_linear_residuals = false
   perf_graph = true
