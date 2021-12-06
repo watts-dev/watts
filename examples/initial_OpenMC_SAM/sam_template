@@ -340,17 +340,17 @@
 []
 [Postprocessors]
 
-  [max_Tf]
-    type = ParsedPostprocessor
-    function = 'max(max(max_Tf_1,max_Tf_2),max(max_Tf_3,max(max_Tf_4,max_Tf_5)))'
-    pp_names = 'max_Tf_1 max_Tf_2 max_Tf_3 max_Tf_4 max_Tf_5'
-  []
-
-  [avg_Tgraphite]
-    type = ParsedPostprocessor
-    function = '(avg_Tgraphite_1+avg_Tgraphite_2+avg_Tgraphite_3+avg_Tgraphite_4+avg_Tgraphite_5)/5'
-    pp_names = 'avg_Tgraphite_1 avg_Tgraphite_2 avg_Tgraphite_3 avg_Tgraphite_4 avg_Tgraphite_5'
-  []
+#  [max_Tf]
+#    type = ParsedPostprocessor
+#    function = 'max(max(max_Tf_1,max_Tf_2),max(max_Tf_3,max(max_Tf_4,max_Tf_5)))'
+#    pp_names = 'max_Tf_1 max_Tf_2 max_Tf_3 max_Tf_4 max_Tf_5'
+#  []
+#
+#  [avg_Tgraphite]
+#    type = ParsedPostprocessor
+#    function = '(avg_Tgraphite_1+avg_Tgraphite_2+avg_Tgraphite_3+avg_Tgraphite_4+avg_Tgraphite_5)/5'
+#    pp_names = 'avg_Tgraphite_1 avg_Tgraphite_2 avg_Tgraphite_3 avg_Tgraphite_4 avg_Tgraphite_5'
+#  []
 
   [./max_Tcoolant]                         # Output maximum fluid temperature of block CH1:pipe
     type = NodalMaxValue
