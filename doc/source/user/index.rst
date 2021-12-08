@@ -7,3 +7,4 @@ User's Guide
    :maxdepth: 2
 
    install
+   usage

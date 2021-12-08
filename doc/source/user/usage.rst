@@ -1,0 +1,236 @@
+.. _usage:
+
+Basic Usage
+-----------
+
+ARDENT consists of a set of Python classes that that can manage simulation
+workflows for multiple codes where information is exchanged at a coarse level.
+For each code, input files rely on placeholder values that are filled in
+based on a set of user-defined parameters.
+
+Parameters
+++++++++++
+
+The parameters that are used to "fill in" input files with placeholders are
+managed by the :class:`~ardent.Parameters` class. This class mostly behaves like
+a Python dictionary but has a few extra capabilities. Setting parameters can be
+done as follows::
+
+    params = ardent.Parameters()
+    params['temperature'] = 550.0
+    params['option'] = True
+    params['values'] = [10.0, 20.0, 0.05]
+
+Like a Python dictionary, key/value pairs can also be set when instantiating the
+object::
+
+    params = ardent.Parameters(
+        temperature=550.0,
+        option=True,
+        values=[10.0, 20.0, 0.05]
+    )
+
+Most native Python datatypes (:class:`int`, :class:`float`, :class:`bool`,
+:class:`str`, :class:`list`, :class:`set`, :class:`tuple`, :class:`dict`) are
+supported along with :class:`NumPy arrays <numpy.ndarray>` as well. Parameters
+can be saved to an HDF5 file::
+
+    params.save('parameters.h5')
+
+and later re-created using the :meth:`~ardent.Parameters.from_hdf5` method::
+
+    loaded_params = ardent.Parameters.from_hdf5('parameters.h5')
+
+By themselves, :class:`~ardent.Parameters` are not very useful, but when
+combined with plugin classes, they become building blocks for sophisticated
+workflows.
+
+Plugins
++++++++
+
+Using a particular code involves creating a "plugin" that controls input file
+generation, execution, and post-processing. Two plugin classes,
+:class:`~ardent.PluginSAM` and :class:`~ardent.PluginOpenMC`, have already been
+added to ARDENT and are available for your use.
+
+SAM Plugin
+~~~~~~~~~~
+
+The :class:`~ardent.PluginSAM` class enables SAM simulations using a templated
+input file. For codes like SAM that use text-based input files, ARDENT relies on
+the `Jinja <https://jinja.palletsprojects.com>`_ templating engine for handling
+templated variables and expressions. The templated input file looks like a
+normal SAM input file but where some values have been replaced with
+**variables**, which are denoted by ``{{`` and ``}}`` pairs and get replaced
+with actual values when the template is *rendered*. For example, a templated
+input file might look as follows:
+
+.. code-block:: jinja
+
+    [GlobalParams]
+        global_init_P = {{ He_Pressure }}
+        global_init_V = {{ He_velocity }}
+        global_init_T = {{ He_inlet_temp }}
+        gravity = '-9.8 0 0'
+        scaling_factor_var = '1 1e-3 1e-6'
+        Tsolid_sf = 1e-3
+    []
+
+If the input file is ``sam_template.inp``, the SAM plugin can be created as::
+
+    sam_plugin = ardent.PluginSAM('sam_template.inp')
+
+To execute SAM, the :meth:`~ardent.PluginSAM.workflow` method is called and
+expects to receive an instance of :class:`~ardent.Parameters`. For the above
+template, the :class:`~ardent.Parameters` instance should have ``He_Pressure``,
+``He_velocity``, and ``He_inlet_temp``` parameters present. Thus, executing SAM
+with this templated input file along with corresponding parameters might look as
+follows::
+
+    params = ardent.Parameters()
+    params['He_Pressure'] = 2.0
+    params['He_velocity'] = 1.0
+    params['He_inlet_temp'] = 600.0
+    results = sam_plugin.workflow(params)
+
+Calling the :meth:`~ardent.PluginSAM.workflow` method will render the templated
+input file (replace variables with values from the :class:`~ardent.Parameters`
+instance), execute SAM, and collect the output files.
+
+Beyond simple variable substitution, Jinja has sophisticated capabilities for
+using logical control structures, filters, calling Python methods, and
+extensible templates; for advanced usage, please read through the Jinja
+`template designer documentation
+<https://jinja.palletsprojects.com/en/3.0.x/templates/>`_.
+
+OpenMC Plugin
+~~~~~~~~~~~~~
+
+The :class:`~ardent.PluginOpenMC` class handles OpenMC execution in a similar
+manner to the :class:`~ardent.PluginSAM` class for SAM. However, for OpenMC,
+inputs are generated programmatically through the OpenMC Python API. Instead of
+writing a text template, for the OpenMC plugin you need to write a function that
+accepts an instance of :class:`~ardent.Parameters` and generates the necessary
+XML files. For example::
+
+    def godiva_model(params):
+        model = openmc.Model()
+
+        pu_metal = openmc.Material()
+        pu_metal.set_density('sum')
+        pu_metal.add_nuclide('Pu239', 3.7047e-02)
+        pu_metal.add_nuclide('Pu240', 1.7512e-03)
+        pu_metal.add_nuclide('Pu241', 1.1674e-04)
+        pu_metal.add_element('Ga', 1.3752e-03)
+        model.materials.append(pu_metal)
+
+        sph = openmc.Sphere(r=params['radius'], boundary_type='vacuum')
+        cell = openmc.Cell(fill=pu_metal, region=-sph)
+        model.geometry = openmc.Geometry([cell])
+
+        model.settings.batches = 50
+        model.settings.inactive = 10
+        model.settings.particles = 1000
+
+        model.export_to_xml()
+
+With this function, the :class:`~ardent.PluginOpenMC` class can be
+instantiated::
+
+    openmc_plugin = ardent.PluginOpenMC(godiva_model)
+
+Note how the function object itself is passed to the plugin. When the
+:meth:`~ardent.PluginOpenMC.workflow` method is called, the "template" function
+is called and passed the user-specified :class:`~ardent.Parameters`::
+
+    params = ardent.Parameters(radius=6.0)
+    results = openmc_plugin.workflow(params)
+
+This will generate the OpenMC input files using the template parameters, run
+OpenMC, and collect the results.
+
+Results
++++++++
+
+When you run the :meth:`~ardent.Plugin.workflow` method on a plugin, an instance
+of the :class:`~ardent.Results` class specific to the plugin will be returned
+that contains information about the results. Every :class:`~ardent.Results`
+object contains a list of input and output files that were generated:
+
+.. code-block:: pycon
+
+    >>> results = plugin_openmc.workflow(params)
+    >>> results.inputs
+    [PosixPath('geometry.xml'),
+     PosixPath('settings.xml'),
+     PosicPath('materials.xmll')]
+
+    >>> results.outputs
+    [PosixPath('OpenMC_log.txt'),
+     PosixPath('statepoint.250.h5')]
+
+:class:`~ardent.Results` objects also contain a copy of the
+:class:`~ardent.Parameters` that were used at the time the workflow was run:
+
+.. code-block:: pycon
+
+    >>> results.parameters
+    <ardent.parameters.Parameters at 0x0x15549e5b8d60>
+
+    >>> results.parameters['radius']
+    6.0
+
+Each plugin actually returns a subclass of :class:`~ardent.Results` that extends
+the basic functionality by adding methods/attributes that incorporate
+post-processing logic. For example, the :class:`~ardent.ResultsOpenMC` class
+provides a :attr:`~ardent.ResultsOpenMC.keff` attribute that provides the
+k-effective value at the end of the simulation:
+
+.. code-block:: pycon
+
+    >>> results.keff
+    1.0026170700986219+/-0.003342785895893627
+
+Database
+++++++++
+
+When you call the :meth:`~ardent.Plugin.workflow` method on a plugin, the
+:class:`~ardent.Results` object and all accompanying files are automatically
+added to a database on disk for later retrieval. Interacting with this database
+can be done via the :class:`~ardent.Database` class:
+
+.. code-block:: pycon
+
+    >>> db = ardent.Database()
+    >>> db.results
+    [<ardent.plugin_openmc.ResultsOpenMC at 0x15530416bfd0>,
+     <ardent.plugin_openmc.ResultsOpenMC at 0x15530416bbb0>,
+     <ardent.plugin_sam.ResultsSAM at 0x1553043c8a30>]
+
+By default, the database will be created in a user-specific data directory (on
+Linux machines, this is normally within ``~/.local/share``). However, the
+location of the database can be specified::
+
+    db = ardent.Database('/opt/ardent_db/')
+
+Creating a database this way doesn't change the default path used when running
+plugin workflows. If you want to change the default database path used in
+workflows, the :meth:`~ardent.Database.set_default_path` classmethod should be
+used::
+
+    >>> ardent.Database.set_default_path('/opt/ardent_db')
+    >>> db = ardent.Database()
+    >>> db.path
+    PosixPath('/opt/ardent_db')
+
+To clear results from the database, simply use the
+:meth:`~ardent.Database.clear` method:
+
+.. code-block::
+
+    >>> db.clear()
+    >>> db.results
+    []
+
+Be aware that clearing the database **will** delete all the corresponding
+results on disk, including input and output files from the workflow.
