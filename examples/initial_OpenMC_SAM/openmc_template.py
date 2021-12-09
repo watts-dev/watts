@@ -9,17 +9,60 @@ def build_openmc_model(params):
 
     materials = []
 
-    homfuel = openmc.Material(name="homfuel", temperature=params['temp'])
-    homfuel.set_density('g/cm3', 2.2767E+00)
-    homfuel.add_nuclide('U235', 4.0841E-02, 'wo')
-    homfuel.add_nuclide('U238', 1.6597E-01, 'wo')
-    homfuel.add_nuclide('O16',  7.0029E-01, 'wo')
-    homfuel.add_element('C',    2.0896E-02, 'wo')
-    homfuel.add_nuclide('Si28',  6.6155E-02, 'wo')
-    homfuel.add_nuclide('Si29',  3.4772E-03, 'wo')
-    homfuel.add_nuclide('Si30',  2.3671E-03, 'wo')
-    materials.append(homfuel)
+    homfuel1 = openmc.Material(name="homfuel_1", temperature=params['temp_F1'])
+    homfuel1.set_density('g/cm3', 2.2767E+00)
+    homfuel1.add_nuclide('U235', 4.0841E-02, 'wo')
+    homfuel1.add_nuclide('U238', 1.6597E-01, 'wo')
+    homfuel1.add_nuclide('O16',  7.0029E-01, 'wo')
+    homfuel1.add_element('C',    2.0896E-02, 'wo')
+    homfuel1.add_nuclide('Si28',  6.6155E-02, 'wo')
+    homfuel1.add_nuclide('Si29',  3.4772E-03, 'wo')
+    homfuel1.add_nuclide('Si30',  2.3671E-03, 'wo')
+    materials.append(homfuel1)
 
+    homfuel2 = openmc.Material(name="homfuel_2", temperature=params['temp_F2'])
+    homfuel2.set_density('g/cm3', 2.2767E+00)
+    homfuel2.add_nuclide('U235', 4.0841E-02, 'wo')
+    homfuel2.add_nuclide('U238', 1.6597E-01, 'wo')
+    homfuel2.add_nuclide('O16',  7.0029E-01, 'wo')
+    homfuel2.add_element('C',    2.0896E-02, 'wo')
+    homfuel2.add_nuclide('Si28',  6.6155E-02, 'wo')
+    homfuel2.add_nuclide('Si29',  3.4772E-03, 'wo')
+    homfuel2.add_nuclide('Si30',  2.3671E-03, 'wo')
+    materials.append(homfuel2)
+
+    homfuel3 = openmc.Material(name="homfuel_1", temperature=params['temp_F3'])
+    homfuel3.set_density('g/cm3', 2.2767E+00)
+    homfuel3.add_nuclide('U235', 4.0841E-02, 'wo')
+    homfuel3.add_nuclide('U238', 1.6597E-01, 'wo')
+    homfuel3.add_nuclide('O16',  7.0029E-01, 'wo')
+    homfuel3.add_element('C',    2.0896E-02, 'wo')
+    homfuel3.add_nuclide('Si28',  6.6155E-02, 'wo')
+    homfuel3.add_nuclide('Si29',  3.4772E-03, 'wo')
+    homfuel3.add_nuclide('Si30',  2.3671E-03, 'wo')
+    materials.append(homfuel3)
+
+    homfuel4 = openmc.Material(name="homfuel_1", temperature=params['temp_F4'])
+    homfuel4.set_density('g/cm3', 2.2767E+00)
+    homfuel4.add_nuclide('U235', 4.0841E-02, 'wo')
+    homfuel4.add_nuclide('U238', 1.6597E-01, 'wo')
+    homfuel4.add_nuclide('O16',  7.0029E-01, 'wo')
+    homfuel4.add_element('C',    2.0896E-02, 'wo')
+    homfuel4.add_nuclide('Si28',  6.6155E-02, 'wo')
+    homfuel4.add_nuclide('Si29',  3.4772E-03, 'wo')
+    homfuel4.add_nuclide('Si30',  2.3671E-03, 'wo')
+    materials.append(homfuel4)
+
+    homfuel5 = openmc.Material(name="homfuel_1", temperature=params['temp_F5'])
+    homfuel5.set_density('g/cm3', 2.2767E+00)
+    homfuel5.add_nuclide('U235', 4.0841E-02, 'wo')
+    homfuel5.add_nuclide('U238', 1.6597E-01, 'wo')
+    homfuel5.add_nuclide('O16',  7.0029E-01, 'wo')
+    homfuel5.add_element('C',    2.0896E-02, 'wo')
+    homfuel5.add_nuclide('Si28',  6.6155E-02, 'wo')
+    homfuel5.add_nuclide('Si29',  3.4772E-03, 'wo')
+    homfuel5.add_nuclide('Si30',  2.3671E-03, 'wo')
+    materials.append(homfuel5)
 
     boro_ctr = openmc.Material(name="B4C-CTR", temperature=params['temp'])
     boro_ctr.set_density('g/cm3', 2.47)
@@ -112,6 +155,12 @@ def build_openmc_model(params):
     min_z=openmc.ZPlane(z0=Z_min, boundary_type='vacuum')
     max_z=openmc.ZPlane(z0=Z_max, boundary_type='vacuum')
     sz_cl=openmc.ZPlane(z0=Z_cl)
+
+    sz_cor1=openmc.ZPlane(z0= Z_cl + 1 * params['cl']/5)
+    sz_cor2=openmc.ZPlane(z0= Z_cl + 2 * params['cl']/5)
+    sz_cor3=openmc.ZPlane(z0= Z_cl + 3 * params['cl']/5)
+    sz_cor4=openmc.ZPlane(z0= Z_cl + 4 * params['cl']/5)
+
     sz_cl_out=openmc.ZPlane(z0=Z_cl_out)
     sz_up=openmc.ZPlane(z0=Z_up)
     sz_up_out=openmc.ZPlane(z0=Z_up_out)
@@ -121,11 +170,15 @@ def build_openmc_model(params):
                                                         boundary_type = 'reflective')   # THIS SHOULD BE REFLECTIVE BONDARY
 
 
-    fuel_cell_1 = openmc.Cell(name='Fuel Pin', fill=homfuel , region=-fuel_radius & +sz_cl & -sz_up)
+    fuel_cell_1_1 = openmc.Cell(name='Fuel Pin', fill=homfuel1 , region=-fuel_radius & +sz_cl & -sz_cor1)
+    fuel_cell_1_2 = openmc.Cell(name='Fuel Pin', fill=homfuel2 , region=-fuel_radius & +sz_cor1 & -sz_cor2)
+    fuel_cell_1_3 = openmc.Cell(name='Fuel Pin', fill=homfuel3 , region=-fuel_radius & +sz_cor2 & -sz_cor3)
+    fuel_cell_1_4 = openmc.Cell(name='Fuel Pin', fill=homfuel4 , region=-fuel_radius & +sz_cor3 & -sz_cor4)
+    fuel_cell_1_5 = openmc.Cell(name='Fuel Pin', fill=homfuel5 , region=-fuel_radius & +sz_cor4 & -sz_up)
     fuel_cell_2 = openmc.Cell(name='matrix', fill=matrix , region=+fuel_radius  & +sz_cl & -sz_up)
     fuel_cell_3 = openmc.Cell(name='reflL', fill=refl , region=-sz_cl)
     fuel_cell_4 = openmc.Cell(name='reflO', fill=refl , region=+sz_up)
-    fuel_universe= openmc.Universe(cells=(fuel_cell_1,fuel_cell_2,fuel_cell_3,fuel_cell_4))
+    fuel_universe= openmc.Universe(cells=(fuel_cell_1_1, fuel_cell_1_2,fuel_cell_1_3,fuel_cell_1_4,fuel_cell_1_5,fuel_cell_2,fuel_cell_3,fuel_cell_4))
 
     mod_cell_1 = openmc.Cell(name='YH2', fill=yh2, region=-mod_rad_0  & +sz_cl & -sz_up )
     mod_cell_2a = openmc.Cell(name='Liner', fill=Cr , region=+mod_rad_0 & -mod_rad_1a  & +sz_cl & -sz_up)
@@ -229,7 +282,11 @@ def build_openmc_model(params):
     p1.basis = 'xy'
     p1.color_by = 'material'
     p1.col_spec = {
-        homfuel.id: (255, 0, 0),
+        homfuel1.id: (255, 0, 0),
+        homfuel2.id: (255, 0, 0),
+        homfuel3.id: (255, 0, 0),
+        homfuel4.id: (255, 0, 0),
+        homfuel5.id: (255, 0, 0),
         matrix.id: (100, 100, 100),
         yh2.id: (20, 200, 50),
         boro_ctr.id: (200, 20, 50),
@@ -245,7 +302,11 @@ def build_openmc_model(params):
     p2.basis ='yz'
     p2.color_by = 'material'
     p2.col_spec = {
-        homfuel.id: (255, 0, 0),
+        homfuel1.id: (255, 0, 0),
+        homfuel2.id: (255, 0, 0),
+        homfuel3.id: (255, 0, 0),
+        homfuel4.id: (255, 0, 0),
+        homfuel5.id: (255, 0, 0),
         matrix.id: (100, 100, 100),
         yh2.id: (20, 200, 50),
         boro_ctr.id: (200, 20, 50),
@@ -261,7 +322,11 @@ def build_openmc_model(params):
     p3.basis = 'xy'
     p3.color_by = 'material'
     p3.col_spec = {
-        homfuel.id: (255, 0, 0),
+        homfuel1.id: (255, 0, 0),
+        homfuel2.id: (255, 0, 0),
+        homfuel3.id: (255, 0, 0),
+        homfuel4.id: (255, 0, 0),
+        homfuel5.id: (255, 0, 0),
         matrix.id: (100, 100, 100),
         yh2.id: (20, 200, 50),
         boro_ctr.id: (200, 20, 50),
