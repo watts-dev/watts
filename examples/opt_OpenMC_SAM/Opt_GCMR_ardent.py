@@ -1,7 +1,7 @@
 from math import cos, pi
 import ardent
 from scipy.optimize import minimize
-
+from statistics import mean
 from openmc_template import build_openmc_model
 
 
@@ -16,11 +16,8 @@ params['He_viscosity'] = 4.16e-5 # Pa.s
 params['He_Pressure'] = 7e6    # Pa
 params['Tot_assembly_power'] = 250000 # W
 
-params['Init_P_1'] = 1 # Fraction
-params['Init_P_2'] = 1 # Fraction
-params['Init_P_3'] = 1 # Fraction
-params['Init_P_4'] = 1 # Fraction
-params['Init_P_5'] = 1 # Fraction
+for i in range(1, 6):
+    params[f'Init_P_{i}'] = 1 # Fraction
 
 # Core design params
 params['ax_ref'] = 20 # cm
@@ -61,17 +58,14 @@ def calc_workflow(X):
     sam_plugin = ardent.PluginSAM('../initial_SAM/sam_template')
     sam_plugin._sam_exec = "/home/rhu/projects/SAM/sam-opt"
     sam_result = sam_plugin.workflow(params)#, sam_options)
-    max_Tf = max(sam_result.csv_data['max_Tf_1'][-1],sam_result.csv_data['max_Tf_2'][-1],sam_result.csv_data['max_Tf_3'][-1],sam_result.csv_data['max_Tf_4'][-1],sam_result.csv_data['max_Tf_5'][-1])
-    avg_Tf = (sam_result.csv_data['max_Tf_1'][-1]+sam_result.csv_data['max_Tf_2'][-1]+sam_result.csv_data['max_Tf_3'][-1]+sam_result.csv_data['max_Tf_4'][-1]+sam_result.csv_data['max_Tf_5'][-1])/5
+    max_Tf = max(sam_result.csv_data[f'max_Tf_{i}'][-1] for i in range(1, 6))
+    avg_Tg = mean(sam_result.csv_data[f'max_Tf_{i}'][-1] for i in range(1, 6))
     print ("MaxTfuel / AvgTfuel= ", max_Tf, avg_Tf)
 
     # get temperature from SAM results
-    params['temp'] = (sam_result.csv_data['avg_Tgraphite_1'][-1]+sam_result.csv_data['avg_Tgraphite_2'][-1]+sam_result.csv_data['avg_Tgraphite_3'][-1]+sam_result.csv_data['avg_Tgraphite_4'][-1]+sam_result.csv_data['avg_Tgraphite_5'][-1])/5
-    params['temp_F1'] = sam_result.csv_data['avg_Tf_1'][-1]
-    params['temp_F2'] = sam_result.csv_data['avg_Tf_2'][-1]
-    params['temp_F3'] = sam_result.csv_data['avg_Tf_3'][-1]
-    params['temp_F4'] = sam_result.csv_data['avg_Tf_4'][-1]
-    params['temp_F5'] = sam_result.csv_data['avg_Tf_5'][-1]
+    params['temp'] = mean([sam_results.csv_data[f'avg_Tgraphite_{i}'][-1] for i in range(1, 6)])
+    for i in range(1, 6):
+        params[f'temp_F{i}'] = sam_result.csv_data[f'avg_Tf_{i}'][-1]
 
     # Run OpenMC plugin
     openmc_plugin = ardent.PluginOpenMC(build_openmc_model)

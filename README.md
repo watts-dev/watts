@@ -20,10 +20,3 @@ Then you can view the documentation with:
 - google-chrome build/html/index.html
 
 or replace google-chrome with your favorite browser.
-
-## Cleanup
-
-```javascript
-db = ardent.Database()
-db.clear()
-```
