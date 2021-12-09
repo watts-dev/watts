@@ -109,14 +109,20 @@ class PluginSAM(TemplatePlugin):
     ----------
     template_file
         Templated SAM input
+
+    Attributes
+    ----------
+    sam_exec
+        Path to SAM executable
+
     """
     def  __init__(self, template_file: str):
         super().__init__(template_file)
-        self._sam_exec = 'sam-opt'
+        self._sam_exec = Path('sam-opt')
         self.sam_inp_name = "SAM.i"
 
     @property
-    def sam_exec(self):
+    def sam_exec(self) -> Path:
         return self._sam_exec
 
     @sam_exec.setter

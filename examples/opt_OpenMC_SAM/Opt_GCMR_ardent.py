@@ -52,8 +52,8 @@ def calc_workflow(X):
 
     # SAM workflow
     sam_plugin = ardent.PluginSAM('sam_template')
-    sam_plugin._sam_exec = "/home/rhu/projects/SAM/sam-opt"
-    sam_result = sam_plugin.workflow(params)#, sam_options)
+    sam_plugin.sam_exec = "/home/rhu/projects/SAM/sam-opt"
+    sam_result = sam_plugin.workflow(params)
     print ("MaxTfuel / AvgTfuel= ", sam_result.csv_data['max_Tf'][-1], sam_result.csv_data['avg_Tf'][-1])
 
     # get temperature from SAM results
