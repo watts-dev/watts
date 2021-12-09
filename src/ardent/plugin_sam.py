@@ -161,13 +161,20 @@ class PluginSAM(TemplatePlugin):
 
         log_file = Path("SAM_log.txt")
 
-        # Run SAM and store  error message to SAM log file
-        with log_file.open("w") as outfile:
-            subprocess.run(
-                [self.sam_exec, "-i", self.sam_inp_name],
-                stdout=outfile,
-                stderr=subprocess.STDOUT
-            )
+        with open(log_file, "w") as outfile:
+            subprocess.run([str(self.sam_exec) + " -i "+str(self.sam_inp_name)+" > SAM_out.txt"], shell=True, stderr=outfile)
+
+        with log_file.open("r") as outfile:
+            print(outfile.read())
+
+        # Copy SAM output to SAM log file
+        if os.path.isfile("SAM_out.txt"):
+            with open("SAM_out.txt") as infile:
+                with open(log_file, "a+") as outfile:
+                    for line in infile:
+                        outfile.write(line)
+
+        os.remove("SAM_out.txt")
 
     def postrun(self, params: Parameters) -> ResultsSAM:
         """Read SAM results and create results object
