@@ -59,7 +59,7 @@ def calc_workflow(X):
     sam_plugin.sam_exec = "/home/rhu/projects/SAM/sam-opt"
     sam_result = sam_plugin.workflow(params)
     max_Tf = max(sam_result.csv_data[f'max_Tf_{i}'][-1] for i in range(1, 6))
-    avg_Tf = mean(sam_result.csv_data[f'max_Tf_{i}'][-1] for i in range(1, 6))
+    avg_Tf = mean(sam_result.csv_data[f'avg_Tf_{i}'][-1] for i in range(1, 6))
     print("MaxTfuel / AvgTfuel= ", max_Tf, avg_Tf)
 
     # get temperature from SAM results
@@ -77,6 +77,6 @@ def calc_workflow(X):
 
 
 # optimization function - only 10 maximum iterations to make it run quick!
-res = minimize(calc_workflow, X, method ='SLSQP', bounds=((0.5, 1.0), (0.5, 1.0)), options={'maxiter': 10, 'iprint': 1, 'disp': False, 'eps': 0.01})
+res = minimize(calc_workflow, X, method ='SLSQP', bounds=((0.5, 1.0), (0.5, 0.99)), options={'maxiter': 10, 'iprint': 1, 'disp': False, 'eps': 0.01})
 X = res.x
 print("optimum X(FuelPin_rad, cool_hole_rad) = ", X)
