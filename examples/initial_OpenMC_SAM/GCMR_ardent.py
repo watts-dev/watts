@@ -52,24 +52,24 @@ params.show_summary()
 # SAM Workflow
 
 sam_plugin = ardent.PluginSAM('../initial_SAM/sam_template')
-sam_plugin._sam_exec = "/home/rhu/projects/SAM/sam-opt"
-sam_result = sam_plugin.workflow(params)#, sam_options)
+sam_plugin.sam_exec = "/home/rhu/projects/SAM/sam-opt"
+sam_result = sam_plugin.workflow(params)
 for key in sam_result.csv_data:
-    print (key, sam_result.csv_data[key])
-print (sam_result.inputs)
-print (sam_result.outputs)
+    print(key, sam_result.csv_data[key])
+print(sam_result.inputs)
+print(sam_result.outputs)
 
 # get temperature from SAM results
-params['temp'] = mean([sam_results.csv_data[f'avg_Tgraphite_{i}'][-1] for i in range(1, 6)])
+params['temp'] = mean([sam_result.csv_data[f'avg_Tgraphite_{i}'][-1] for i in range(1, 6)])
 for i in range(1, 6):
     params[f'temp_F{i}'] = sam_result.csv_data[f'avg_Tf_{i}'][-1]
 
 # Run OpenMC plugin
 openmc_plugin = ardent.PluginOpenMC(build_openmc_model)
 openmc_result = openmc_plugin.workflow(params)
-print ("KEFF = ", openmc_result.keff)
-print (openmc_result.inputs)
-print (openmc_result.outputs)
+print("KEFF = ", openmc_result.keff)
+print(openmc_result.inputs)
+print(openmc_result.outputs)
 
 
 

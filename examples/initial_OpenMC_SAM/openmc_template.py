@@ -218,7 +218,7 @@ def build_openmc_model(params):
     assembly_description[2] =([coolant_universe] + [fuel_universe] + [mod_universe] + [coolant_universe] + [fuel_universe] + [mod_universe])*3
     assembly_description[1] =([fuel_universe]+[fuel_universe]+[coolant_universe]+[fuel_universe])*6
     assembly_description[0] =([fuel_universe]+[coolant_universe]+[fuel_universe]+[fuel_universe]+[coolant_universe])*6
-    #print (assembly_description)
+    #print(assembly_description)
 
     lat_core = openmc.HexLattice()
     lat_core.center=(0,0)

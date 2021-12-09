@@ -52,32 +52,31 @@ def calc_workflow(X):
     params['Coolant_channel_diam'] = (params['cool_hole_rad'] * 2)/100 # in m
     params['Graphite_thickness'] = (params['Lattice_pitch'] - params['FuelPin_rad'] - params['cool_hole_rad']) # cm
 
-    print ("FuelPin_rad / cool_hole_rad", X[0], X[1])
+    print("FuelPin_rad / cool_hole_rad", X[0], X[1])
 
     # SAM workflow
     sam_plugin = ardent.PluginSAM('../initial_SAM/sam_template')
-    sam_plugin._sam_exec = "/home/rhu/projects/SAM/sam-opt"
-    sam_result = sam_plugin.workflow(params)#, sam_options)
+    sam_plugin.sam_exec = "/home/rhu/projects/SAM/sam-opt"
+    sam_result = sam_plugin.workflow(params)
     max_Tf = max(sam_result.csv_data[f'max_Tf_{i}'][-1] for i in range(1, 6))
-    avg_Tg = mean(sam_result.csv_data[f'max_Tf_{i}'][-1] for i in range(1, 6))
-    print ("MaxTfuel / AvgTfuel= ", max_Tf, avg_Tf)
+    avg_Tf = mean(sam_result.csv_data[f'avg_Tf_{i}'][-1] for i in range(1, 6))
+    print("MaxTfuel / AvgTfuel= ", max_Tf, avg_Tf)
 
     # get temperature from SAM results
-    params['temp'] = mean([sam_results.csv_data[f'avg_Tgraphite_{i}'][-1] for i in range(1, 6)])
+    params['temp'] = mean([sam_result.csv_data[f'avg_Tgraphite_{i}'][-1] for i in range(1, 6)])
     for i in range(1, 6):
         params[f'temp_F{i}'] = sam_result.csv_data[f'avg_Tf_{i}'][-1]
 
     # Run OpenMC plugin
     openmc_plugin = ardent.PluginOpenMC(build_openmc_model)
     openmc_result = openmc_plugin.workflow(params)
-    print ("KEFF = ", openmc_result.keff)
+    print("KEFF = ", openmc_result.keff)
 
     fitness = abs(openmc_result.keff.n - 1) + (max_Tf/avg_Tf)
     return fitness
 
 
 # optimization function - only 10 maximum iterations to make it run quick!
-res = minimize(calc_workflow, X, method ='SLSQP', bounds=((0.5, 1.0), (0.5, 1.0)), options={'maxiter': 10, 'iprint': 1, 'disp': False, 'eps': 0.01})
+res = minimize(calc_workflow, X, method ='SLSQP', bounds=((0.5, 1.0), (0.5, 0.99)), options={'maxiter': 10, 'iprint': 1, 'disp': False, 'eps': 0.01})
 X = res.x
-print ("optimum X(FuelPin_rad, cool_hole_rad) = ", X)
-
+print("optimum X(FuelPin_rad, cool_hole_rad) = ", X)
