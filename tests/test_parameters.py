@@ -88,3 +88,26 @@ def test_parameters_not_toplevel(run_in_tmpdir):
 
     # Compare original parameters with one from group in file
     _compare_params(params, new_model)
+
+def test_parameters_show_summary(capsys):
+    params = ardent.Parameters()
+    params['colors'] = ('teal', 'grey', 'blue')
+    params['one'] = 1
+    params['two'] = 2
+    params['three'] = 3
+    params['four'] = 4
+    params['five'] = 5
+
+    filters = {'time': lambda x: x > params.get_metadata('three').time}
+    params.show_summary(show_metadata=False, sort_by='key', filter_by=filters)
+    out, err = capsys.readouterr()
+
+    expected_out = (
+        "+-----------+-------+\n"
+        "| PARAMETER | VALUE |\n"
+        "+-----------+-------+\n"
+        "| five      | 5     |\n"
+        "| four      | 4     |\n"
+        "+-----------+-------+\n"
+    )
+    assert out == expected_out
