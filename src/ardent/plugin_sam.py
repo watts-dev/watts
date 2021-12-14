@@ -1,3 +1,4 @@
+from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime
 import os
 from pathlib import Path
@@ -10,7 +11,7 @@ import h5py
 import numpy as np
 import pandas as pd
 
-from .fileutils import PathLike
+from .fileutils import PathLike, run as run_proc, tee_stdout, tee_stderr
 from .parameters import Parameters
 from .plugin import TemplatePlugin
 from .results import Results
@@ -109,6 +110,10 @@ class PluginSAM(TemplatePlugin):
     ----------
     template_file
         Templated SAM input
+    show_stdout
+        Whether to display output from stdout when SAM is run
+    show_stderr
+        Whether to display output from stderr when SAM is run
 
     Attributes
     ----------
@@ -116,10 +121,13 @@ class PluginSAM(TemplatePlugin):
         Path to SAM executable
 
     """
-    def  __init__(self, template_file: str):
+    def  __init__(self, template_file: str, show_stdout: bool = False,
+                  show_stderr: bool = False):
         super().__init__(template_file)
         self._sam_exec = Path('sam-opt')
         self.sam_inp_name = "SAM.i"
+        self.show_stdout = show_stdout
+        self.show_stderr = show_stderr
 
     @property
     def sam_exec(self) -> Path:
@@ -161,20 +169,12 @@ class PluginSAM(TemplatePlugin):
 
         log_file = Path("SAM_log.txt")
 
-        with open(log_file, "w") as outfile:
-            subprocess.run([str(self.sam_exec) + " -i "+str(self.sam_inp_name)+" > SAM_out.txt"], shell=True, stderr=outfile)
+        with log_file.open("w") as outfile:
+            func_stdout = tee_stdout if self.show_stdout else redirect_stdout
+            func_stderr = tee_stderr if self.show_stderr else redirect_stderr
+            with func_stdout(outfile), func_stderr(outfile):
+                run_proc([self.sam_exec, "-i", self.sam_inp_name])
 
-        with log_file.open("r") as outfile:
-            print(outfile.read())
-
-        # Copy SAM output to SAM log file
-        if os.path.isfile("SAM_out.txt"):
-            with open("SAM_out.txt") as infile:
-                with open(log_file, "a+") as outfile:
-                    for line in infile:
-                        outfile.write(line)
-
-        os.remove("SAM_out.txt")
 
     def postrun(self, params: Parameters) -> ResultsSAM:
         """Read SAM results and create results object
