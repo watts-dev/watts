@@ -5,7 +5,7 @@ from typing import List
 
 import h5py
 
-import ardent
+import watts
 from .fileutils import PathLike, open_file
 from .parameters import Parameters
 
@@ -90,9 +90,9 @@ class Results:
         with h5py.File(filename, 'r') as h5file:
             plugin = h5file.attrs['plugin']
             if plugin == 'OpenMC':
-                result = ardent.ResultsOpenMC._from_hdf5(h5file)
+                result = watts.ResultsOpenMC._from_hdf5(h5file)
             elif plugin == 'SAM':
-                result = ardent.ResultsSAM._from_hdf5(h5file)
+                result = watts.ResultsSAM._from_hdf5(h5file)
             else:
                 raise RuntimeError(f"Unrecognized plugin in results: {plugin}")
 

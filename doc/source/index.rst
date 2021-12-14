@@ -1,5 +1,5 @@
-ARDENT
-======
+WATTS
+=====
 
 .. toctree::
    :maxdepth: 2

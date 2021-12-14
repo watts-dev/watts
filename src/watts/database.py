@@ -27,7 +27,7 @@ class Database:
 
     """
 
-    _default_path = platformdirs.user_data_path('ardent')
+    _default_path = platformdirs.user_data_path('watts')
     _instances = {}
 
     def __new__(cls, path=None):

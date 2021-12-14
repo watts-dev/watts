@@ -1,7 +1,7 @@
 from pathlib import Path
 from datetime import datetime
 
-import ardent
+import watts
 import pytest
 import numpy as np
 import h5py
@@ -21,10 +21,10 @@ def _compare_params(params, other):
 
 def test_parameters_roundtrip(run_in_tmpdir):
     # Create parameters with various datatypes
-    params = ardent.Parameters()
+    params = watts.Parameters()
     params['int_scalar'] = 7
     params['float_scalar'] = 6.022e23
-    params['str_scalar'] = 'ARDENT is great'
+    params['str_scalar'] = 'WATTS is great'
     params['bool_scalar'] = True
     params['list_int'] = [0, 1, 2]
     params['list_float'] = [10.0, 20.0, 30.0]
@@ -56,7 +56,7 @@ def test_parameters_roundtrip(run_in_tmpdir):
     assert Path('params.h5').is_file()
 
     # Load parameters from HDF5
-    new_params = ardent.Parameters.from_hdf5('params.h5')
+    new_params = watts.Parameters.from_hdf5('params.h5')
 
     # Compare original parameters with one loaded from file
     _compare_params(params, new_params)
@@ -65,7 +65,7 @@ def test_parameters_roundtrip(run_in_tmpdir):
 def test_parameters_set():
     user = 'test_user'
     time = datetime.now()
-    params = ardent.Parameters()
+    params = watts.Parameters()
     params.set('key', 7, user='test_user', time=time)
 
     assert params['key'] == 7
@@ -74,7 +74,7 @@ def test_parameters_set():
 
 def test_parameters_not_toplevel(run_in_tmpdir):
     """Test saving/loading parameters when not at top-level of HDF5 file"""
-    params = ardent.Parameters(var_one=1, var_two='two', var_three=3.0)
+    params = watts.Parameters(var_one=1, var_two='two', var_three=3.0)
 
     # Write parameters to /mygroup within test.h5
     with h5py.File('test.h5', 'w') as fh:
@@ -84,13 +84,13 @@ def test_parameters_not_toplevel(run_in_tmpdir):
     # Read parameters from /mygroup
     with h5py.File('test.h5', 'r') as fh:
         group = fh['mygroup']
-        new_model = ardent.Parameters.from_hdf5(group)
+        new_model = watts.Parameters.from_hdf5(group)
 
     # Compare original parameters with one from group in file
     _compare_params(params, new_model)
 
 def test_parameters_show_summary(capsys):
-    params = ardent.Parameters()
+    params = watts.Parameters()
     params['colors'] = ('teal', 'grey', 'blue')
     params['one'] = 1
     params['two'] = 2

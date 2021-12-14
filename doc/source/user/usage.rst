@@ -3,7 +3,7 @@
 Basic Usage
 -----------
 
-ARDENT consists of a set of Python classes that can manage simulation
+WATTS consists of a set of Python classes that can manage simulation
 workflows for multiple codes where information is exchanged at a coarse level.
 For each code, input files rely on placeholder values that are filled in
 based on a set of user-defined parameters.
@@ -12,11 +12,11 @@ Parameters
 ++++++++++
 
 The parameters that are used to "fill in" input files with placeholders are
-managed by the :class:`~ardent.Parameters` class. This class mostly behaves like
+managed by the :class:`~watts.Parameters` class. This class mostly behaves like
 a Python dictionary but has a few extra capabilities. Setting parameters can be
 done as follows::
 
-    params = ardent.Parameters()
+    params = watts.Parameters()
     params['temperature'] = 550.0
     params['option'] = True
     params['values'] = [10.0, 20.0, 0.05]
@@ -24,7 +24,7 @@ done as follows::
 Like a Python dictionary, key/value pairs can also be set when instantiating the
 object::
 
-    params = ardent.Parameters(
+    params = watts.Parameters(
         temperature=550.0,
         option=True,
         values=[10.0, 20.0, 0.05]
@@ -37,27 +37,27 @@ can be saved to an HDF5 file::
 
     params.save('parameters.h5')
 
-and later re-created using the :meth:`~ardent.Parameters.from_hdf5` method::
+and later re-created using the :meth:`~watts.Parameters.from_hdf5` method::
 
-    loaded_params = ardent.Parameters.from_hdf5('parameters.h5')
+    loaded_params = watts.Parameters.from_hdf5('parameters.h5')
 
-By themselves, :class:`~ardent.Parameters` are not very useful, but when
+By themselves, :class:`~watts.Parameters` are not very useful, but when
 combined with plugin classes, they become building blocks for sophisticated
 workflows.
 
 Plugins
 +++++++
 
-Using a particular code within ARDENT requires a "plugin" that controls input file
+Using a particular code within WATTS requires a "plugin" that controls input file
 generation, execution, and post-processing. Two plugin classes,
-:class:`~ardent.PluginSAM` and :class:`~ardent.PluginOpenMC`, have already been
-added to ARDENT and are available for your use.
+:class:`~watts.PluginSAM` and :class:`~watts.PluginOpenMC`, have already been
+added to WATTS and are available for your use.
 
 SAM Plugin
 ~~~~~~~~~~
 
-The :class:`~ardent.PluginSAM` class enables SAM simulations using a templated
-input file. For codes like SAM that use text-based input files, ARDENT relies on
+The :class:`~watts.PluginSAM` class enables SAM simulations using a templated
+input file. For codes like SAM that use text-based input files, WATTS relies on
 the `Jinja <https://jinja.palletsprojects.com>`_ templating engine for handling
 templated variables and expressions. The templated input file looks like a
 normal SAM input file where some values have been replaced with
@@ -78,29 +78,29 @@ input file might look as follows:
 
 If the input file is ``sam_template.inp``, the SAM plugin can be created as::
 
-    sam_plugin = ardent.PluginSAM('sam_template.inp')
+    sam_plugin = watts.PluginSAM('sam_template.inp')
 
 The SAM executable defaults to ``sam-opt`` (assumed to be present on your
 :envvar:`PATH`) but can also be specified explicitly with the
-:attr:`~ardent.PluginSAM.sam_exec` attribute::
+:attr:`~watts.PluginSAM.sam_exec` attribute::
 
     sam_plugin.sam_exec = "/path/to/sam-opt"
 
-To execute SAM, the :meth:`~ardent.PluginSAM.workflow` method is called and
-expects to receive an instance of :class:`~ardent.Parameters`. For the above
-template, the :class:`~ardent.Parameters` instance should have ``He_Pressure``,
+To execute SAM, the :meth:`~watts.PluginSAM.workflow` method is called and
+expects to receive an instance of :class:`~watts.Parameters`. For the above
+template, the :class:`~watts.Parameters` instance should have ``He_Pressure``,
 ``He_velocity``, and ``He_inlet_temp`` parameters present. Thus, executing SAM
 with this templated input file along with corresponding parameters might look as
 follows::
 
-    params = ardent.Parameters()
+    params = watts.Parameters()
     params['He_Pressure'] = 2.0
     params['He_velocity'] = 1.0
     params['He_inlet_temp'] = 600.0
     results = sam_plugin.workflow(params)
 
-Calling the :meth:`~ardent.PluginSAM.workflow` method will render the templated
-input file (replace variables with values from the :class:`~ardent.Parameters`
+Calling the :meth:`~watts.PluginSAM.workflow` method will render the templated
+input file (replace variables with values from the :class:`~watts.Parameters`
 instance), execute SAM, and collect the output files.
 
 Beyond simple variable substitution, Jinja has sophisticated capabilities for
@@ -112,11 +112,11 @@ extensible templates; for advanced usage, please read through the Jinja
 OpenMC Plugin
 ~~~~~~~~~~~~~
 
-The :class:`~ardent.PluginOpenMC` class handles OpenMC execution in a similar
-manner to the :class:`~ardent.PluginSAM` class for SAM. However, for OpenMC,
+The :class:`~watts.PluginOpenMC` class handles OpenMC execution in a similar
+manner to the :class:`~watts.PluginSAM` class for SAM. However, for OpenMC,
 inputs are generated programmatically through the OpenMC Python API. Instead of
 writing a text template, for the OpenMC plugin you need to write a function that
-accepts an instance of :class:`~ardent.Parameters` and generates the necessary
+accepts an instance of :class:`~watts.Parameters` and generates the necessary
 XML files. For example::
 
     def godiva_model(params):
@@ -140,16 +140,16 @@ XML files. For example::
 
         model.export_to_xml()
 
-With this function, the :class:`~ardent.PluginOpenMC` class can be
+With this function, the :class:`~watts.PluginOpenMC` class can be
 instantiated::
 
-    openmc_plugin = ardent.PluginOpenMC(godiva_model)
+    openmc_plugin = watts.PluginOpenMC(godiva_model)
 
 Note how the function object itself is passed to the plugin. When the
-:meth:`~ardent.PluginOpenMC.workflow` method is called, the "template" function
-is called and passed the user-specified :class:`~ardent.Parameters`::
+:meth:`~watts.PluginOpenMC.workflow` method is called, the "template" function
+is called and passed the user-specified :class:`~watts.Parameters`::
 
-    params = ardent.Parameters(radius=6.0)
+    params = watts.Parameters(radius=6.0)
     results = openmc_plugin.workflow(params)
 
 This will generate the OpenMC input files using the template parameters, run
@@ -158,9 +158,9 @@ OpenMC, and collect the results.
 Results
 +++++++
 
-When you run the :meth:`~ardent.Plugin.workflow` method on a plugin, an instance
-of the :class:`~ardent.Results` class specific to the plugin will be returned
-that contains information about the results. Every :class:`~ardent.Results`
+When you run the :meth:`~watts.Plugin.workflow` method on a plugin, an instance
+of the :class:`~watts.Results` class specific to the plugin will be returned
+that contains information about the results. Every :class:`~watts.Results`
 object contains a list of input and output files that were generated:
 
 .. code-block:: pycon
@@ -175,21 +175,21 @@ object contains a list of input and output files that were generated:
     [PosixPath('OpenMC_log.txt'),
      PosixPath('statepoint.250.h5')]
 
-:class:`~ardent.Results` objects also contain a copy of the
-:class:`~ardent.Parameters` that were used at the time the workflow was run:
+:class:`~watts.Results` objects also contain a copy of the
+:class:`~watts.Parameters` that were used at the time the workflow was run:
 
 .. code-block:: pycon
 
     >>> results.parameters
-    <ardent.parameters.Parameters at 0x0x15549e5b8d60>
+    <watts.parameters.Parameters at 0x0x15549e5b8d60>
 
     >>> results.parameters['radius']
     6.0
 
-Each plugin actually returns a subclass of :class:`~ardent.Results` that extends
+Each plugin actually returns a subclass of :class:`~watts.Results` that extends
 the basic functionality by adding methods/attributes that incorporate
-post-processing logic. For example, the :class:`~ardent.ResultsOpenMC` class
-provides a :attr:`~ardent.ResultsOpenMC.keff` attribute that provides the
+post-processing logic. For example, the :class:`~watts.ResultsOpenMC` class
+provides a :attr:`~watts.ResultsOpenMC.keff` attribute that provides the
 k-effective value at the end of the simulation:
 
 .. code-block:: pycon
@@ -197,8 +197,8 @@ k-effective value at the end of the simulation:
     >>> results.keff
     1.0026170700986219+/-0.003342785895893627
 
-For SAM, the :class:`~ardent.ResultsSAM` class
-provides a :attr:`~ardent.ResultsSAM.csv_data` attribute that gathers the
+For SAM, the :class:`~watts.ResultsSAM` class
+provides a :attr:`~watts.ResultsSAM.csv_data` attribute that gathers the
 results from every CSV files generated by SAM::
 
     sam_result = sam_plugin.workflow(params)
@@ -208,37 +208,37 @@ results from every CSV files generated by SAM::
 Database
 ++++++++
 
-When you call the :meth:`~ardent.Plugin.workflow` method on a plugin, the
-:class:`~ardent.Results` object and all accompanying files are automatically
+When you call the :meth:`~watts.Plugin.workflow` method on a plugin, the
+:class:`~watts.Results` object and all accompanying files are automatically
 added to a database on disk for later retrieval. Interacting with this database
-can be done via the :class:`~ardent.Database` class:
+can be done via the :class:`~watts.Database` class:
 
 .. code-block:: pycon
 
-    >>> db = ardent.Database()
+    >>> db = watts.Database()
     >>> db.results
-    [<ardent.plugin_openmc.ResultsOpenMC at 0x15530416bfd0>,
-     <ardent.plugin_openmc.ResultsOpenMC at 0x15530416bbb0>,
-     <ardent.plugin_sam.ResultsSAM at 0x1553043c8a30>]
+    [<watts.plugin_openmc.ResultsOpenMC at 0x15530416bfd0>,
+     <watts.plugin_openmc.ResultsOpenMC at 0x15530416bbb0>,
+     <watts.plugin_sam.ResultsSAM at 0x1553043c8a30>]
 
 By default, the database will be created in a user-specific data directory (on
 Linux machines, this is normally within ``~/.local/share``). However, the
 location of the database can be specified::
 
-    db = ardent.Database('/opt/ardent_db/')
+    db = watts.Database('/opt/watts_db/')
 
 Creating a database this way doesn't change the default path used when running
 plugin workflows. If you want to change the default database path used in
-workflows, the :meth:`~ardent.Database.set_default_path` classmethod should be
+workflows, the :meth:`~watts.Database.set_default_path` classmethod should be
 used::
 
-    >>> ardent.Database.set_default_path('/opt/ardent_db')
-    >>> db = ardent.Database()
+    >>> watts.Database.set_default_path('/opt/watts_db')
+    >>> db = watts.Database()
     >>> db.path
-    PosixPath('/opt/ardent_db')
+    PosixPath('/opt/watts_db')
 
 To clear results from the database, simply use the
-:meth:`~ardent.Database.clear` method:
+:meth:`~watts.Database.clear` method:
 
 .. code-block::
 

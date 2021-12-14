@@ -17,7 +17,7 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'ARDENT'
+project = 'watts'
 copyright = '2021, UChicago Argonne, LLC'
 author = 'UChicago Argonne, LLC'
 
@@ -65,7 +65,7 @@ except ImportError as e:
 html_theme = 'pydata_sphinx_theme'
 
 html_theme_options = {
-    'gitlab_url': 'https://git-out.gss.anl.gov/nstauff/ARDENT',
+    'gitlab_url': 'https://git-out.gss.anl.gov/nstauff/watts',
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,

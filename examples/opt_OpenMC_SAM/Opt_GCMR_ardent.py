@@ -1,11 +1,11 @@
 from math import cos, pi
-import ardent
+import watts
 from scipy.optimize import minimize
 from statistics import mean
 from openmc_template import build_openmc_model
 
 
-params = ardent.Parameters()
+params = watts.Parameters()
 # TH params
 params['He_inlet_temp'] = 600 + 273.15  # K
 params['He_outlet_temp'] = 850 + 273.15 # K
@@ -55,7 +55,7 @@ def calc_workflow(X):
     print("FuelPin_rad / cool_hole_rad", X[0], X[1])
 
     # SAM workflow
-    sam_plugin = ardent.PluginSAM('../initial_SAM/sam_template')
+    sam_plugin = watts.PluginSAM('../initial_SAM/sam_template')
     sam_plugin.sam_exec = "/home/rhu/projects/SAM/sam-opt"
     sam_result = sam_plugin.workflow(params)
     max_Tf = max(sam_result.csv_data[f'max_Tf_{i}'][-1] for i in range(1, 6))
@@ -68,7 +68,7 @@ def calc_workflow(X):
         params[f'temp_F{i}'] = sam_result.csv_data[f'avg_Tf_{i}'][-1]
 
     # Run OpenMC plugin
-    openmc_plugin = ardent.PluginOpenMC(build_openmc_model)
+    openmc_plugin = watts.PluginOpenMC(build_openmc_model)
     openmc_result = openmc_plugin.workflow(params)
     print("KEFF = ", openmc_result.keff)
 

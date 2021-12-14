@@ -4,7 +4,7 @@ from pathlib import Path
 import subprocess
 import sys
 
-from ardent.fileutils import tee_stdout, tee_stderr, run
+from watts.fileutils import tee_stdout, tee_stderr, run
 
 
 def test_tee_stdout(run_in_tmpdir, capsys):
