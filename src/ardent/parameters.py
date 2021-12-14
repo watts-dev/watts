@@ -119,14 +119,15 @@ class Parameters(MutableMapping):
         Parameters
         ----------
         show_metadata
-            Whether to print user and timestamp associatd with key/value pair
+            Whether to print user and timestamp associated with key/value pair
         sort_by
             Field to sort by ('key', 'value', 'user', 'time'; default is 'key')
         filter_by
-            Dictionary mapping a field to a function to apply to values in that
-            field. A row will be displayed in the summary only if all functions
-            applied to the values in that row return true. Fields must be one
-            of 'key', 'value', 'user', or 'time'.
+            Dictionary defining filters to apply to fields. The dictionary keys
+            describe the fields and must be one of 'key', 'value', 'user', or
+            'time'. The dictionary values are functions that will be applied to
+            values in that field. A row will be displayed in the summary only
+            if all functions applied to the values in that row return true.
 
         Examples
         --------
