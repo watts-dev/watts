@@ -157,13 +157,10 @@ class Parameters(MutableMapping):
             # Apply the filters
             field_to_value = {
                 'key': key, 'value': value, 'user': md.user, 'time': md.time}
-            add_row = True
             for field, filt in filter_by.items():
                 if not filt(field_to_value[field]):
-                    add_row = False
                     break
-
-            if add_row:
+            else:
                 table.add_row(
                     [key, textwrap.fill(str(value), width=40), md.user, md.time])
 
