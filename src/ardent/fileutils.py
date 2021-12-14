@@ -85,22 +85,21 @@ def run(args):
     """Function that mimics subprocess.run but actually writes to sys.stdout and
     sys.stderr (not the same as the underlying file descriptors)
 
-    Borrowed from https://stackoverflow.com/a/12272262
+    Based on https://stackoverflow.com/a/12272262 and
+    https://stackoverflow.com/a/7730201
     """
     p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                          universal_newlines=True)
 
     while True:
-        reads = [p.stdout.fileno(), p.stderr.fileno()]
-        ret = select.select(reads, [], [])
+        select.select([p.stdout, p.stderr], [], [])
 
-        for fd in ret[0]:
-            if fd == p.stdout.fileno():
-                read = p.stdout.readline()
-                sys.stdout.write(read)
-            if fd == p.stderr.fileno():
-                read = p.stderr.readline()
-                sys.stderr.write(read)
+        stdout_data = p.stdout.read()
+        stderr_data = p.stderr.read()
+        if stdout_data:
+            sys.stdout.write(stdout_data)
+        if stderr_data:
+            sys.stderr.write(stderr_data)
 
-        if p.poll() != None:
+        if p.poll() is not None:
             break

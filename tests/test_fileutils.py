@@ -1,7 +1,10 @@
+from contextlib import redirect_stdout
+import io
 from pathlib import Path
+import subprocess
 import sys
 
-from ardent.fileutils import tee_stdout, tee_stderr
+from ardent.fileutils import tee_stdout, tee_stderr, run
 
 
 def test_tee_stdout(run_in_tmpdir, capsys):
@@ -30,3 +33,22 @@ def test_tee_stderr(run_in_tmpdir, capsys):
 
     # Make sure output went to stderr
     assert dummy_file.read_text() == 'Hello!\n'
+
+
+def test_run(run_in_tmpdir):
+    # Run an executable without catching output but redirect to file
+    log_file = Path('env_log.txt')
+    with log_file.open('w') as fp:
+        subprocess.run(['env'], stdout=fp)
+    file_output = log_file.read_text()
+
+    # Using subprocess.run won't catch anything
+    with redirect_stdout(io.StringIO()) as f:
+        subprocess.run(['env'])
+    assert f.getvalue() == ''
+
+    # Using our version of 'run' should catch the output
+    with redirect_stdout(io.StringIO()) as f:
+        run(['env'])
+    assert f.getvalue() == file_output
+
