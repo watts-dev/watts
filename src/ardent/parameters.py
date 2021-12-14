@@ -3,11 +3,11 @@ from collections import namedtuple
 from collections.abc import MutableMapping, Mapping, Iterable
 from datetime import datetime
 from getpass import getuser
-from prettytable import PrettyTable
 from typing import Any, Union
 from warnings import warn
 
 import h5py
+from prettytable import PrettyTable
 
 
 _SAVE_FUNCS = {
