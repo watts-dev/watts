@@ -1,10 +1,10 @@
 from math import cos, pi
-import ardent
+import watts
 from statistics import mean
 from openmc_template import build_openmc_model
 
 
-params = ardent.Parameters()
+params = watts.Parameters()
 
 # TH params
 
@@ -51,7 +51,7 @@ params.show_summary()
 
 # SAM Workflow
 
-sam_plugin = ardent.PluginSAM('../initial_SAM/sam_template')
+sam_plugin = watts.PluginSAM('../initial_SAM/sam_template')
 sam_plugin.sam_exec = "/home/rhu/projects/SAM/sam-opt"
 sam_result = sam_plugin.workflow(params)
 for key in sam_result.csv_data:
@@ -65,7 +65,7 @@ for i in range(1, 6):
     params[f'temp_F{i}'] = sam_result.csv_data[f'avg_Tf_{i}'][-1]
 
 # Run OpenMC plugin
-openmc_plugin = ardent.PluginOpenMC(build_openmc_model)
+openmc_plugin = watts.PluginOpenMC(build_openmc_model)
 openmc_result = openmc_plugin.workflow(params)
 print("KEFF = ", openmc_result.keff)
 print(openmc_result.inputs)

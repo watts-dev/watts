@@ -1,8 +1,8 @@
 from math import cos, pi
-import ardent
+import watts
 
 
-params = ardent.Parameters()
+params = watts.Parameters()
 
 # TH params
 
@@ -47,7 +47,7 @@ params['num_cpu'] = 60
 
 # SAM Workflow
 
-sam_plugin = ardent.PluginSAM('sam_template')
+sam_plugin = watts.PluginSAM('sam_template')
 sam_plugin.sam_exec = "/home/rhu/projects/SAM/sam-opt"
 sam_result = sam_plugin.workflow(params)
 for key in sam_result.csv_data:

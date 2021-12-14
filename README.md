@@ -1,11 +1,11 @@
-# ARDENT
+# WATTS
 
-Advanced Reactor Design and Economics Analysis Framework (ARDENT) under development supported by LDRD-2022-0046.
+Workflow and Template Toolkit for Simulation (WATTS) under development supported by LDRD-2022-0046.
 
 ## Setup
 
-- git clone https://git-out.gss.anl.gov/nstauff/ARDENT
-- cd ARDENT
+- git clone https://git-out.gss.anl.gov/nstauff/watts
+- cd watts
 - pip install -U pip
 - pip install -e .
 

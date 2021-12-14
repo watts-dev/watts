@@ -1,12 +1,12 @@
 from datetime import datetime
 from pathlib import Path
 
-import ardent
+import watts
 import numpy as np
 
 
 def test_results_openmc(run_in_tmpdir):
-    params = ardent.Parameters(city='Chicago', population=2.7e6)
+    params = watts.Parameters(city='Chicago', population=2.7e6)
     now = datetime.now()
 
     # Create some fake input files
@@ -24,7 +24,7 @@ def test_results_openmc(run_in_tmpdir):
     outputs = [sp, log_file]
 
 
-    results = ardent.ResultsOpenMC(params, now, inputs, outputs)
+    results = watts.ResultsOpenMC(params, now, inputs, outputs)
 
     # Sanity checks
     assert results.plugin == 'OpenMC'
@@ -43,8 +43,8 @@ def test_results_openmc(run_in_tmpdir):
     assert p.is_file()
 
     # Ensure results read from file match
-    new_results = ardent.Results.from_hdf5(p)
-    assert isinstance(new_results, ardent.ResultsOpenMC)
+    new_results = watts.Results.from_hdf5(p)
+    assert isinstance(new_results, watts.ResultsOpenMC)
     assert new_results.parameters == results.parameters
     assert new_results.time == results.time
     assert new_results.inputs == results.inputs
@@ -53,7 +53,7 @@ def test_results_openmc(run_in_tmpdir):
 
 
 def test_results_sam(run_in_tmpdir):
-    params = ardent.Parameters(city='Chicago', population=2.7e6)
+    params = watts.Parameters(city='Chicago', population=2.7e6)
     now = datetime.now()
 
     # Create some fake input files
@@ -73,7 +73,7 @@ prop1,prop2
     stdout.write_text('SAM standard out\n')
     outputs = [csv, stdout]
 
-    results = ardent.ResultsSAM(params, now, inputs, outputs)
+    results = watts.ResultsSAM(params, now, inputs, outputs)
 
     # Sanity checks
     assert results.plugin == 'SAM'
@@ -93,8 +93,8 @@ prop1,prop2
     assert p.is_file()
 
     # Ensure results read from file match
-    new_results = ardent.Results.from_hdf5(p)
-    assert isinstance(new_results, ardent.ResultsSAM)
+    new_results = watts.Results.from_hdf5(p)
+    assert isinstance(new_results, watts.ResultsSAM)
     assert new_results.parameters == results.parameters
     assert new_results.time == results.time
     assert new_results.inputs == results.inputs
