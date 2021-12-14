@@ -1,3 +1,4 @@
+import textwrap
 from collections import namedtuple
 from collections.abc import MutableMapping, Mapping, Iterable
 from datetime import datetime
@@ -6,6 +7,7 @@ from typing import Any, Union
 from warnings import warn
 
 import h5py
+from prettytable import PrettyTable
 
 
 _SAVE_FUNCS = {
@@ -111,11 +113,61 @@ class Parameters(MutableMapping):
         """
         return self._metadata[key]
 
-    def show_summary(self):
-        """Display a summary of key/value pairs"""
+    def show_summary(self, show_metadata=True, sort_by='key', filter_by={}):
+        """Display a summary of the parameters
+
+        Parameters
+        ----------
+        show_metadata
+            Whether to print user and timestamp associated with key/value pair
+        sort_by
+            Field to sort by ('key', 'value', 'user', 'time'; default is 'key')
+        filter_by
+            Dictionary defining filters to apply to fields. The dictionary keys
+            describe the fields and must be one of 'key', 'value', 'user', or
+            'time'. The dictionary values are functions that will be applied to
+            values in that field. A row will be displayed in the summary only
+            if all functions applied to the values in that row return true.
+
+        Examples
+        --------
+        Print all the parameters sorted by timestamp:
+
+        >>> params.show_summary(sort_by='time')
+
+        Print only the parameters added by <username>:
+
+        >>> params.show_summary(filter_by={'user': lambda x: x == 'username'})
+        """
+        field_to_name = {
+            'key': 'PARAMETER',
+            'value': 'VALUE',
+            'user': 'ADDED BY',
+            'time': 'TIMESTAMP'
+        }
+
+        # Create a nicely-formatted table to display parameters
+        headers = list(field_to_name.values())
+        table = PrettyTable(field_names=headers, align='l')
+
+        # Add rows to the table
         for key, value in self.items():
-            metadata = self._metadata[key]
-            print(f'{key}: {value} (added by {metadata.user} at {metadata.time})')
+            md = self._metadata[key]
+
+            # Apply the filters
+            field_to_value = {
+                'key': key, 'value': value, 'user': md.user, 'time': md.time}
+            for field, filt in filter_by.items():
+                if not filt(field_to_value[field]):
+                    break
+            else:
+                table.add_row(
+                    [key, textwrap.fill(str(value), width=40), md.user, md.time])
+
+        # Sort and print summary
+        if not show_metadata:
+            headers = headers[:2]
+        print(table.get_string(fields=headers, sortby=field_to_name[sort_by]))
 
     def _save_mapping(self, mapping, h5_obj):
         # Helper function to add metadata
