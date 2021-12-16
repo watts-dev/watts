@@ -1,7 +1,15 @@
 from datetime import datetime
 from pathlib import Path
 
+import pytest
 import watts
+
+
+@pytest.fixture(autouse=True, scope='module')
+def restore_database_path():
+    db_path = watts.Database.get_default_path()
+    yield
+    watts.Database.set_default_path(db_path)
 
 
 def get_result():

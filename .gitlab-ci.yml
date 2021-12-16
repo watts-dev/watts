@@ -1,4 +1,4 @@
-image: python:3.7
+image: openmc/openmc:latest
 
 # Change pip's cache directory to be inside the project directory since we can
 # only cache local items.
@@ -12,6 +12,8 @@ cache:
 
 before_script:
   - python -V  # Print out python version for debugging
+  - apt update
+  - apt install -y python3-venv
   - python -m venv venv
   - source venv/bin/activate
 
@@ -19,6 +21,9 @@ build-job:
   stage: build
   script:
     - pip install -U pip
+    - pushd /opt/openmc
+    - pip install -e .
+    - popd
     - pip install .[test]
 
 test-job:
