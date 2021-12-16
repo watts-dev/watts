@@ -74,14 +74,14 @@ class Database:
 
     @property
     def default_path(self) -> Path:
-        return self._default_path
+        return self.get_default_path()
 
     @default_path.setter
     def default_path(self, path):
         self.set_default_path(path)
 
-    @staticmethod
-    def set_default_path(path: Union[str, Path]):
+    @classmethod
+    def set_default_path(cls, path: Union[str, Path]):
         """Set the default path used when instances are created
 
         Parameters
@@ -90,7 +90,17 @@ class Database:
             Default path to use
         """
 
-        Database._default_path = Path(path)
+        cls._default_path = Path(path)
+
+    @classmethod
+    def get_default_path(cls) -> Path:
+        """Get the default path used when instances are created
+
+        Returns
+        -------
+        Default path
+        """
+        return cls._default_path
 
     @property
     def results(self) -> List[Results]:
