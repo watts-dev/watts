@@ -3,7 +3,7 @@ import watts
 
 
 def build_openmc_model(params):
-    model = openmc.Model()
+    model = openmc.model.Model()
 
     pu_metal = openmc.Material()
     pu_metal.set_density('sum')
@@ -29,7 +29,26 @@ def test_openmc_plugin():
     plugin = watts.PluginOpenMC(build_openmc_model)
     assert plugin.model_builder == build_openmc_model
 
-    params = watts.Parameters(radius=6.3)
-    results = plugin.workflow(params)
-    assert isinstance(results, watts.ResultsOpenMC)
-    assert results.parameters['radius'] == 6.3
+    params = watts.Parameters(radius=6.38)
+    result = plugin.workflow(params)
+
+    # Sanity checks
+    assert isinstance(result, watts.ResultsOpenMC)
+    assert result.parameters['radius'] == 6.38
+    assert len(result.statepoints) == 5
+    input_names = {p.name for p in result.inputs}
+    assert input_names == {'geometry.xml', 'materials.xml', 'settings.xml'}
+    output_names = {p.name for p in result.outputs}
+    assert 'OpenMC_log.txt' in output_names
+
+    # k-eff should be "reasonable"
+    assert 0.95 < result.keff.n < 1.05
+
+    # Make sure result was added to database and agrees
+    db = watts.Database()
+    last_result = db.results[-1]
+    assert last_result.parameters['radius'] == result.parameters['radius']
+    assert last_result.inputs == result.inputs
+    assert last_result.outputs == result.outputs
+    assert last_result.keff.n == result.keff.n
+    assert last_result.keff.s == result.keff.s
