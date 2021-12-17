@@ -22,6 +22,10 @@ def build_openmc_model(params):
     model.settings.particles = 1000
     model.settings.statepoint = {'batches': [10, 20, 30, 40, 50]}
 
+    tally = openmc.Tally()
+    tally.scores = ['nu-fission', 'fission', 'absorption']
+    model.tallies.append(tally)
+
     model.export_to_xml()
 
 
@@ -37,12 +41,22 @@ def test_openmc_plugin():
     assert result.parameters['radius'] == 6.38
     assert len(result.statepoints) == 5
     input_names = {p.name for p in result.inputs}
-    assert input_names == {'geometry.xml', 'materials.xml', 'settings.xml'}
+    assert input_names == {'geometry.xml', 'materials.xml', 'settings.xml', 'tallies.xml'}
     output_names = {p.name for p in result.outputs}
     assert 'OpenMC_log.txt' in output_names
+    assert len(result.tallies) == 1
+    assert len(result.tallies[0].filters) == 0
+    assert result.tallies[0].scores == ['nu-fission', 'fission', 'absorption']
 
     # k-eff should be "reasonable"
     assert 0.95 < result.keff.n < 1.05
+
+    # value of nu should be greater than 3 for this problem
+    nu_fission, fission, absorption = result.tallies[0].mean.ravel()
+    assert nu_fission / fission > 3.0
+
+    # nu-fission/absorption > keff since there's leakage
+    assert nu_fission / absorption > result.keff.n
 
     # Make sure result was added to database and agrees
     db = watts.Database()

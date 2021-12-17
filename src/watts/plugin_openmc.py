@@ -1,6 +1,6 @@
 from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime
-from io import StringIO
+from functools import lru_cache
 from pathlib import Path
 import time
 from typing import Callable, Mapping, List
@@ -35,6 +35,8 @@ class ResultsOpenMC(Results):
         List of statepoint files
     stdout
         Standard output from OpenMC run
+    tallies
+        List of OpenMC tally objects
     """
 
     def __init__(self, params: Parameters, time: datetime,
@@ -46,12 +48,22 @@ class ResultsOpenMC(Results):
         return [p for p in self.outputs if p.name.startswith('statepoint')]
 
     @property
+    @lru_cache()
     def keff(self):
         import openmc
         # Get k-effective from last statepoint
         last_statepoint = self.statepoints[-1]
         with openmc.StatePoint(last_statepoint) as sp:
             return sp.k_combined
+
+    @property
+    @lru_cache()
+    def tallies(self) -> List:
+        import openmc
+        # Get k-effective from last statepoint
+        last_statepoint = self.statepoints[-1]
+        with openmc.StatePoint(last_statepoint) as sp:
+            return list(sp.tallies.values())
 
     @property
     def stdout(self) -> str:

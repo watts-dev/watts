@@ -90,7 +90,7 @@ class Database:
             Default path to use
         """
 
-        cls._default_path = Path(path)
+        cls._default_path = Path(path).resolve()
 
     @classmethod
     def get_default_path(cls) -> Path:
