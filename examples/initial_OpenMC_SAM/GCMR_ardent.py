@@ -47,7 +47,8 @@ params['cl'] = params['Height_FC']*100 - 2 * params['ax_ref'] # cm
 params['pf'] = 40 # percent
 
 # printout params
-params.show_summary()
+params.show_summary(show_metadata=True, sort_by='time')
+
 
 # SAM Workflow
 
@@ -64,12 +65,13 @@ params['temp'] = mean([sam_result.csv_data[f'avg_Tgraphite_{i}'][-1] for i in ra
 for i in range(1, 6):
     params[f'temp_F{i}'] = sam_result.csv_data[f'avg_Tf_{i}'][-1]
 
+params.show_summary(show_metadata=False, sort_by='time')
+
 # Run OpenMC plugin
 openmc_plugin = watts.PluginOpenMC(build_openmc_model)
 openmc_result = openmc_plugin.workflow(params)
 print("KEFF = ", openmc_result.keff)
 print(openmc_result.inputs)
 print(openmc_result.outputs)
-
-
+print(openmc_result.tallies) # how do I extract the power in the different tallied regions?
 

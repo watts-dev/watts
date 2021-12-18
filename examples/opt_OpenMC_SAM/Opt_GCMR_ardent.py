@@ -5,6 +5,9 @@ from statistics import mean
 from openmc_template import build_openmc_model
 
 
+watts.tee_stdout = False # This doesn't seem to work.
+watts.tee_stderr = False
+
 params = watts.Parameters()
 # TH params
 params['He_inlet_temp'] = 600 + 273.15  # K
@@ -78,5 +81,8 @@ def calc_workflow(X):
 
 # optimization function - only 10 maximum iterations to make it run quick!
 res = minimize(calc_workflow, X, method ='SLSQP', bounds=((0.5, 1.0), (0.5, 0.99)), options={'maxiter': 10, 'iprint': 1, 'disp': False, 'eps': 0.01})
+params.show_summary(show_metadata=True, sort_by='time')
+
+
 X = res.x
 print("optimum X(FuelPin_rad, cool_hole_rad) = ", X)

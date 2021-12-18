@@ -179,6 +179,7 @@ def build_openmc_model(params):
     fuel_cell_3 = openmc.Cell(name='reflL', fill=refl , region=-sz_cl)
     fuel_cell_4 = openmc.Cell(name='reflO', fill=refl , region=+sz_up)
     fuel_universe= openmc.Universe(cells=(fuel_cell_1_1, fuel_cell_1_2,fuel_cell_1_3,fuel_cell_1_4,fuel_cell_1_5,fuel_cell_2,fuel_cell_3,fuel_cell_4))
+    TALLY_REGIONS=[fuel_cell_1_1, fuel_cell_1_2,fuel_cell_1_3,fuel_cell_1_4,fuel_cell_1_5]
 
     mod_cell_1 = openmc.Cell(name='YH2', fill=yh2, region=-mod_rad_0  & +sz_cl & -sz_up )
     mod_cell_2a = openmc.Cell(name='Liner', fill=Cr , region=+mod_rad_0 & -mod_rad_1a  & +sz_cl & -sz_up)
@@ -234,7 +235,7 @@ def build_openmc_model(params):
     new_universe_lat_core = openmc.Universe(cells=(new_cell_lat_core,))
 
     main_cell = openmc.Cell(name="MainCell",fill=new_universe_lat_core, region=Hex_Pitch &  +min_z & -max_z )
-    TALLY_REGIONS=[main_cell]
+    
 
     # OpenMC expects that there is a root universe assigned number zero. Here we
     # assign our three cells to this root universe.
@@ -269,6 +270,18 @@ def build_openmc_model(params):
     settings_file.source = source
 
     #lower_left, upper_right = main_cell.region.bounding_box
+
+    list_tally_cell = []
+    for cell in TALLY_REGIONS:
+        list_tally_cell.append(cell.id)
+    list_tally_scores = ['flux', 'nu-fission']
+    cell_filter = openmc.CellFilter(list_tally_cell)
+    tally_file = openmc.Tally()
+    tally_file.filters.append(cell_filter)
+    tally_file.scores = list_tally_scores
+    tallies = openmc.Tallies()
+    tallies.append(tally_file)
+    tallies.export_to_xml()
 
     settings_file.export_to_xml()
 
