@@ -75,3 +75,5 @@ print(openmc_result.inputs)
 print(openmc_result.outputs)
 print(openmc_result.tallies) # how do I extract the power in the different tallied regions?
 
+for i in range(1, 6):
+    params[f'Init_P_{i}'] = 1 # I want to update the power fraction here using the tallied results from OpenMC in the 5 axial cells
