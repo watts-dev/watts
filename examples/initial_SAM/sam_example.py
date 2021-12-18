@@ -45,6 +45,9 @@ params['cl'] = params['Height_FC']*100 - 2 * params['ax_ref'] # cm
 params['pf'] = 40 # percent
 params['num_cpu'] = 60
 
+filters = {'time': lambda x: x > params.get_metadata('three').time}
+params.show_summary(show_metadata=False, sort_by='key', filter_by=filters)
+
 # SAM Workflow
 
 sam_plugin = watts.PluginSAM('sam_template')
