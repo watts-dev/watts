@@ -74,7 +74,7 @@ print(openmc_result.inputs)
 print(openmc_result.outputs)
 print(openmc_result.tallies[0].get_pandas_dataframe())
 
-power_fractions = openmc_result.tallies[0].get_values(scores=['nu-fission'])
+power_fractions = openmc_result.tallies[0].get_values(scores=['nu-fission']).ravel()
 for i, power_frac in enumerate(power_fractions):
     params[f'Init_P_{i+1}'] = power_frac
 
