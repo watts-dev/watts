@@ -53,7 +53,7 @@ conv_it = True
 list_keff = []
 while conv_it:
     # SAM Workflow
-    sam_plugin = watts.PluginSAM('../initial_SAM/sam_template', show_stderr=True) # show only error
+    sam_plugin = watts.PluginSAM('../example1_SAM/sam_template', show_stderr=True) # show only error
     sam_plugin.sam_exec = "/home/rhu/projects/SAM/sam-opt"
     sam_result = sam_plugin.workflow(params)
 
