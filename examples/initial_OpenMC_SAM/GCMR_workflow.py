@@ -52,7 +52,7 @@ params.show_summary(show_metadata=True, sort_by='time')
 
 # SAM Workflow
 
-sam_plugin = watts.PluginSAM('../initial_SAM/sam_template')
+sam_plugin = watts.PluginSAM('../initial_SAM/sam_template', show_stderr=True) # show only error
 sam_plugin.sam_exec = "/home/rhu/projects/SAM/sam-opt"
 sam_result = sam_plugin.workflow(params)
 for key in sam_result.csv_data:
@@ -68,12 +68,12 @@ for i in range(1, 6):
 params.show_summary(show_metadata=False, sort_by='time')
 
 # Run OpenMC plugin
-openmc_plugin = watts.PluginOpenMC(build_openmc_model)
+openmc_plugin = watts.PluginOpenMC(build_openmc_model, show_stderr=True) # show only error
 openmc_result = openmc_plugin.workflow(params)
 print("KEFF = ", openmc_result.keff)
 print(openmc_result.inputs)
 print(openmc_result.outputs)
-print(openmc_result.tallies) # how do I extract the power in the different tallied regions?
+print(openmc_results.tallies[0].get_pandas_dataframe())
 
 for i in range(1, 6):
     params[f'Init_P_{i}'] = 1 # I want to update the power fraction here using the tallied results from OpenMC in the 5 axial cells
