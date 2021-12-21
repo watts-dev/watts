@@ -1,1 +1,1 @@
-example2_SAM_OpenMC/openmc_template.py
+../example2_SAM_OpenMC/openmc_template.py
