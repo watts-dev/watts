@@ -47,11 +47,11 @@ params['cl'] = params['Height_FC']*100 - 2 * params['ax_ref'] # cm
 params['pf'] = 40 # percent
 
 # printout params
-params.show_summary()
+params.show_summary(show_metadata=True, sort_by='time')
+
 
 # SAM Workflow
-
-sam_plugin = watts.PluginSAM('../initial_SAM/sam_template')
+sam_plugin = watts.PluginSAM('../example1_SAM/sam_template', show_stderr=True) # show only error
 sam_plugin.sam_exec = "/home/rhu/projects/SAM/sam-opt"
 sam_result = sam_plugin.workflow(params)
 for key in sam_result.csv_data:
@@ -64,12 +64,18 @@ params['temp'] = mean([sam_result.csv_data[f'avg_Tgraphite_{i}'][-1] for i in ra
 for i in range(1, 6):
     params[f'temp_F{i}'] = sam_result.csv_data[f'avg_Tf_{i}'][-1]
 
+params.show_summary(show_metadata=False, sort_by='time')
+
 # Run OpenMC plugin
-openmc_plugin = watts.PluginOpenMC(build_openmc_model)
+openmc_plugin = watts.PluginOpenMC(build_openmc_model, show_stderr=True) # show only error
 openmc_result = openmc_plugin.workflow(params)
 print("KEFF = ", openmc_result.keff)
 print(openmc_result.inputs)
 print(openmc_result.outputs)
+print(openmc_result.tallies[0].get_pandas_dataframe())
 
+power_fractions = openmc_result.tallies[0].get_values(scores=['nu-fission']).ravel()
+for i, power_frac in enumerate(power_fractions):
+    params[f'Init_P_{i+1}'] = power_frac
 
-
+params.show_summary(show_metadata=True, sort_by='time')

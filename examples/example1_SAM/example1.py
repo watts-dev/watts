@@ -1,7 +1,6 @@
 from math import cos, pi
 import watts
 
-
 params = watts.Parameters()
 
 # TH params
@@ -45,9 +44,11 @@ params['cl'] = params['Height_FC']*100 - 2 * params['ax_ref'] # cm
 params['pf'] = 40 # percent
 params['num_cpu'] = 60
 
+params.show_summary(show_metadata=False, sort_by='key')
+
 # SAM Workflow
 
-sam_plugin = watts.PluginSAM('sam_template')
+sam_plugin = watts.PluginSAM('sam_template', show_stdout=True) # show all the output
 sam_plugin.sam_exec = "/home/rhu/projects/SAM/sam-opt"
 sam_result = sam_plugin.workflow(params)
 for key in sam_result.csv_data:
