@@ -49,6 +49,7 @@ params['pf'] = 40 # percent
 # printout params
 params.show_summary(show_metadata=True, sort_by='time')
 conv_it = True
+nmax_it = 5
 
 list_keff = []
 while conv_it:
@@ -76,6 +77,7 @@ while conv_it:
 
     if len(list_keff) > 1 and (list_keff[-1]-list_keff[-2])/list_keff[-1] < 1e-4:
         conv_it = False
-
-
+        if len(list_keff) > nmax_it:
+            conv_it = False
 params.show_summary(show_metadata=True, sort_by='time')
+print (list_keff)
