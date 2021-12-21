@@ -4,10 +4,6 @@ from scipy.optimize import minimize
 from statistics import mean
 from openmc_template import build_openmc_model
 
-
-watts.tee_stdout = False # This doesn't seem to work.
-watts.tee_stderr = False
-
 params = watts.Parameters()
 # TH params
 params['He_inlet_temp'] = 600 + 273.15  # K

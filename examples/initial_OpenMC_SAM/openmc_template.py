@@ -271,9 +271,7 @@ def build_openmc_model(params):
 
     #lower_left, upper_right = main_cell.region.bounding_box
 
-    list_tally_cell = []
-    for cell in TALLY_REGIONS:
-        list_tally_cell.append(cell.id)
+    list_tally_cell = [cell.id for cell in TALLY_REGIONS]
     list_tally_scores = ['flux', 'nu-fission']
     cell_filter = openmc.CellFilter(list_tally_cell)
     tally_file = openmc.Tally()

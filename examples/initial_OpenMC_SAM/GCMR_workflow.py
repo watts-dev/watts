@@ -51,7 +51,6 @@ params.show_summary(show_metadata=True, sort_by='time')
 
 
 # SAM Workflow
-
 sam_plugin = watts.PluginSAM('../initial_SAM/sam_template', show_stderr=True) # show only error
 sam_plugin.sam_exec = "/home/rhu/projects/SAM/sam-opt"
 sam_result = sam_plugin.workflow(params)
@@ -73,7 +72,10 @@ openmc_result = openmc_plugin.workflow(params)
 print("KEFF = ", openmc_result.keff)
 print(openmc_result.inputs)
 print(openmc_result.outputs)
-print(openmc_results.tallies[0].get_pandas_dataframe())
+print(openmc_result.tallies[0].get_pandas_dataframe())
 
-for i in range(1, 6):
-    params[f'Init_P_{i}'] = 1 # I want to update the power fraction here using the tallied results from OpenMC in the 5 axial cells
+power_fractions = openmc_result.tallies[0].get_values(scores=['nu-fission'])
+for i, power_frac in enumerate(power_fractions):
+    params[f'Init_P_{i+1}'] = power_frac
+
+params.show_summary(show_metadata=True, sort_by='time')
