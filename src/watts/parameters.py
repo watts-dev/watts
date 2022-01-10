@@ -33,10 +33,16 @@ class Parameters(MutableMapping):
     metadata on (key, value) pairs and provides the ability to save/load the
     data to an HDF5 file.
 
+    Attributes
+    ----------
+    warn_duplicates : bool
+        Whether to write a warning if a key is added and already exists
+
     """
     def __init__(self, *args, **kwargs):
         self._dict = {}
         self._metadata = {}
+        self._warn_duplicates = False
 
         # Mimic the behavior of a normal dict object.
         if args:
@@ -75,6 +81,16 @@ class Parameters(MutableMapping):
     def __len__(self):
         return len(self._dict)
 
+    @property
+    def warn_duplicates(self) -> bool:
+        return self._warn_duplicates
+
+    @warn_duplicates.setter
+    def warn_duplicates(self, value):
+        if not isinstance(value, bool):
+            raise ValueError("warn_duplicates attribute must be a boolean.")
+        self._warn_duplicates = value
+
     def set(self, key: Any, value: Any, *, user: str = None, time: datetime = None):
         """Explicitly set a key/value pair with metadata
 
@@ -93,7 +109,7 @@ class Parameters(MutableMapping):
             user = getuser()
         if time is None:
             time = datetime.now()
-        if key in self._dict:
+        if self._warn_duplicates and key in self._dict:
             warn(f"Key {key} has already been added to parameters")
         self._dict[key] = value
         self._metadata[key] = ParametersMetadata(user, time)
