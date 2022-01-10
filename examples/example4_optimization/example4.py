@@ -15,8 +15,12 @@ params['He_viscosity'] = 4.16e-5 # Pa.s
 params['He_Pressure'] = 7e6    # Pa
 params['Tot_assembly_power'] = 250000 # W
 
-for i in range(1, 6):
-    params[f'Init_P_{i}'] = 1 # Fraction
+# power fractions coming from example 3
+params['Init_P_1'] = 0.26567586383363173
+params['Init_P_2'] = 0.2905585465106731 
+params['Init_P_3'] = 0.29676571959449854
+params['Init_P_4'] = 0.24839580939676342
+params['Init_P_5'] = 0.17495310589992397
 
 # Core design params
 params['ax_ref'] = 20 # cm
