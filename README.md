@@ -1,6 +1,6 @@
 # WATTS
 
-Workflow and Template Toolkit for Simulation (WATTS) under development supported by LDRD-2022-0046.
+Workflow and Template Toolkit for Simulation (WATTS) under development supported by LDRD-2022-0046. Questions? contact `watts@anl.gov`.
 
 ## Setup
 

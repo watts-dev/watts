@@ -47,10 +47,6 @@ def test_parameters_roundtrip(run_in_tmpdir):
         'str': 'String inside dictionary'
     }
 
-    # Add duplicate key
-    with pytest.warns(UserWarning):
-        params['int_scalar'] = 8
-
     # Save to HDF5
     params.save('params.h5')
     assert Path('params.h5').is_file()
@@ -89,6 +85,7 @@ def test_parameters_not_toplevel(run_in_tmpdir):
     # Compare original parameters with one from group in file
     _compare_params(params, new_model)
 
+
 def test_parameters_show_summary(capsys):
     params = watts.Parameters()
     params['colors'] = ('teal', 'grey', 'blue')
@@ -111,3 +108,19 @@ def test_parameters_show_summary(capsys):
         "+-----------+-------+\n"
     )
     assert out == expected_out
+
+
+@pytest.mark.xfail
+def test_parameters_duplicates_xfail():
+    # By default, no warning is given so this test is expected to fail
+    # TODO: when pytest 7.0 is released, use pytest.does_not_warn()
+    params = watts.Parameters(a=3)
+    with pytest.warns(UserWarning):
+        params['a'] = 8
+
+
+def test_parameters_duplicates():
+    params = watts.Parameters(a=3)
+    params.warn_duplicates = True
+    with pytest.warns(UserWarning):
+        params['a'] = 8
