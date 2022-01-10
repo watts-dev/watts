@@ -239,7 +239,7 @@ def build_openmc_model(params):
 
     # OpenMC expects that there is a root universe assigned number zero. Here we
     # assign our three cells to this root universe.
-    root_universe = openmc.Universe(universe_id=0, name='root universe', cells=(main_cell,))
+    root_universe = openmc.Universe(name='root universe', cells=(main_cell,))
 
     # Finally we must create a geometry and assign the root universe
     geometry = openmc.Geometry()
