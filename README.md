@@ -1,17 +1,26 @@
 # WATTS
 
-Workflow and Template Toolkit for Simulation (WATTS) under development supported by LDRD-2022-0046. Questions? contact `watts@anl.gov`.
+[![License](https://img.shields.io/badge/license-MIT-green)](https://opensource.org/licenses/MIT)
 
-## Setup
+WATTS (Workflow and Template Toolkit for Simulation) provides a set of Python
+classes that can manage simulation workflows for multiple codes where
+information is exchanged at a coarse level. For each code, input files rely on
+placeholder values that are filled in based on a set of user-defined parameters.
 
-- git clone https://git-out.gss.anl.gov/nstauff/watts
+WATTS is being developed with support from Argonne National Laboratory. For any
+questions, please contact [watts@anl.gov](mailto:watts@anl.gov).
+
+## Installation
+
+- git clone https://github.com/watts-dev/watts
 - cd watts
 - pip install -U pip
-- pip install -e .
+- pip install .
 
 ## Documentation
 
 To build the documentation, you can run:
+
 - cd doc
 - pip install -r requirements.txt
 - make html
