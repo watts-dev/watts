@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
+# SPDX-License-Identifier: MIT
+
 from math import cos, pi
 import watts
 from scipy.optimize import minimize
@@ -17,7 +20,7 @@ params['Tot_assembly_power'] = 250000 # W
 
 # power fractions coming from example 3
 params['Init_P_1'] = 0.26567586383363173
-params['Init_P_2'] = 0.2905585465106731 
+params['Init_P_2'] = 0.2905585465106731
 params['Init_P_3'] = 0.29676571959449854
 params['Init_P_4'] = 0.24839580939676342
 params['Init_P_5'] = 0.17495310589992397

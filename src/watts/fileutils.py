@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
+# SPDX-License-Identifier: MIT
+
 from contextlib import contextmanager
 import os
 import platform

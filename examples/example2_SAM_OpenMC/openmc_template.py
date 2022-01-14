@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
+# SPDX-License-Identifier: MIT
+
 from math import sqrt
 
 import openmc
@@ -235,7 +238,7 @@ def build_openmc_model(params):
     new_universe_lat_core = openmc.Universe(cells=(new_cell_lat_core,))
 
     main_cell = openmc.Cell(name="MainCell",fill=new_universe_lat_core, region=Hex_Pitch &  +min_z & -max_z )
-    
+
 
     # OpenMC expects that there is a root universe assigned number zero. Here we
     # assign our three cells to this root universe.

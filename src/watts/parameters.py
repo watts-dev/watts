@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
+# SPDX-License-Identifier: MIT
+
 import textwrap
 from collections import namedtuple
 from collections.abc import MutableMapping, Mapping, Iterable

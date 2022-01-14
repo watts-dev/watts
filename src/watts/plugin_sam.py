@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
+# SPDX-License-Identifier: MIT
+
 from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime
 import os
