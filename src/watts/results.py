@@ -1,5 +1,5 @@
-# SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
-# SPDX-License-Identifier: MIT
+#SPDX - FileCopyrightText : 2022 UChicago Argonne, LLC
+#SPDX - License - Identifier : MIT
 
 from datetime import datetime
 from pathlib import Path
@@ -50,9 +50,9 @@ class Results:
         """
 
         dst_path = Path(dst)
-        # Move input/output files and change base -- note that trying to use the
-        # Path.replace method doesn't work across filesystems, so instead we use
-        # shutil.move
+#Move input / output files and change base-- note that trying to use the
+#Path.replace method doesn't work across filesystems, so instead we use
+#shutil.move
         for i, input in enumerate(self.inputs):
             shutil.move(str(input), str(dst_path / input.name))
             self.inputs[i] = dst_path / input.name
@@ -96,6 +96,8 @@ class Results:
                 result = watts.ResultsOpenMC._from_hdf5(h5file)
             elif plugin == 'SAM':
                 result = watts.ResultsSAM._from_hdf5(h5file)
+            elif plugin == 'BISON':
+                result = watts.ResultsBISON._from_hdf5(h5file)
             else:
                 raise RuntimeError(f"Unrecognized plugin in results: {plugin}")
 

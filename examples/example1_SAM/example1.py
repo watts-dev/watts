@@ -52,7 +52,7 @@ params.show_summary(show_metadata=False, sort_by='key')
 # SAM Workflow
 
 sam_plugin = watts.PluginSAM('sam_template', show_stdout=True) # show all the output
-sam_plugin.sam_exec = "/home/rhu/projects/SAM/sam-opt"
+sam_plugin.sam_exec = "/Users/admin_ym/projects/NS_LDRD/SAM/sam-opt"
 sam_result = sam_plugin.workflow(params)
 for key in sam_result.csv_data:
     print(key, sam_result.csv_data[key])
