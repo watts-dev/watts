@@ -62,7 +62,7 @@ def calc_workflow(X):
 
     # SAM workflow
     sam_plugin = watts.PluginSAM('../example1_SAM/sam_template', show_stderr=False) # does not show anything
-    sam_plugin.sam_exec = "/home/rhu/projects/SAM/sam-opt"
+    #sam_plugin.sam_exec = "/home/rhu/projects/SAM/sam-opt"
     sam_result = sam_plugin.workflow(params)
     max_Tf = max(sam_result.csv_data[f'max_Tf_{i}'][-1] for i in range(1, 6))
     avg_Tf = mean(sam_result.csv_data[f'avg_Tf_{i}'][-1] for i in range(1, 6))
