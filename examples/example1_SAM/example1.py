@@ -20,7 +20,7 @@ params['Tot_assembly_power'] = 250000 # W
 for i in range(1, 6):
     params[f'Init_P_{i}'] = 1 # Fraction
 
-# Core design params
+# Core design params - some are not used in SAM model
 params['ax_ref'] = 20 # cm
 params['num_cool_pins'] = 1*6+2*6+6*2/2
 params['num_fuel_pins'] = 6+6+6+3*6+2*6/2+6/3
@@ -36,16 +36,6 @@ params['mod_ext_rad'] = 0.90 # cm
 params['shell_thick'] = 0.05   # FeCrAl
 params['liner_thick'] = 0.007  # Cr
 params['control_pin_rad'] = 0.99 # cm
-
-# Control use of S(a,b) tables
-params['use_sab'] = True
-params['use_sab_BeO'] = True
-params['use_sab_YH2'] = False
-
-# OpenMC params
-params['cl'] = params['Height_FC']*100 - 2 * params['ax_ref'] # cm
-params['pf'] = 40 # percent
-params['num_cpu'] = 60
 
 params.show_summary(show_metadata=False, sort_by='key')
 
