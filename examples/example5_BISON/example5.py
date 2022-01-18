@@ -39,7 +39,7 @@ params.show_summary(show_metadata=False, sort_by='key')
 # BISON Workflow
 
 bison_plugin = watts.PluginBISON('bison_template', show_stdout=True) # show all the output
-bison_plugin.bison_exec = "/Users/admin_ym/projects/NS_LDRD/bison/bison-opt"
+#bison_plugin.bison_exec = "/Users/admin_ym/projects/NS_LDRD/bison/bison-opt"
 bison_result = bison_plugin.workflow(params)
 for key in bison_result.csv_data:
     print(key, bison_result.csv_data[key])
