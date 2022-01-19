@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 from math import cos, pi
+import os
 import watts
 from statistics import mean
 from openmc_template import build_openmc_model
@@ -57,9 +58,11 @@ conv_criteria = 1e-4
 
 list_keff = []
 while conv_it:
-    # SAM Workflow
-    sam_plugin = watts.PluginSAM('../example1_SAM/sam_template', show_stderr=True) # show only error
-    #sam_plugin.sam_exec = "/home/rhu/projects/SAM/sam-opt"
+    # MOOSE Workflow
+    moose_app_type = "SAM"
+    app_dir = os.environ[moose_app_type.upper() + "_DIR"]
+    sam_plugin = watts.PluginMOOSE('../example1_SAM/sam_template', show_stderr=True) # show only error
+    sam_plugin.moose_exec = app_dir + "/" + moose_app_type.lower() + "-opt"
     sam_result = sam_plugin.workflow(params)
 
     # get temperature from SAM results

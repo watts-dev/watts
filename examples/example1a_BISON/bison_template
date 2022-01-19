@@ -256,7 +256,6 @@
   console = true
   [csv_vec]
     type = CSV
-    file_base = cc_wastage_ht9_eff_full_pin_profile
     execute_on = final
   []
 []

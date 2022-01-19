@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 from math import cos, pi
+import os
 import watts
 from scipy.optimize import minimize
 from statistics import mean
@@ -60,9 +61,12 @@ def calc_workflow(X):
 
     print("FuelPin_rad / cool_hole_rad", X[0], X[1])
 
-    # SAM workflow
-    sam_plugin = watts.PluginSAM('../example1_SAM/sam_template', show_stderr=False) # does not show anything
-    #sam_plugin.sam_exec = "/home/rhu/projects/SAM/sam-opt"
+    # MOOSE Workflow
+    # set your SAM directorate as SAM_DIR
+    moose_app_type = "SAM"
+    app_dir = os.environ[moose_app_type.upper() + "_DIR"]
+    sam_plugin = watts.PluginMOOSE('../example1_SAM/sam_template', show_stderr=False) # does not show anything
+    sam_plugin.moose_exec = app_dir + "/" + moose_app_type.lower() + "-opt"
     sam_result = sam_plugin.workflow(params)
     max_Tf = max(sam_result.csv_data[f'max_Tf_{i}'][-1] for i in range(1, 6))
     avg_Tf = mean(sam_result.csv_data[f'avg_Tf_{i}'][-1] for i in range(1, 6))

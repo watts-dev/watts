@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 from math import cos, pi
+import os
 import watts
 
 params = watts.Parameters()
@@ -39,12 +40,15 @@ params['control_pin_rad'] = 0.99 # cm
 
 params.show_summary(show_metadata=False, sort_by='key')
 
-# SAM Workflow
+# MOOSE Workflow
+# set your SAM directorate as SAM_DIR
 
-sam_plugin = watts.PluginSAM('sam_template', show_stdout=True) # show all the output
-#sam_plugin.sam_exec = "/home/rhu/projects/SAM/sam-opt"
-sam_result = sam_plugin.workflow(params)
-for key in sam_result.csv_data:
-    print(key, sam_result.csv_data[key])
-print(sam_result.inputs)
-print(sam_result.outputs)
+moose_app_type = "SAM"
+app_dir = os.environ[moose_app_type.upper() + "_DIR"]
+moose_plugin = watts.PluginMOOSE(moose_app_type.lower() + '_template', show_stdout=True) # show all the output
+moose_plugin.moose_exec = app_dir + "/" + moose_app_type.lower() + "-opt"
+moose_result = moose_plugin.workflow(params)
+for key in moose_result.csv_data:
+    print(key, moose_result.csv_data[key])
+print(moose_result.inputs)
+print(moose_result.outputs)
