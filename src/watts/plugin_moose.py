@@ -125,12 +125,15 @@ class PluginMOOSE(TemplatePlugin):
 
     """
     def  __init__(self, template_file: str, show_stdout: bool = False,
-                  show_stderr: bool = False):
+                  show_stderr: bool = False, n_cpu: int = 1):
         super().__init__(template_file)
         self._moose_exec = Path('moose-opt')
         self.moose_inp_name = "MOOSE.i"
         self.show_stdout = show_stdout
         self.show_stderr = show_stderr
+        if n_cpu < 1:
+            raise RuntimeError(f"The CPU number used to run MOOSE app must be a natural number.")
+        self.n_cpu = n_cpu
 
     @property
     def moose_exec(self) -> Path:
@@ -176,7 +179,7 @@ class PluginMOOSE(TemplatePlugin):
             func_stdout = tee_stdout if self.show_stdout else redirect_stdout
             func_stderr = tee_stderr if self.show_stderr else redirect_stderr
             with func_stdout(outfile), func_stderr(outfile):
-                run_proc([self.moose_exec, "-i", self.moose_inp_name])
+                run_proc(["mpiexec", "-n", str(self.n_cpu) , self.moose_exec, "-i", self.moose_inp_name])
 
 
     def postrun(self, params: Parameters) -> ResultsMOOSE:
