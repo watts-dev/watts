@@ -55,38 +55,38 @@ def test_results_openmc(run_in_tmpdir):
     assert new_results.stdout == results.stdout
 
 
-def test_results_sam(run_in_tmpdir):
+def test_results_moose(run_in_tmpdir):
     params = watts.Parameters(city='Chicago', population=2.7e6)
     now = datetime.now()
 
     # Create some fake input files
-    sam_inp = Path('SAM.i')
-    sam_inp.touch()
-    inputs = [sam_inp]
+    moose_inp = Path('MOOSE.i')
+    moose_inp.touch()
+    inputs = [moose_inp]
 
     # Create fake output files
-    csv = Path('SAM_csv.csv')
+    csv = Path('MOOSE_csv.csv')
     csv.write_text("""\
 prop1,prop2
 3.5,1
 4.0,2
 5.0,3
     """)
-    stdout = Path('SAM_log.txt')
-    stdout.write_text('SAM standard out\n')
+    stdout = Path('MOOSE_log.txt')
+    stdout.write_text('MOOSE standard out\n')
     outputs = [csv, stdout]
 
-    results = watts.ResultsSAM(params, now, inputs, outputs)
+    results = watts.ResultsMOOSE(params, now, inputs, outputs)
 
     # Sanity checks
-    assert results.plugin == 'SAM'
+    assert results.plugin == 'MOOSE'
     assert results.parameters == params
     assert results.time == now
     assert results.inputs == inputs
     assert results.outputs == outputs
 
     # Other attributes
-    assert results.stdout == 'SAM standard out\n'
+    assert results.stdout == 'MOOSE standard out\n'
     np.testing.assert_equal(results.csv_data['prop1'], [3.5, 4.0, 5.0])
     np.testing.assert_equal(results.csv_data['prop2'], [1, 2, 3])
 
@@ -97,7 +97,7 @@ prop1,prop2
 
     # Ensure results read from file match
     new_results = watts.Results.from_hdf5(p)
-    assert isinstance(new_results, watts.ResultsSAM)
+    assert isinstance(new_results, watts.ResultsMOOSE)
     assert new_results.parameters == results.parameters
     assert new_results.time == results.time
     assert new_results.inputs == results.inputs
