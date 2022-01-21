@@ -36,6 +36,22 @@
     type = CentroidMultiApp
     input_files = 'sub.i'
     output_in_position = true
+    cli_args = 'swelling_coeff={{ Swelling_Coefficient }}'
+  []
+[]
+
+[Postprocessors]
+  [avg_swell]
+    type = ElementAverageValue
+    variable = swell_strain
+  []
+[]
+
+[VectorPostprocessors]
+  [element_value_sampler]
+    type = ElementValueSampler
+    variable = 'swell_strain'
+    sort_by = id
   []
 []
 
@@ -59,5 +75,7 @@
 []
 
 [Outputs]
-  exodus = true
+  [csv]
+    type = CSV
+  []
 []

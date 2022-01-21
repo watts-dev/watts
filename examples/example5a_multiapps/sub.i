@@ -1,3 +1,5 @@
+# swelling_coeff = 2000.0
+
 [Problem]
   solve = false
 []
@@ -12,7 +14,7 @@
 [Functions]
   [swell_func]
     type = ParsedFunction
-    value = '(temp/2000.0)^2.0'
+    value = '(temp/${swelling_coeff})^2.0'
     vars = 'temp'
     vals = 'temp_pp'
   []
