@@ -117,6 +117,10 @@ class PluginMOOSE(TemplatePlugin):
         Whether to display output from stdout when MOOSE is run
     show_stderr
         Whether to display output from stderr when MOOSE is run
+    n_cpu
+        Number of processors to be used to run MOOSE application
+    supp_inputs
+        List of supplementary input files that are needed for running the MOOSE application
 
     Attributes
     ----------
