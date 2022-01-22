@@ -134,9 +134,7 @@ class PluginMOOSE(TemplatePlugin):
         if n_cpu < 1:
             raise RuntimeError("The CPU number used to run MOOSE app must be a natural number.")
         self.n_cpu = n_cpu
-        self.supp_inputs = []
-        for sif in supp_inputs:
-            self.supp_inputs = self.supp_inputs + [Path(os.path.abspath(sif))]
+        self.supp_inputs = [Path(f).resolve() for f in supp_inputs]
 
     @property
     def moose_exec(self) -> Path:
