@@ -132,7 +132,7 @@ class PluginMOOSE(TemplatePlugin):
         self.show_stdout = show_stdout
         self.show_stderr = show_stderr
         if n_cpu < 1:
-            raise RuntimeError(f"The CPU number used to run MOOSE app must be a natural number.")
+            raise RuntimeError("The CPU number used to run MOOSE app must be a natural number.")
         self.n_cpu = n_cpu
         self.supp_inputs = []
         for sif in supp_inputs:
