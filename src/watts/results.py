@@ -50,9 +50,9 @@ class Results:
         """
 
         dst_path = Path(dst)
-#Move input / output files and change base-- note that trying to use the
-#Path.replace method doesn't work across filesystems, so instead we use
-#shutil.move
+        # Move input/output files and change base -- note that trying to use the
+        # Path.replace method doesn't work across filesystems, so instead we use
+        # shutil.move
         for i, input in enumerate(self.inputs):
             shutil.move(str(input), str(dst_path / input.name))
             self.inputs[i] = dst_path / input.name
