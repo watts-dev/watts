@@ -1,0 +1,261 @@
+{#-
+    Create fuel design parameters for a metallic fuel pin
+#}
+{#-
+    Render the parameters
+#}
+
+[GlobalParams]
+  order = FIRST
+  family = LAGRANGE
+  energy_per_fission = 3.2e-11  # J/fission
+  X_Zr = 0.225
+  X_Pu = 0.0
+[]
+
+[Problem]
+  coord_type = RZ
+  type = ReferenceResidualProblem
+  reference_vector = 'ref'
+  extra_tag_vectors = 'ref'
+[]
+
+[Mesh]
+  type = SmearedPelletMesh
+  clad_thickness = {{ Cladding_Thickness }}
+  pellet_outer_radius = {{ Fuel_Outer_Radius }}
+  pellet_height = {{ Fuel_Length }}
+  clad_top_gap_height = {{ Cladding_Top_Gap }}
+  clad_gap_width = {{ Cladding_Side_Gap }}
+  top_bot_clad_height = {{ Cladding_End_Cap_Thickness }}
+  clad_bot_gap_height = {{ Cladding_Bottom_Gap }}
+  clad_mesh_density = customize
+  pellet_mesh_density = customize
+  nx_p = {{ Fuel_Radial_Intervals }}
+  ny_p = {{ Fuel_Axial_Intervals }}
+  nx_c = {{ Cladding_Radial_Intervals }}
+  ny_c = {{ Cladding_Axial_Intervals }}
+  ny_cu = {{ Cladding_Upper_End_Cap_Axial_Intervals }}
+  ny_cl = {{ Cladding_Lower_End_Cap_Axial_Intervals }}
+  pellet_quantity = 1
+  elem_type = QUAD4
+  patch_size = 20
+  patch_update_strategy = auto
+  partitioner = centroid
+  centroid_partitioner_direction = y
+  allow_renumbering = false
+[]
+
+[Variables]
+  [temp]
+    initial_condition = 298
+  []
+[]
+
+[Functions]
+  [power_history]
+    type = PiecewiseLinear
+    x = '0 1E6 1E7'
+    y = '0 2E4 3E4'
+  []
+  [pwr_axial_peaking_factors]
+    type = ConstantFunction
+    value = 1.0
+  []
+  [pwr_cdf]
+    type = PiecewiseLinear
+    axis = y
+    x = '0 2.55e-3 342.5e-3'
+    y = '0 0 1'
+  []
+[]
+
+[Kernels]
+  [heat]
+    type = HeatConduction
+    variable = temp
+    extra_vector_tags = 'ref'
+  []
+  [heat_ie_f]
+    type = HeatConductionTimeDerivative
+    variable = temp
+    extra_vector_tags = 'ref'
+    block = pellet
+    density_name = 16000
+  []
+  [heat_ie_c]
+    type = HeatConductionTimeDerivative
+    variable = temp
+    extra_vector_tags = 'ref'
+    block = clad
+    density_name = 7890
+  []
+  [heat_source]
+    type = FissionRateHeatSource
+    variable = temp
+    block = pellet
+    fission_rate = fission_rate
+    extra_vector_tags = 'ref'
+  []
+[]
+
+[ThermalContact]
+  [thermal_contact]
+    type = GapHeatTransfer
+    variable = temp
+    primary = 5
+    secondary = 10
+    quadrature = true
+    gap_conductivity = 61.0
+    min_gap = 1e-6
+  []
+[]
+
+[Modules/FluidProperties]
+  [sodium_uo]
+    type = SodiumProperties
+  []
+[]
+
+[BCs]
+  [convection]
+    type = ConvectiveHeatFluxBC
+    variable = temp
+    boundary = 2
+    T_infinity = coolant_temperature
+    heat_transfer_coefficient = coolant_channel_htc
+  []
+[]
+
+[Materials]
+  [coolant]
+    type = SodiumCoolantChannelMaterial
+    inlet_temperature_function = {{ Inlet_Coolant_Temperature }}
+    rod_linear_power = power_history
+    inlet_massflux_function = {{ Inlet_Coolant_Mass_Flux }}
+    axial_power_profile_cdf = pwr_cdf
+    pellet_height = {{ Fuel_Length }}
+    cladding_radius = {{ Cladding_Outer_Radius }}
+    boundary = clad_outside_right
+    wire_wrap_diameter = {{ Wrapping_Wire_Thickness }}
+    temperature = temp
+    sodium_user_object = sodium_uo
+    htc_model = BGF
+    update_temperature = true
+    pin_location = interior
+    peclet_limit_behavior = error
+    outputs = all
+  []
+  [fission_rate]
+    type = UPuZrFissionRate
+    rod_linear_power = power_history
+    axial_power_profile = pwr_axial_peaking_factors
+    pellet_radius = {{ Fuel_Outer_Radius }}
+    outputs = all
+  []
+  [burnup]
+    type = UPuZrBurnup
+    density = {{ Fuel_Density }}
+    outputs = all
+  []
+  [cc_wastage_thickness]
+    type = MetallicFuelCoolantWastage
+    clad_material = HT9
+    use_effective_method = true
+    temperature = temp
+    boundary = 2
+    outputs = all
+  []
+  [metal_fuel_thermal]
+    type = UPuZrThermal
+    block = pellet
+    spheat_model = savage
+    thcond_model = lanl
+    porosity = 0
+    temperature = temp
+  []
+  [clad_thermal]
+    type = HT9Thermal
+    block = clad
+    temperature = temp
+  []
+[]
+
+[Dampers]
+  [limitT]
+    type = MaxIncrement
+    max_increment = 50
+    variable = temp
+  []
+[]
+
+[Preconditioning]
+  [SMP]
+    type = SMP
+    full = true
+  []
+[]
+
+[Executioner]
+  type = Transient
+
+  solve_type = 'PJFNK'
+  petsc_options = '-snes_ksp_ew'
+  petsc_options_iname = '-pc_type -pc_factor_mat_solver_package -ksp_gmres_restart'
+  petsc_options_value = 'lu       superlu_dist                  51'
+  line_search = 'none'
+
+  l_max_its = 100
+  l_tol = 1e-3
+
+  nl_max_its = 50
+  nl_rel_tol = 1e-4
+  nl_abs_tol = 1e-8
+
+  end_time = 1E7
+  dt = 5E5
+
+  [Quadrature]
+    order = fifth
+    side_order = seventh
+  []
+[]
+
+[Postprocessors]
+  [peak_clad_outer_temp]
+    type = NodalExtremeValue
+    variable = temp
+    value_type = max
+    boundary = 2
+    outputs = 'console'
+  []
+  [time_max_clad_outer_temp]
+    type = TimeExtremeValue
+    postprocessor = peak_clad_outer_temp
+    outputs = 'console'
+  []
+  [max_wastagethickness]
+    type = ElementExtremeValue
+    value_type = max
+    variable = cc_wastage_thickness
+    outputs = 'console'
+  []
+[]
+
+[VectorPostprocessors]
+  [cc_wastage_profile]
+    type = SideValueSampler
+    boundary = 2
+    sort_by = y
+    variable = cc_wastage_thickness
+  []
+[]
+
+[Outputs]
+  perf_graph = true
+  console = true
+  [csv_vec]
+    type = CSV
+    execute_on = final
+  []
+[]

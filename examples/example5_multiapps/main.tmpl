@@ -1,0 +1,81 @@
+[Problem]
+  solve = false
+[]
+
+[Mesh]
+  file = main_in.e
+[]
+
+[AuxVariables]
+  [temp]
+    initial_condition = {{ Initial_Temp }}
+  []
+  [swell_strain]
+    initial_condition = 0.0
+    family = MONOMIAL
+    order = CONSTANT
+  []
+[]
+
+[AuxKernels]
+  [./temp_aux]
+    type = FunctionAux
+    variable = temp
+    function = '{{ Initial_Temp }} + x^2 * 0.2 * t + y^2 * 0.5 * t'
+  [../]
+[]
+
+[Executioner]
+  type = Transient
+  end_time = 10
+  dt = 1
+[]
+
+[MultiApps]
+  [sub]
+    type = CentroidMultiApp
+    input_files = 'sub.i'
+    output_in_position = true
+    cli_args = 'swelling_coeff={{ Swelling_Coefficient }}'
+  []
+[]
+
+[Postprocessors]
+  [avg_swell]
+    type = ElementAverageValue
+    variable = swell_strain
+  []
+[]
+
+[VectorPostprocessors]
+  [element_value_sampler]
+    type = ElementValueSampler
+    variable = 'swell_strain'
+    sort_by = id
+  []
+[]
+
+[Transfers]
+  [temp_trans]
+    type = MultiAppVariableValueSamplePostprocessorTransfer
+    source_variable = temp
+    direction = to_multiapp
+    multi_app = sub
+    postprocessor = temp_pp
+    execute_on = 'INITIAL TIMESTEP_BEGIN'
+  []
+  [swell_back]
+    direction = from_multiapp
+    postprocessor = swell_strain
+    variable = swell_strain
+    type = MultiAppPostprocessorInterpolationTransfer
+    multi_app = sub
+    execute_on = 'INITIAL TIMESTEP_BEGIN'
+  []
+[]
+
+[Outputs]
+  [csv]
+    type = CSV
+  []
+[]

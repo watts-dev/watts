@@ -20,8 +20,8 @@ from .plugin import TemplatePlugin
 from .results import Results
 
 
-class ResultsSAM(Results):
-    """SAM simulation results
+class ResultsMOOSE(Results):
+    """MOOSE simulation results
 
     Parameters
     ----------
@@ -37,38 +37,38 @@ class ResultsSAM(Results):
     Attributes
     ----------
     stdout
-        Standard output from SAM run
+        Standard output from MOOSE run
     csv_data
         Dictionary with data from .csv files
     """
     def __init__(self, params: Parameters, time: datetime,
                  inputs: List[PathLike], outputs: List[PathLike]):
-        super().__init__('SAM', params, time, inputs, outputs)
-        self.csv_data = self._save_SAM_csv()
+        super().__init__('MOOSE', params, time, inputs, outputs)
+        self.csv_data = self._save_MOOSE_csv()
 
     @property
     def stdout(self) -> str:
-        return (self.base_path / "SAM_log.txt").read_text()
+        return (self.base_path / "MOOSE_log.txt").read_text()
 
-    def _save_SAM_csv(self) -> dict:
-        """Read all SAM '.csv' files and return results in a dictionary
+    def _save_MOOSE_csv(self) -> dict:
+        """Read all MOOSE '.csv' files and return results in a dictionary
 
         Returns
         -------
-        Results from SAM .csv files
+        Results from MOOSE .csv files
 
         """
         input_file = self.inputs[0]
         csv_file = input_file.with_name(f"{input_file.stem}_csv.csv")
 
-        # Save SAM's main output '.csv' files
+        # Save MOOSE's main output '.csv' files
         csv_data = {}
         if csv_file.exists():
             csv_file_df = pd.read_csv(csv_file)
             for column_name in csv_file_df.columns:
                 csv_data[column_name] =  np.array(csv_file_df[column_name])
 
-        # Read SAM's vector postprocesssor '.csv' files and save the parameters as individual array
+        # Read MOOSE's vector postprocesssor '.csv' files and save the parameters as individual array
         for output in self.outputs:
             if output.name.startswith(f"{input_file.stem}_csv_") and not output.name.endswith("_0000.csv"):
                 vector_csv_df = pd.read_csv(output)
@@ -106,54 +106,62 @@ class ResultsSAM(Results):
         return cls(parameters, time, inputs, outputs)
 
 
-class PluginSAM(TemplatePlugin):
-    """Plugin for running SAM
+class PluginMOOSE(TemplatePlugin):
+    """Plugin for running MOOSE
 
     Parameters
     ----------
     template_file
-        Templated SAM input
+        Templated MOOSE input
     show_stdout
-        Whether to display output from stdout when SAM is run
+        Whether to display output from stdout when MOOSE is run
     show_stderr
-        Whether to display output from stderr when SAM is run
+        Whether to display output from stderr when MOOSE is run
+    n_cpu
+        Number of processors to be used to run MOOSE application
+    supp_inputs
+        List of supplementary input files that are needed for running the MOOSE application
 
     Attributes
     ----------
-    sam_exec
-        Path to SAM executable
+    moose_exec
+        Path to MOOSE executable
 
     """
     def  __init__(self, template_file: str, show_stdout: bool = False,
-                  show_stderr: bool = False):
+                  show_stderr: bool = False, n_cpu: int = 1, supp_inputs: List[str] = []):
         super().__init__(template_file)
-        self._sam_exec = Path('sam-opt')
-        self.sam_inp_name = "SAM.i"
+        self._moose_exec = Path('moose-opt')
+        self.moose_inp_name = "MOOSE.i"
         self.show_stdout = show_stdout
         self.show_stderr = show_stderr
+        if n_cpu < 1:
+            raise RuntimeError("The CPU number used to run MOOSE app must be a natural number.")
+        self.n_cpu = n_cpu
+        self.supp_inputs = [Path(f).resolve() for f in supp_inputs]
 
     @property
-    def sam_exec(self) -> Path:
-        return self._sam_exec
+    def moose_exec(self) -> Path:
+        return self._moose_exec
 
-    @sam_exec.setter
-    def sam_exec(self, exe: PathLike):
+    @moose_exec.setter
+    def moose_exec(self, exe: PathLike):
         if shutil.which(exe) is None:
-            raise RuntimeError(f"SAM executable '{exe}' is missing.")
-        self._sam_exec = Path(exe)
+            raise RuntimeError(f"MOOSE executable '{exe}' is missing.")
+        self._moose_exec = Path(exe)
 
-    def options(self, sam_exec):
-        """Input SAM user-specified options
+    def options(self, moose_exec):
+        """Input MOOSE user-specified options
 
         Parameters
         ----------
-        SAM_exec
-            Path to SAM executable
+        MOOSE_exec
+            Path to MOOSE executable
         """
-        self.sam_exec = sam_exec
+        self.moose_exec = moose_exec
 
     def prerun(self, params: Parameters):
-        """Generate the SAM input based on the template
+        """Generate the MOOSE input based on the template
 
         Parameters
         ----------
@@ -163,38 +171,37 @@ class PluginSAM(TemplatePlugin):
         """
         self._run_time = time.time_ns()
         # Render the template
-        print("Pre-run for SAM Plugin")
-        super().prerun(params, filename=self.sam_inp_name)
+        print("Pre-run for MOOSE Plugin")
+        super().prerun(params, filename=self.moose_inp_name)
 
     def run(self):
-        """Run SAM"""
-        print("Run for SAM Plugin")
+        """Run MOOSE"""
+        print("Run for MOOSE Plugin")
 
-        log_file = Path("SAM_log.txt")
+        log_file = Path("MOOSE_log.txt")
 
         with log_file.open("w") as outfile:
             func_stdout = tee_stdout if self.show_stdout else redirect_stdout
             func_stderr = tee_stderr if self.show_stderr else redirect_stderr
             with func_stdout(outfile), func_stderr(outfile):
-                run_proc([self.sam_exec, "-i", self.sam_inp_name])
+                run_proc(["mpiexec", "-n", str(self.n_cpu) , self.moose_exec, "-i", self.moose_inp_name])
 
 
-    def postrun(self, params: Parameters) -> ResultsSAM:
-        """Read SAM results and create results object
+    def postrun(self, params: Parameters) -> ResultsMOOSE:
+        """Read MOOSE results and create results object
 
         Parameters
         ----------
         params
-            Parameters used to create SAM model
+            Parameters used to create MOOSE model
 
         Returns
         -------
-        SAM results object
+        MOOSE results object
         """
-        print("Post-run for SAM Plugin")
+        print("Post-run for MOOSE Plugin")
 
         time = datetime.fromtimestamp(self._run_time * 1e-9)
-        inputs = ['SAM.i']
+        inputs = ['MOOSE.i']
         outputs = [p for p in Path.cwd().iterdir() if p.name not in inputs]
-        return ResultsSAM(params, time, inputs, outputs)
-
+        return ResultsMOOSE(params, time, inputs, outputs)

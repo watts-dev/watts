@@ -3,7 +3,7 @@
 
 from .plugin import *
 from .plugin_openmc import *
-from .plugin_sam import *
+from .plugin_moose import *
 from .template import *
 from .parameters import *
 from .database import *

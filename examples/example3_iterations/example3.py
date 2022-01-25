@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 from math import cos, pi
+import os
 import watts
 from statistics import mean
 from openmc_template import build_openmc_model
@@ -53,12 +54,15 @@ params['pf'] = 40 # percent
 params.show_summary(show_metadata=True, sort_by='time')
 conv_it = True
 nmax_it = 5
+conv_criteria = 1e-4
 
 list_keff = []
 while conv_it:
-    # SAM Workflow
-    sam_plugin = watts.PluginSAM('../example1_SAM/sam_template', show_stderr=True) # show only error
-    sam_plugin.sam_exec = "/home/rhu/projects/SAM/sam-opt"
+    # MOOSE Workflow
+    moose_app_type = "SAM"
+    app_dir = os.environ[moose_app_type.upper() + "_DIR"]
+    sam_plugin = watts.PluginMOOSE('../example1a_SAM/sam_template', show_stderr=True) # show only error
+    sam_plugin.moose_exec = app_dir + "/" + moose_app_type.lower() + "-opt"
     sam_result = sam_plugin.workflow(params)
 
     # get temperature from SAM results
@@ -78,7 +82,7 @@ while conv_it:
     for i, power_frac in enumerate(power_fractions):
         params[f'Init_P_{i+1}'] = power_frac
 
-    if len(list_keff) > 1 and (list_keff[-1]-list_keff[-2])/list_keff[-1] < 1e-4:
+    if len(list_keff) > 1 and (list_keff[-1]-list_keff[-2])/list_keff[-1] < conv_criteria:
         conv_it = False
         if len(list_keff) > nmax_it:
             conv_it = False

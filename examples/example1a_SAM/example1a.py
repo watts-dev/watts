@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 from math import cos, pi
+import os
 import watts
 
 params = watts.Parameters()
@@ -20,7 +21,7 @@ params['Tot_assembly_power'] = 250000 # W
 for i in range(1, 6):
     params[f'Init_P_{i}'] = 1 # Fraction
 
-# Core design params
+# Core design params - some are not used in SAM model
 params['ax_ref'] = 20 # cm
 params['num_cool_pins'] = 1*6+2*6+6*2/2
 params['num_fuel_pins'] = 6+6+6+3*6+2*6/2+6/3
@@ -37,24 +38,17 @@ params['shell_thick'] = 0.05   # FeCrAl
 params['liner_thick'] = 0.007  # Cr
 params['control_pin_rad'] = 0.99 # cm
 
-# Control use of S(a,b) tables
-params['use_sab'] = True
-params['use_sab_BeO'] = True
-params['use_sab_YH2'] = False
-
-# OpenMC params
-params['cl'] = params['Height_FC']*100 - 2 * params['ax_ref'] # cm
-params['pf'] = 40 # percent
-params['num_cpu'] = 60
-
 params.show_summary(show_metadata=False, sort_by='key')
 
-# SAM Workflow
+# MOOSE Workflow
+# set your SAM directorate as SAM_DIR
 
-sam_plugin = watts.PluginSAM('sam_template', show_stdout=True) # show all the output
-sam_plugin.sam_exec = "/home/rhu/projects/SAM/sam-opt"
-sam_result = sam_plugin.workflow(params)
-for key in sam_result.csv_data:
-    print(key, sam_result.csv_data[key])
-print(sam_result.inputs)
-print(sam_result.outputs)
+moose_app_type = "SAM"
+app_dir = os.environ[moose_app_type.upper() + "_DIR"]
+moose_plugin = watts.PluginMOOSE(moose_app_type.lower() + '_template', show_stdout=True) # show all the output
+moose_plugin.moose_exec = app_dir + "/" + moose_app_type.lower() + "-opt"
+moose_result = moose_plugin.workflow(params)
+for key in moose_result.csv_data:
+    print(key, moose_result.csv_data[key])
+print(moose_result.inputs)
+print(moose_result.outputs)

@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 from abc import ABC, abstractmethod
+import os
 from pathlib import Path
 import shutil
 from typing import Optional
@@ -59,6 +60,10 @@ class Plugin(ABC):
 
         with cd_tmpdir():
             # Run workflow in temporary directory
+            if hasattr(self, 'supp_inputs'):
+                des = os.getcwd()
+                for sifp in self.supp_inputs:
+                    shutil.copy(str(sifp), des)
             self.prerun(params)
             self.run()
             result = self.postrun(params)
