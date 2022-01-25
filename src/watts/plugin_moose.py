@@ -167,8 +167,21 @@ class PluginMOOSE(TemplatePlugin):
         ----------
         params
             Parameters used when rendering template
-
         """
+        # Perform unit conversion if necessary.
+        # Variables are converted to the specified units.
+        # If no units are specified, variables are converted to SI by default.
+        for key in params.keys():
+            if key in params.dict_unit_conv.keys() and key not in params.converted_param:
+
+                dict_param = params.dict_unit_conv[key]
+
+                if "new_unit" in dict_param.keys():
+                    params[key] = params.convert_units(dict_param=dict_param)
+                    params.converted_param.append(key)
+                else:
+                    params[key] = params.convert_units(dict_param=dict_param, system='si')
+
         self._run_time = time.time_ns()
         # Render the template
         print("Pre-run for MOOSE Plugin")

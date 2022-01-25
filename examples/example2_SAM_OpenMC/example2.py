@@ -12,13 +12,13 @@ params = watts.Parameters()
 
 # TH params
 
-params['He_inlet_temp'] = 600 + 273.15  # K
+params['He_inlet_temp'] = {"value":600, "current_unit": "Celsius", "new_unit": "Kelvin"}  #873.15 K
 params['He_outlet_temp'] = 850 + 273.15 # K
-params['He_cp'] = 5189.2 # J/kg-K
+params['He_cp'] = {"value": 4.9184126, "current_unit": "BTU/(kg*K)", "new_unit": "J/(kg*K)"} #5189.2 J/kg-K
 params['He_K'] =  0.32802   # W/m-K
 params['He_density'] = 3.8815   # kg/m3
 params['He_viscosity'] = 4.16e-5 # Pa.s
-params['He_Pressure'] = 7e6    # Pa
+params['He_Pressure'] = {"value":1015.264164, "current_unit": "psi", "new_unit": "pascal"}  #7e6 Pa
 params['Tot_assembly_power'] = 250000 # W
 
 for i in range(1, 6):
@@ -39,7 +39,7 @@ params['lbp_rad'] = 0.25 # cm
 params['mod_ext_rad'] = 0.90 # cm
 params['shell_thick'] = 0.05   # FeCrAl
 params['liner_thick'] = 0.007  # Cr
-params['control_pin_rad'] = 0.99 # cm
+params['control_pin_rad'] = {"value": 0.3897638, "current_unit": "inch"} # Automatically converts to 'm' for MOOSE and 'cm' for openmc
 
 # Control use of S(a,b) tables
 params['use_sab'] = True
@@ -59,18 +59,18 @@ params.show_summary(show_metadata=True, sort_by='time')
 
 moose_app_type = "SAM"
 app_dir = os.environ[moose_app_type.upper() + "_DIR"]
-sam_plugin = watts.PluginMOOSE('../example1a_SAM/sam_template', show_stderr=True) # show only error
-sam_plugin.moose_exec = app_dir + "/" + moose_app_type.lower() + "-opt"
-sam_result = sam_plugin.workflow(params)
-for key in sam_result.csv_data:
-    print(key, sam_result.csv_data[key])
-print(sam_result.inputs)
-print(sam_result.outputs)
+moose_plugin = watts.PluginMOOSE('../example1a_SAM/sam_template', show_stderr=True) # show only error
+moose_plugin.moose_exec = app_dir + "/" + moose_app_type.lower() + "-opt"
+moose_result = moose_plugin.workflow(params)
+for key in moose_result.csv_data:
+    print(key, moose_result.csv_data[key])
+print(moose_result.inputs)
+print(moose_result.outputs)
 
 # get temperature from SAM results
-params['temp'] = mean([sam_result.csv_data[f'avg_Tgraphite_{i}'][-1] for i in range(1, 6)])
+params['temp'] = mean([moose_result.csv_data[f'avg_Tgraphite_{i}'][-1] for i in range(1, 6)])
 for i in range(1, 6):
-    params[f'temp_F{i}'] = sam_result.csv_data[f'avg_Tf_{i}'][-1]
+    params[f'temp_F{i}'] = moose_result.csv_data[f'avg_Tf_{i}'][-1]
 
 params.show_summary(show_metadata=False, sort_by='time')
 
