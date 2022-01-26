@@ -1,5 +1,5 @@
-# SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
-# SPDX-License-Identifier: MIT
+#SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
+#SPDX-License-Identifier: MIT
 
 from datetime import datetime
 from pathlib import Path
@@ -94,8 +94,8 @@ class Results:
             plugin = h5file.attrs['plugin']
             if plugin == 'OpenMC':
                 result = watts.ResultsOpenMC._from_hdf5(h5file)
-            elif plugin == 'SAM':
-                result = watts.ResultsSAM._from_hdf5(h5file)
+            elif plugin == 'MOOSE':
+                result = watts.ResultsMOOSE._from_hdf5(h5file)
             else:
                 raise RuntimeError(f"Unrecognized plugin in results: {plugin}")
 

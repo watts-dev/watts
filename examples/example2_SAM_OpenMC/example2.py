@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 from math import cos, pi
+import os
 import watts
 from statistics import mean
 from openmc_template import build_openmc_model
@@ -53,9 +54,13 @@ params['pf'] = 40 # percent
 params.show_summary(show_metadata=True, sort_by='time')
 
 
-# SAM Workflow
-sam_plugin = watts.PluginSAM('../example1_SAM/sam_template', show_stderr=True) # show only error
-sam_plugin.sam_exec = "/home/rhu/projects/SAM/sam-opt"
+# MOOSE Workflow
+# set your SAM directorate as SAM_DIR
+
+moose_app_type = "SAM"
+app_dir = os.environ[moose_app_type.upper() + "_DIR"]
+sam_plugin = watts.PluginMOOSE('../example1a_SAM/sam_template', show_stderr=True) # show only error
+sam_plugin.moose_exec = app_dir + "/" + moose_app_type.lower() + "-opt"
 sam_result = sam_plugin.workflow(params)
 for key in sam_result.csv_data:
     print(key, sam_result.csv_data[key])
