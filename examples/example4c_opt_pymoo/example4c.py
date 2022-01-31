@@ -15,7 +15,7 @@ class fitness_calc(Problem):
         super().__init__(n_var=2, n_obj=2, xl=np.array([0.5, 0.5]), xu=np.array([1.0, 1.0]))
 
     def _evaluate(self, x, out, *args, **kwargs):
-        print (x)
+        print(x)
         out["F"] = [] 
         for X in x:
             (keff, max_Tf, avg_Tf) = calc_workflow(X)
