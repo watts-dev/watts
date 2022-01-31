@@ -22,7 +22,7 @@ class fitness_calc(Problem):
 
 algorithm = NSGA2(pop_size=5)
 
-res = minimize(problem,
+res = minimize(fitness_calc,
                algorithm,
                ('n_gen', 3),
                seed=1,
