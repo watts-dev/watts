@@ -24,6 +24,6 @@ for X in sample_scaled:
     results["avg_Tf"].append(res[2])
 
 print (results)
-print (f"keff: mean = { mean(results["keff"]) } , stdev = {stdev(results["keff"])}")
-print (f"max_Tf: mean = { mean(results["max_Tf"]) } , stdev = {stdev(results["max_Tf"])}")
-print (f"avg_Tf: mean = { mean(results["avg_Tf"]) } , stdev = {stdev(results["avg_Tf"])}")
+print ("keff: mean = %f , stdev = %f"%(mean(results["keff"]), stdev(results["keff"])))
+print ("max_Tf: mean = %f , stdev = %f"%(mean(results["max_Tf"]), stdev(results["max_Tf"])))
+print ("avg_Tf: mean = %f , stdev = %f"%(mean(results["avg_Tf"]), stdev(results["avg_Tf"])))
