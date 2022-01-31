@@ -4,8 +4,7 @@
 from math import cos, pi
 import os
 import watts
-from statistics import mean 
-from statistics import stdev
+from statistics import mean, stdev
 from openmc_template import build_openmc_model
 
 params = watts.Parameters()
