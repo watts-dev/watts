@@ -11,10 +11,7 @@ u_bounds = [1.0, 1.0]
 sample_scaled = qmc.scale(sample, l_bounds, u_bounds)
 
 print(sample_scaled)
-results = {}
-results["keff"] = []
-results["max_Tf"] = []
-results["avg_Tf"] = []
+results = {"keff": [], "max_Tf": [], "avg_Tf": []}
 
 for X in sample_scaled:
     res = calc_workflow(X)
