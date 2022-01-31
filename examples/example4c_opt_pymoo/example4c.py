@@ -5,7 +5,6 @@ from example4 import *
 import numpy as np
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.optimize import minimize
-from pymoo.problems.functional import FunctionalProblem
 from pymoo.core.problem import Problem
 
 # initial X values
