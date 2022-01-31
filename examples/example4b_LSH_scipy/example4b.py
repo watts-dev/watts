@@ -19,7 +19,7 @@ for X in sample_scaled:
     results["max_Tf"].append(max_Tf)
     results["avg_Tf"].append(avg_Tf)
 
-print (results)
-print ("keff: mean = %f , stdev = %f"%(mean(results["keff"]), stdev(results["keff"])))
-print ("max_Tf: mean = %f , stdev = %f"%(mean(results["max_Tf"]), stdev(results["max_Tf"])))
-print ("avg_Tf: mean = %f , stdev = %f"%(mean(results["avg_Tf"]), stdev(results["avg_Tf"])))
+print(results)
+print("keff: {} +/- {}".format(mean(results["keff"]), stdev(results["keff"])))
+print("max_Tf: {} +/- {}".format(mean(results["max_Tf"]), stdev(results["max_Tf"])))
+print("avg_Tf: {} +/- {}".format(mean(results["avg_Tf"]), stdev(results["avg_Tf"])))
