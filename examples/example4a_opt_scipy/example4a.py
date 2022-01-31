@@ -7,7 +7,8 @@ from example4 import *
 # initial X values
 X = [0.9, 0.6]
 
-def fitness_calc(X): # simple fitness function to get 1 "objective function" to scipy
+def fitness_calc(X):
+    """simple fitness function to get 1 "objective function" to scipy"""
     (keff, max_Tf, avg_Tf) = calc_workflow(X)
     fitness = abs(keff - 1) + (max_Tf/avg_Tf)
     return keff
