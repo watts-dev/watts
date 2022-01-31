@@ -14,10 +14,10 @@ print(sample_scaled)
 results = {"keff": [], "max_Tf": [], "avg_Tf": []}
 
 for X in sample_scaled:
-    res = calc_workflow(X)
-    results["keff"].append(res[0])
-    results["max_Tf"].append(res[1])
-    results["avg_Tf"].append(res[2])
+    keff, max_Tf, avg_Tf = calc_workflow(X)
+    results["keff"].append(keff)
+    results["max_Tf"].append(max_Tf)
+    results["avg_Tf"].append(avg_Tf)
 
 print (results)
 print ("keff: mean = %f , stdev = %f"%(mean(results["keff"]), stdev(results["keff"])))
