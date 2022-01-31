@@ -81,7 +81,6 @@ def calc_workflow(X):
     openmc_result = openmc_plugin.workflow(params)
     print("KEFF = ", openmc_result.keff)
 
-    fitness = abs(openmc_result.keff.n - 1) + (max_Tf/avg_Tf)
     return (openmc_result.keff.n, max_Tf, avg_Tf)
 
 
