@@ -1,0 +1,1 @@
+../example2_SAM_OpenMC/openmc_template.py

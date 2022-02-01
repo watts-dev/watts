@@ -19,7 +19,9 @@ questions, please contact [watts@anl.gov](mailto:watts@anl.gov).
 
 ## Documentation
 
-To build the documentation, you can run:
+Here is the link to the online [__documentation__](https://watts.readthedocs.io/en/latest/user/index.html).
+
+In case you want to build the documentation locally, you can run:
 
 - cd doc
 - pip install -r requirements.txt
