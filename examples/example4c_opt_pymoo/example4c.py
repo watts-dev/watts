@@ -19,7 +19,7 @@ class fitness_calc(Problem):
         for s in x:
             (keff, max_Tf, avg_Tf) = calc_workflow(s) # the workflow is called here and we are saving the results in out['F']
             print(keff, max_Tf, avg_Tf) 
-            out["F"].append([keff, max_Tf/avg_Tf]) 
+            out["F"] += [keff, max_Tf/avg_Tf]
 
 algorithm = NSGA2(pop_size=2) # multicriteria algorithm applied
 
