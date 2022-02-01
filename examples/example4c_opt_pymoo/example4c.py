@@ -21,11 +21,11 @@ class fitness_calc(Problem):
             print(keff, max_Tf, avg_Tf) 
             out["F"].append([keff, max_Tf/avg_Tf]) 
 
-algorithm = NSGA2(pop_size=5) # multicriteria algorithm applied
+algorithm = NSGA2(pop_size=2) # multicriteria algorithm applied
 
 res = minimize(fitness_calc(),
                algorithm,
-               ('n_gen', 3),
+               ('n_gen', 2),
                seed=1,
                verbose=False) # this runs the optimization algorithm
-print(res)
+print(res.F)
