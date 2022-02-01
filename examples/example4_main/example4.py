@@ -46,9 +46,6 @@ params['cl'] = params['Height_FC']*100 - 2 * params['ax_ref'] # cm
 params['pf'] = 40 # percent
 params['num_cpu'] = 60
 
-# initial X values
-#X = [0.9, 0.6]
-
 def calc_workflow(X):
     """ example of workflow calculation that includes SAM and OpenMC """
 
@@ -82,6 +79,4 @@ def calc_workflow(X):
     print("KEFF = ", openmc_result.keff)
 
     return (openmc_result.keff.n, max_Tf, avg_Tf)
-
-
 

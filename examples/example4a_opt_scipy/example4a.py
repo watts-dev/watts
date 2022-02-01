@@ -4,7 +4,7 @@
 from scipy.optimize import minimize
 from example4 import *
 
-# initial X values
+# initial X values required for scipy optimization
 X = [0.9, 0.6]
 
 def fitness_calc(X):
