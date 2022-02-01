@@ -15,7 +15,7 @@ class fitness_calc(ElementwiseProblem):
 
     def _evaluate(self, x, out, *args, **kwargs):
         print(x) # this is the matrix of the size of the population
-        (keff, max_Tf, avg_Tf) = calc_workflow(s) # the workflow is called here and we are saving the results in out['F']
+        (keff, max_Tf, avg_Tf) = calc_workflow(x) # the workflow is called here and we are saving the results in out['F']
         print(keff, max_Tf, avg_Tf) 
         out["F"] = [keff, max_Tf/avg_Tf]
 
