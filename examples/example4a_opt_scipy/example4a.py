@@ -5,7 +5,7 @@ from scipy.optimize import minimize
 from example4 import *
 
 # initial X values
-#X = [0.9, 0.6]
+X = [0.9, 0.6]
 
 def fitness_calc(X):
     """simple fitness function to get 1 "objective function" to scipy"""
