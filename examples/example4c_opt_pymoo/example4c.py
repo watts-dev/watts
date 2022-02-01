@@ -28,5 +28,5 @@ res = minimize(fitness_calc(),
                ('n_gen', 2),
                seed=1,
                verbose=False) # this runs the optimization algorithm
-print(res.x)
-print(res.F)
+print("all variables", res.x)
+print("all results", res.F)
