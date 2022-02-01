@@ -17,14 +17,15 @@ class fitness_calc(ElementwiseProblem):
         print(x) # this is the matrix of the size of the population
         (keff, max_Tf, avg_Tf) = calc_workflow(x) # the workflow is called here and we are saving the results in out['F']
         print(keff, max_Tf, avg_Tf) 
-        out["F"] = [keff, max_Tf/avg_Tf]
+        out["F"] = [keff, max_Tf]
 
-algorithm = NSGA2(pop_size=2) # multicriteria algorithm applied
+algorithm = NSGA2(pop_size=5) # multicriteria algorithm applied
 
 res = minimize(fitness_calc(),
                algorithm,
-               ('n_gen', 2),
+               ('n_gen', 4),
                seed=1,
                verbose=False) # this runs the optimization algorithm
+
 print("all variables", res.X)
 print("all results", res.F)
