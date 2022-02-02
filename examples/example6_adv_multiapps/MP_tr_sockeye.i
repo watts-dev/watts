@@ -90,7 +90,8 @@ D_wick_i = ${fparse 2.0 * R_wick_i}
 # Option B: Convective BC that approximately sets the condenser wall temperature
 # to T_ext_cond. This is consistent with the N. Stauff ANS Summary 2021.
 T_ext_cond = 800.
-htc_ext_cond = 1.0e6
+# Change this by a factor of 1e6 to induce transient
+htc_ext_cond = 1.0e0
 
 # Evaporator parameters
 S_evap = ${fparse pi * D_hp_o * length_evap}
@@ -155,7 +156,7 @@ q_evap = ${fparse Q_hp / S_evap}
     fp_2phase = fp_2phase
     evaporator_at_start_end = true
     # Initial temperature of block
-    initial_T = ${T_ext_cond}
+    # initial_T = ${T_ext_cond}
     # Melting temperature (hard limit on minimum coolant temperature)
     T_operating = ${T_melting}
   [../]
@@ -209,16 +210,12 @@ q_evap = ${fparse Q_hp / S_evap}
 
 [AuxVariables]
   [T_wall_var]
-    initial_condition = ${T_ext_cond}
   []
   [operational_aux]
-    initial_condition = 1
   []
   [master_flux]
-    initial_condition = ${q_evap}
   []
   [hp_temp_aux]
-    initial_condition = ${T_ext_cond}
   []
 []
 
@@ -401,10 +398,8 @@ q_evap = ${fparse Q_hp / S_evap}
   l_tol = 1e-3
   l_max_its = 10
 
-  start_time = -1e5 # negative start time so we can start running from t = 0
-  end_time = 0
-  dtmin = 1e-6
-  dt = 5e3
+  end_time = 10
+  dt = 1
 []
 
 [Outputs]

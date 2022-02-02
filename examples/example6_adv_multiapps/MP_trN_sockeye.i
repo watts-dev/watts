@@ -155,7 +155,7 @@ q_evap = ${fparse Q_hp / S_evap}
     fp_2phase = fp_2phase
     evaporator_at_start_end = true
     # Initial temperature of block
-    initial_T = ${T_ext_cond}
+    # initial_T = ${T_ext_cond}
     # Melting temperature (hard limit on minimum coolant temperature)
     T_operating = ${T_melting}
   [../]
@@ -209,16 +209,12 @@ q_evap = ${fparse Q_hp / S_evap}
 
 [AuxVariables]
   [T_wall_var]
-    initial_condition = ${T_ext_cond}
   []
   [operational_aux]
-    initial_condition = 1
   []
   [master_flux]
-    initial_condition = ${q_evap}
   []
   [hp_temp_aux]
-    initial_condition = ${T_ext_cond}
   []
 []
 
@@ -401,10 +397,8 @@ q_evap = ${fparse Q_hp / S_evap}
   l_tol = 1e-3
   l_max_its = 10
 
-  start_time = -1e5 # negative start time so we can start running from t = 0
-  end_time = 0
-  dtmin = 1e-6
-  dt = 5e3
+  end_time = 10
+  dt = 1
 []
 
 [Outputs]

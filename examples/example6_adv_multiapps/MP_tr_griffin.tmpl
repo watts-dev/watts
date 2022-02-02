@@ -5,7 +5,8 @@ bison_subapp_cli_args ='bison_initial_temperature={{ BISON_Initial_Temperature }
 [Mesh]
   [loader]
     type = FileMeshGenerator
-    file = 3D_unit_cell_FY21_supersimple.e
+    file = ${raw ${env SS_PATH}/MOOSE_exodus.e}
+    use_for_exodus_restart = true
   []
   [id]
     type = SubdomainElementIDs
@@ -31,32 +32,29 @@ bison_subapp_cli_args ='bison_initial_temperature={{ BISON_Initial_Temperature }
 []
 
 [Executioner]
-  type =  PicardEigen #
+  type =  Transient #
 
   petsc_options_iname = '-pc_type -pc_hypre_type -ksp_gmres_restart '
   petsc_options_value = 'hypre boomeramg 100'
-
-
-  free_power_iterations = 1
-  output_after_power_iterations = 0
-  output_before_normalization = 0
+  line_search = none
 
   nl_rel_tol = 1e-8
   nl_abs_tol = 1e-9
-
-  nl_max_its = 100
-
   l_tol = 1e-2
-  picard_rel_tol = 1.0e-09
-  picard_abs_tol = 1.0e-09
+
+  picard_rel_tol = 1e-9
+  picard_abs_tol = 1e-9
   picard_max_its = 10
-  disable_picard_residual_norm_check = false
-  custom_abs_tol = 1e-4
+
+  end_time = 10
+  dt = 1
 []
 
 [TransportSystems]
   particle = neutron
-  equation_type = eigenvalue
+  equation_type = transient
+  restart_transport_system = true
+
   G = 11
   VacuumBoundary = '400 500'
   ReflectingBoundary = '301 302 303'
@@ -92,11 +90,11 @@ bison_subapp_cli_args ='bison_initial_temperature={{ BISON_Initial_Temperature }
 
 [MultiApps]
   [bison]
-    type = FullSolveMultiApp
+    type = TransientMultiApp
     positions = '0 0 0'
-    input_files  = MP_ss_moose.i
+    input_files  = MP_tr_moose.i
     execute_on = 'timestep_end'
-    keep_solution_during_restore = true
+
     cli_args = ${bison_subapp_cli_args}
   []
 []
@@ -167,6 +165,7 @@ bison_subapp_cli_args ='bison_initial_temperature={{ BISON_Initial_Temperature }
   interval = 1
   [exodus]
     type = Exodus
+    enable = false
   []
   [csv]
     type = CSV

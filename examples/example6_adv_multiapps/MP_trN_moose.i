@@ -9,15 +9,16 @@ normal_factor = ${fparse perimeter_correction / area_correction}
 [Problem]
    register_objects_from = 'SockeyeApp'
    library_path = ${raw ${env SOCKEYE_DIR}lib}
+   restart_file_base = ${raw ${env SS_PATH}/MOOSE_out_bison0_cp/LATEST}
+   force_restart = true
 []
 
 [Mesh]
-  file = 3D_unit_cell_FY21_level-1_bison.e
+  file = ${raw ${env SS_PATH}/MOOSE_out_bison0_cp/LATEST}
 []
 
 [Variables]
   [temp]
-    initial_condition = ${bison_initial_temperature}
   []
 []
 
@@ -61,7 +62,7 @@ normal_factor = ${fparse perimeter_correction / area_correction}
     type = NormalizationAux
     variable = Tfuel
     source_variable = temp
-    execute_on = 'timestep_end'
+    execute_on = 'initial timestep_end'
   []
   [flux_uo]
     type = SpatialUserObjectAux
@@ -166,7 +167,7 @@ normal_factor = ${fparse perimeter_correction / area_correction}
   [sockeye]
     type = TransientMultiApp
     positions = '0.0 0 0.2' #bottom of the heat pipe
-    input_files = 'MP_ss_sockeye.i'
+    input_files = 'MP_trN_sockeye.i'
     execute_on = 'timestep_begin' # execute on timestep begin because hard to have a good initial guess on heat flux
     max_procs_per_app = 1
     sub_cycling = true
@@ -215,10 +216,8 @@ normal_factor = ${fparse perimeter_correction / area_correction}
   nl_abs_tol = 1e-7
   nl_rel_tol = 1e-7
 
-  start_time = -1e5 # negative start time so we can start running from t = 0
-  end_time = 0
-  dtmin = 1
-  dt = 1e4
+  end_time = 10
+  dt = 1
 []
 
 [Postprocessors]
