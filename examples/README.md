@@ -14,4 +14,4 @@ Training on WATTS is enabled with a suite of simple examples:
 * [__example4b__](example4b_LHS_scipy/README.md) - Sampling with LHS of SAM/OpenMC workflow using scipy
 * [__example4c__](example4c_opt_pymoo/README.md) - Multi-criteria optimization of SAM/OpenMC workflow using pymoo
 ## Example 5
-* [__example3__](example5_multiapp/README.md) - MOOSE MultiApp calculation
+* [__example5__](example5_multiapps/README.md) - MOOSE MultiApp calculation
