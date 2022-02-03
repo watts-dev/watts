@@ -16,4 +16,4 @@ Training on WATTS is enabled with a suite of simple examples:
 ## Example 5
 * [__example5__](example5_multiapps/README.md) - Simple MOOSE MultiApp calculation
 ## Example 6
-* [__example5__](example6_adv_multiapps/README.md) - Advance MOOSE MultiApp calculation
+* [__example6__](example6_adv_multiapps/README.md) - Advance MOOSE MultiApp calculation
