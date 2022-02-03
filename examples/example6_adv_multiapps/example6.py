@@ -38,6 +38,7 @@ params_ss['Sockeye_Cond_Elem_Num'] =10
 params_ss.show_summary(show_metadata=False, sort_by='key')
 
 # MOOSE Workflow for steady state
+print("Steady-state calculation")
 moose_plugin_ss = watts.PluginMOOSE('MP_ss_griffin.tmpl', n_cpu=40, supp_inputs=['MP_ss_moose.i', 'MP_ss_sockeye.i', '3D_unit_cell_FY21_level-1_bison.e', '3D_unit_cell_FY21_supersimple.e', 'unitcell_nogap_hom_xml_G11_df_MP.xml'])
 moose_plugin_ss.moose_exec = app_dir + "/" + moose_app_type.lower() + "-opt"
 moose_result_ss = moose_plugin_ss.workflow(params_ss)
@@ -53,6 +54,7 @@ os.environ["SS_PATH"] = str(moose_result_ss.base_path)
 params_trN = params_ss
 
 # MOOSE Workflow for Null transient
+print("Null transient calculation")
 moose_plugin_trN = watts.PluginMOOSE('MP_trN_griffin.tmpl', n_cpu=40, show_stdout=False, supp_inputs=['MP_trN_moose.i', 'MP_trN_sockeye.i', 'unitcell_nogap_hom_xml_G11_df_MP.xml'])
 moose_plugin_trN.moose_exec = app_dir + "/" + moose_app_type.lower() + "-opt"
 moose_result_trN = moose_plugin_trN.workflow(params_trN)
@@ -72,6 +74,7 @@ if power_rel_diff > rel_diff_tol:
 params_tr = params_ss
 
 # MOOSE Workflow for transient
+print("Transient calculation")
 moose_plugin_tr = watts.PluginMOOSE('MP_tr_griffin.tmpl', n_cpu=40, show_stdout=True, supp_inputs=['MP_tr_moose.i', 'MP_tr_sockeye.i', 'unitcell_nogap_hom_xml_G11_df_MP.xml'])
 moose_plugin_tr.moose_exec = app_dir + "/" + moose_app_type.lower() + "-opt"
 moose_result_tr = moose_plugin_tr.workflow(params_tr)
