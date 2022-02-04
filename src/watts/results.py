@@ -96,6 +96,8 @@ class Results:
                 result = watts.ResultsOpenMC._from_hdf5(h5file)
             elif plugin == 'MOOSE':
                 result = watts.ResultsMOOSE._from_hdf5(h5file)
+            elif plugin == 'PyARC':
+                result = watts.ResultsPyARC._from_hdf5(h5file)
             else:
                 raise RuntimeError(f"Unrecognized plugin in results: {plugin}")
 
