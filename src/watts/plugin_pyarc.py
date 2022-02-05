@@ -115,6 +115,8 @@ class PluginPyARC(TemplatePlugin):
                   show_stderr: bool = False, supp_inputs: List[str] = []):
         super().__init__(template_file)
         self._pyarc_exec = Path('PyARC.py')
+#        if os.environ["PyARC_DIR"] is not None: # how would I setup this as default exec if not specified?
+#            self._pyarc_exec = os.environ["PyARC_DIR"]
         self.pyarc_inp_name = "pyarc_input.son"
         self.show_stdout = show_stdout
         self.show_stderr = show_stderr
