@@ -63,6 +63,8 @@ class ResultsPyARC(Results):
         results_data["persent_sens"] = user_object.results_kuq_persent
         results_data["gamsor"] = user_object.results_power_gamsor
         results_data["dassh"] = user_object.results_dassh
+        # TODO - this is minimum information that can be brought back easily. 
+        # More should be returned but will require work on PyARC.
         return results_data
 
     def save(self, filename: PathLike):
@@ -144,7 +146,7 @@ class PluginPyARC(TemplatePlugin):
         import PyARC
         self.pyarc = PyARC.PyARC()
         self.od = os.path.abspath(Path.cwd())
-        self.wd = os.path.abspath(Path.cwd())
+        self.wd = os.path.abspath("{}/{}".format(Path.cwd(),"/tmpdir"))
 
     def run(self, **kwargs: Mapping):
         """Run PyARC
@@ -159,6 +161,7 @@ class PluginPyARC(TemplatePlugin):
         self.pyarc.user_object.do_postrun = True
         self.pyarc.execute(["-i", self.pyarc_inp_name, "-w", self.wd, "-o", self.od])
         os.chdir(self.od) # TODO: I don't know why but I keep going to self._pyarc_exec after execution - this is very wierd!
+        shutil.rmtree(self.wd)
 
     def postrun(self, params: Parameters) -> ResultsPyARC:
         """Collect information from PyARC and create results object
