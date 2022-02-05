@@ -31,7 +31,7 @@ class Results:
     """
 
     def __init__(self, plugin: str, params: Parameters, time: datetime,
-                 inputs: List[PathLike], outputs: List[PathLike]):
+                 inputs: List[PathLike], outputs: List[PathLike], python_results = None):
         self.base_path = Path.cwd()
         self.plugin = plugin
         self.parameters = Parameters(params)

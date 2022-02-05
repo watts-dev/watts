@@ -38,24 +38,31 @@ class ResultsPyARC(Results):
     """
 
     def __init__(self, params: Parameters, time: datetime,
-                 inputs: List[Path], outputs: List[Path]):
-        super().__init__('PyARC', params, time, inputs, outputs)
-        self.results_data = self._save_PyARC()
+                 inputs: List[Path], outputs: List[Path], user_object):
+        super().__init__('PyARC', params, time, inputs, outputs, user_object)
+        self.results_data = self._save_PyARC(user_object)
 
     @property
     def stdout(self) -> str:
         return (self.base_path / "PyARC_log.txt").read_text()
 
-    def _save_PyARC(self) -> dict:
-        """Read all MOOSE '.csv' files and return results in a dictionary
+    def _save_PyARC(self, user_object) -> dict:
+        """Return PyARC results in a dictionary
 
         Returns
         -------
-        Results from MOOSE .csv files
+        Results from PyARC results
 
         """
         results_data = {}
-
+        results_data["mcc3"] = user_object.results_keff_mcc3
+        results_data["dif3d"] = user_object.results_keff_dif3d
+        results_data["proteus_nodal"] = user_object.results_keff_nodal
+        results_data["rzmflx"] = user_object.results_keff_rzmflx
+        results_data["persent_pert"] = user_object.results_kpert_persent
+        results_data["persent_sens"] = user_object.results_kuq_persent
+        results_data["gamsor"] = user_object.results_power_gamsor
+        results_data["dassh"] = user_object.results_dassh
         return results_data
 
     def save(self, filename: PathLike):
@@ -93,7 +100,7 @@ class PluginPyARC(TemplatePlugin):
     show_stderr
         Whether to display output from stderr when SAM is run
     supp_inputs
-        List of supplementary input files that are needed for running the MOOSE application
+        List of supplementary input files that are needed for running PyARC
     
     Attributes
     ----------
@@ -133,6 +140,11 @@ class PluginPyARC(TemplatePlugin):
         print("Pre-run for PyARC Plugin")
         self._run_time = time.time_ns()
         super().prerun(params, filename=self.pyarc_inp_name)
+        sys.path.insert(0, '{}'.format(self._pyarc_exec))
+        import PyARC
+        self.pyarc = PyARC.PyARC()
+        self.od = os.path.abspath(Path.cwd())
+        self.wd = os.path.abspath(Path.cwd())
 
     def run(self, **kwargs: Mapping):
         """Run PyARC
@@ -143,20 +155,13 @@ class PluginPyARC(TemplatePlugin):
             Keyword arguments passed on to :func:`pyarc.execute`
         """
         print("Run for PyARC Plugin")
-        sys.path.insert(0, '{}'.format(self._pyarc_exec))
-        import PyARC
-        pyarc = PyARC.PyARC()
-        od = os.path.abspath(Path.cwd())
-        wd = os.path.abspath(Path.cwd())
-        pyarc.user_object.do_run = True
-        pyarc.user_object.do_postrun = True
-        pyarc.execute(["-i", self.pyarc_inp_name,"-w",wd,"-o",od])
-        print(pyarc.user_object.results_keff_mcc3)
-        print(pyarc.user_object.results_keff_dif3d)
-        os.chdir(od) # TODO: I don't know why but I keep going to self._pyarc_exec after execution - this is very wierd!
+        self.pyarc.user_object.do_run = True
+        self.pyarc.user_object.do_postrun = True
+        self.pyarc.execute(["-i", self.pyarc_inp_name, "-w", self.wd, "-o", self.od])
+        os.chdir(self.od) # TODO: I don't know why but I keep going to self._pyarc_exec after execution - this is very wierd!
 
     def postrun(self, params: Parameters) -> ResultsPyARC:
-        """Collect information from OpenMC simulation and create results object
+        """Collect information from PyARC and create results object
 
         Parameters
         ----------
@@ -167,10 +172,10 @@ class PluginPyARC(TemplatePlugin):
         -------
         PyARC results object
         """
-        print("Post-run for import sys Plugin")
+        print("Post-run for PyARC Plugin")
 
         time = datetime.fromtimestamp(self._run_time * 1e-9)
         inputs = [self.pyarc_inp_name] # TODO: + self.supp_inputs (this is currently not done because the supp_inputs would get removed!)
         outputs = [p for p in Path.cwd().iterdir() if p.name not in inputs]
-        return ResultsPyARC(params, time, inputs, outputs)
+        return ResultsPyARC(params, time, inputs, outputs, self.pyarc.user_object)
 
