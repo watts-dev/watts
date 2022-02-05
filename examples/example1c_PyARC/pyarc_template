@@ -21,11 +21,7 @@ geometry{
         }
     }
     surfaces{
-        hexagon ( hex ){
-            orientation=y
-            normal = z
-            pitch = {{ assembly_pitch }}
-               }
+        hexagon ( hex ){ orientation=y   normal = z  pitch = {{ assembly_pitch }} }
         plane ( z0 ) { z = 0.0  }
         plane ( z10 ) { z = {{ assembly_length }} }
     }
