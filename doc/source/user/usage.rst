@@ -164,7 +164,7 @@ PyARC Plugin
 
 The :class:`~watts.PluginPyARC` class handles PyARC execution in a similar
 manner to the :class:`~watts.PluginSAM` class for SAM. PyARC use text-based 
-input files which is templated as shown as follows:
+input files which can be templated as follows:
 
 .. code-block:: jinja
 
