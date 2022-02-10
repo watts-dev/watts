@@ -79,9 +79,9 @@ input file might look as follows:
 
 If the templated input file is ``sam_template.inp``, the SAM code will rely the general MOOSE plugin that can be created as::
 
-    moose_plugin = watts.PluginMOOSE('sam_template.inp', supp_inputs = [])
+    moose_plugin = watts.PluginMOOSE('sam_template.inp')
 
-The MOOSE plugin provides the option to specify supplementary input files that 
+The MOOSE plugin provides the option to specify supplementary input files (in `supp_inputs` option) that 
 will be copied together with the templated input file (mesh or cross-section files).
 
 The SAM executable defaults to ``sam-opt`` (assumed to be present on your
