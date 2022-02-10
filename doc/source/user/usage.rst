@@ -176,7 +176,7 @@ input files which can be templated as follows:
 
 If the templated input file is `pyarc_template`, then PyARC can be executed with the following command:
 
-    pyarc_plugin = watts.PluginPyARC('pyarc_template', show_stdout=True, supp_inputs = ['lumped_test5.son'])
+    pyarc_plugin = watts.PluginPyARC('pyarc_template', show_stdout=True, supp_inputs=['lumped_test5.son'])
 
 The path to PyARC directory must be specified explicitly with the
 :attr:`~watts.PluginPyARC.pyarc_exec` attribute::
