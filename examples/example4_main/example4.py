@@ -4,8 +4,7 @@
 from math import cos, pi
 import os
 import watts
-from scipy.optimize import minimize
-from statistics import mean
+from statistics import mean, stdev
 from openmc_template import build_openmc_model
 
 params = watts.Parameters()
@@ -47,9 +46,6 @@ params['cl'] = params['Height_FC']*100 - 2 * params['ax_ref'] # cm
 params['pf'] = 40 # percent
 params['num_cpu'] = 60
 
-# initial X values
-X = [0.9, 0.6]
-
 def calc_workflow(X):
     """ example of workflow calculation that includes SAM and OpenMC """
 
@@ -82,14 +78,5 @@ def calc_workflow(X):
     openmc_result = openmc_plugin.workflow(params)
     print("KEFF = ", openmc_result.keff)
 
-    fitness = abs(openmc_result.keff.n - 1) + (max_Tf/avg_Tf)
-    return fitness
+    return (openmc_result.keff.n, max_Tf, avg_Tf)
 
-
-# optimization function - only 10 maximum iterations to make it run quick!
-res = minimize(calc_workflow, X, method ='SLSQP', bounds=((0.5, 1.0), (0.5, 0.99)), options={'maxiter': 10, 'iprint': 1, 'disp': False, 'eps': 0.01})
-params.show_summary(show_metadata=True, sort_by='time')
-
-
-X = res.x
-print("optimum X(FuelPin_rad, cool_hole_rad) = ", X)
