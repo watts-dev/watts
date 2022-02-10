@@ -174,7 +174,7 @@ input files which can be templated as follows:
         plane ( z10 ) { z = {{ assembly_length }} }
     }
 
-If the templated input file is `pyarc_template`, then PyARC can be executed with the following command:
+If the templated input file is `pyarc_template`, then the PyARC plugin can be instantiated with following command line::
 
     pyarc_plugin = watts.PluginPyARC('pyarc_template', show_stdout=True, supp_inputs=['lumped_test5.son'])
 
