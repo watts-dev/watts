@@ -90,6 +90,7 @@ class ResultsPyARC(Results):
         time, parameters, inputs, outputs = Results._load(obj)
         return cls(parameters, time, inputs, outputs)
 
+
 class PluginPyARC(TemplatePlugin):
     """Plugin for running PyARC
 
