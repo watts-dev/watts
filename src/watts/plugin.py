@@ -20,14 +20,14 @@ class Plugin(ABC):
 
     Parameters
     ----------
-    supp_inputs
-        Supplemental input files
+    extra_inputs
+        Extra (non-templated) input files
     """
 
-    def __init__(self, supp_inputs: Optional[List[PathLike]] = None):
-        self.supp_inputs = []
-        if supp_inputs is not None:
-            self.supp_inputs = [Path(f).resolve() for f in supp_inputs]
+    def __init__(self, extra_inputs: Optional[List[PathLike]] = None):
+        self.extra_inputs = []
+        if extra_inputs is not None:
+            self.extra_inputs = [Path(f).resolve() for f in extra_inputs]
 
     @abstractmethod
     def prerun(self, params):
@@ -71,9 +71,9 @@ class Plugin(ABC):
         db = Database()
 
         with cd_tmpdir():
-            # Copy supplemental inputs to temporary directory
+            # Copy extra inputs to temporary directory
             cwd = Path.cwd()
-            for path in self.supp_inputs:
+            for path in self.extra_inputs:
                 shutil.copy(str(path), str(cwd))  # Remove str() for Python 3.8+
 
             # Run workflow in temporary directory
@@ -144,12 +144,12 @@ class TemplatePlugin(Plugin):
     ----------
     template_file
         Path to template file
-    supp_inputs
-        Supplemental input files
+    extra_inputs
+        Extra (non-templated) input files
 
     """
-    def  __init__(self, template_file: str, supp_inputs: Optional[List[PathLike]] = None):
-        super().__init__(self, supp_inputs)
+    def  __init__(self, template_file: str, extra_inputs: Optional[List[PathLike]] = None):
+        super().__init__(extra_inputs)
         self.model_builder = TemplateModelBuilder(template_file)
 
     def prerun(self, params: Parameters, filename: Optional[str] = None):

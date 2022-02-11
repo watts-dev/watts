@@ -117,8 +117,8 @@ class PluginMOOSE(TemplatePlugin):
         Whether to display output from stderr when MOOSE is run
     n_cpu
         Number of processors to be used to run MOOSE application
-    supp_inputs
-        List of supplementary input files that are needed for running the MOOSE application
+    extra_inputs
+        List of extra (non-templated) input files that are needed
 
     Attributes
     ----------
@@ -129,8 +129,8 @@ class PluginMOOSE(TemplatePlugin):
 
     def  __init__(self, template_file: str, show_stdout: bool = False,
                   show_stderr: bool = False, n_cpu: int = 1,
-                  supp_inputs: Optional[List[str]] = None):
-        super().__init__(template_file, supp_inputs)
+                  extra_inputs: Optional[List[str]] = None):
+        super().__init__(template_file, extra_inputs)
         self._moose_exec = Path('moose-opt')
         self.moose_inp_name = "MOOSE.i"
         self.show_stdout = show_stdout
@@ -205,7 +205,7 @@ class PluginMOOSE(TemplatePlugin):
 
         time = datetime.fromtimestamp(self._run_time * 1e-9)
         # Start with non-templated input files
-        inputs = [Path.cwd() / p.name for p in self.supp_inputs]
+        inputs = [Path.cwd() / p.name for p in self.extra_inputs]
         inputs.append('MOOSE.i')
         outputs = [p for p in Path.cwd().iterdir() if p.name not in inputs]
         return ResultsMOOSE(params, time, inputs, outputs)

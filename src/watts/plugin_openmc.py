@@ -103,8 +103,8 @@ class PluginOpenMC(Plugin):
     ----------
     model_builder
         Function that generates an OpenMC model
-    supp_inputs
-        Supplemental input files
+    extra_inputs
+        Extra (non-templated) input files
     show_stdout
         Whether to display output from stdout when OpenMC is run
     show_stderr
@@ -113,9 +113,9 @@ class PluginOpenMC(Plugin):
     """
 
     def __init__(self, model_builder: Optional[Callable[[Parameters], None]] = None,
-                 supp_inputs: Optional[List[PathLike]] = None,
+                 extra_inputs: Optional[List[PathLike]] = None,
                  show_stdout: bool = False, show_stderr: bool = False):
-        super().__init__(supp_inputs)
+        super().__init__(extra_inputs)
         self.model_builder = model_builder
         self.show_stdout = show_stdout
         self.show_stderr = show_stderr
@@ -180,7 +180,7 @@ class PluginOpenMC(Plugin):
             return matches
 
         # Start with non-templated input files
-        inputs = [Path.cwd() / p.name for p in self.supp_inputs]
+        inputs = [Path.cwd() / p.name for p in self.extra_inputs]
 
         # Get generated input files
         for path in files_since('*.xml', self._run_time):
