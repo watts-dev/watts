@@ -107,3 +107,6 @@ class Results:
     def open_folder(self):
         """Open folder containing results"""
         open_file(self.base_path)
+
+    def __repr__(self):
+        return f"<Results{self.plugin}: {self.time}>"
