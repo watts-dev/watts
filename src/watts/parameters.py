@@ -47,8 +47,7 @@ class Parameters(MutableMapping):
         self._dict = {}
         self._metadata = {}
         self._warn_duplicates = False
-        self.dict_unit_conv = {}
-        self.converted_param = []
+        self.convert_param = []
 
         # Mimic the behavior of a normal dict object.
         if args:
@@ -121,7 +120,11 @@ class Parameters(MutableMapping):
         self._metadata[key] = ParametersMetadata(user, time)
 
         if isinstance(value, dict) and "current_unit" in value.keys():
-            self.dict_unit_conv[key] = value
+            u.imperial.enable()
+            params_quantity = u.Quantity(value["value"], u.Unit(value["current_unit"]))
+            self._dict[key] = params_quantity
+            self.convert_param.append(key)
+
 
     def get_metadata(self, key: Any) -> ParametersMetadata:
         """Get metadata associated with a key
@@ -295,44 +298,3 @@ class Parameters(MutableMapping):
         params = cls()
         params.load(filename_or_obj)
         return params
-
-    def convert_units(self, dict_param: dict, system: str ='si'):
-        """Convert units of parameters
-
-        Parameters
-        ----------
-        dict_param
-            Parameter to be converted
-        system
-            Unit system, SI or CGS
-        Returns
-        -------
-        Value of the parameter with the converted units
-
-        """
-        u.imperial.enable()
-        param_value = dict_param['value']
-        current_units = dict_param['current_unit']
-        current_value = dict_param['value'] * u.Unit(dict_param['current_unit'])
-
-        temperature_units = ['Kelvin', 'Celsius', 'Rankine', 'Fahrenheit',
-                            'deg_C', 'deg_R', 'deg_F']
-
-        # Unit conversion for temperature needs to be done separately because 
-        # astropy uses a different method to convert temperature.
-        # Variables are converted to the specified units.
-        # If no units are specified, variables are converted to SI by default.
-        if dict_param['current_unit'] in temperature_units:
-            if 'new_unit' in dict_param.keys():
-                convert_value = current_value.to(u.Unit(dict_param['new_unit']), equivalencies=u.temperature())
-            else:
-                convert_value = current_value.to(u.K, equivalencies=u.temperature())
-        else:
-            if "new_unit" in dict_param.keys():
-                convert_value = current_value.to(u.Unit(dict_param['new_unit']))
-            else:
-                if system == 'cgs':
-                    convert_value = current_value.cgs
-                elif system == 'si':
-                    convert_value = current_value.si
-        return convert_value.value 

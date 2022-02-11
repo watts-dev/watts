@@ -6,6 +6,7 @@ from pathlib import Path
 
 import watts
 import numpy as np
+import os
 
 
 def test_results_openmc(run_in_tmpdir):
@@ -103,3 +104,27 @@ prop1,prop2
     assert new_results.inputs == results.inputs
     assert new_results.outputs == results.outputs
     assert new_results.stdout == results.stdout
+
+
+def test_results_unit_conversion(run_in_tmpdir):
+    # Create a fake template file
+    file = open("sam_template","w")
+    file.close()
+
+    params = watts.Parameters()
+
+    # Test with various unit conversion formats
+    params['He_inlet_temp'] = {"value":600, "current_unit": "Celsius"}  # 873.15 K
+    params['He_cp'] = {"value": 4.9184126, "current_unit": "BTU/(kg*K)"} #5189.2 J/kg-K
+    params['He_Pressure'] = {"value": 7.0, "current_unit": "MPa"} #7e6 # Pa
+    params['Height_FC'] = {"value":2000, "current_unit": "mm"} #2 m
+
+    # Stops after prerun to check unit conversion
+    moose_plugin = watts.PluginMOOSE('sam_template', show_stderr=True)
+    moose_plugin.prerun(params)
+
+    # Check that unit conversion is correct
+    assert moose_plugin.params_copy["He_inlet_temp"] == 873.15
+    assert round(moose_plugin.params_copy["He_cp"], 1) == 5189.2
+    assert moose_plugin.params_copy["He_Pressure"] == 7000000.0
+    assert moose_plugin.params_copy["Height_FC"] == 2.0

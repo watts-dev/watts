@@ -9,13 +9,13 @@ params = watts.Parameters()
 
 # TH params
 
-params['He_inlet_temp'] = {"value":600, "current_unit": "Celsius", "new_unit": "Kelvin"}  #873.15 K
-params['He_outlet_temp'] = 850 + 273.15 # K
-params['He_cp'] = {"value": 4.9184126, "current_unit": "BTU/(kg*K)", "new_unit": "J/(kg*K)"} #5189.2 J/kg-K
+params['He_inlet_temp'] = {"value":600, "current_unit": "Celsius"}  # 873.15 K
+params['He_outlet_temp'] = {"value":850, "current_unit": "Celsius"} # 1123.15 K
+params['He_cp'] = {"value": 4.9184126, "current_unit": "BTU/(kg*K)"} #5189.2 J/kg-K
 params['He_K'] =  0.32802   # W/m-K
 params['He_density'] = 3.8815   # kg/m3
 params['He_viscosity'] = 4.16e-5 # Pa.s
-params['He_Pressure'] = {"value":1015.264164, "current_unit": "psi", "new_unit": "pascal"}  #7e6 Pa
+params['He_Pressure'] = {"value":1015.264164, "current_unit": "psi"}  #7e6 Pa
 params['Tot_assembly_power'] = 250000 # W
 
 for i in range(1, 6):
@@ -25,7 +25,7 @@ for i in range(1, 6):
 params['ax_ref'] = 20 # cm
 params['num_cool_pins'] = 1*6+2*6+6*2/2
 params['num_fuel_pins'] = 6+6+6+3*6+2*6/2+6/3
-params['Height_FC'] = 2.0 # m
+params['Height_FC'] = {"value": 2000, "current_unit": "mm"} # Automatically converts to 'm' for MOOSE and 'cm' for openmc 
 params['Lattice_pitch'] = 2.0
 params['FuelPin_rad'] = 0.90 # cm
 params['cool_hole_rad'] = 0.60 # cm
@@ -36,7 +36,7 @@ params['lbp_rad'] = 0.25 # cm
 params['mod_ext_rad'] = 0.90 # cm
 params['shell_thick'] = 0.05   # FeCrAl
 params['liner_thick'] = 0.007  # Cr
-params['control_pin_rad'] = {"value": 0.3897638, "current_unit": "inch"} # Automatically converts to 'm' for MOOSE and 'cm' for openmc
+params['control_pin_rad'] = {"value": 9.9, "current_unit": "mm"} # Automatically converts to 'm' for MOOSE and 'cm' for openmc
 
 params.show_summary(show_metadata=False, sort_by='key')
 
@@ -45,7 +45,7 @@ params.show_summary(show_metadata=False, sort_by='key')
 
 moose_app_type = "SAM"
 app_dir = os.environ[moose_app_type.upper() + "_DIR"]
-moose_plugin = watts.PluginMOOSE(moose_app_type.lower() + '_template', show_stdout=True) # show all the output
+moose_plugin = watts.PluginMOOSE(moose_app_type.lower() + '_template', show_stdout=False) # show all the output
 moose_plugin.moose_exec = app_dir + "/" + moose_app_type.lower() + "-opt"
 moose_result = moose_plugin.workflow(params)
 for key in moose_result.csv_data:
