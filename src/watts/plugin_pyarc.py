@@ -1,18 +1,17 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
-from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime
-from functools import lru_cache
 from pathlib import Path
-import shutil, os
+import os
+import tempfile
 import time
-from typing import Callable, Mapping, List
+from typing import Mapping, List
 
 import h5py
 import sys
 
-from .fileutils import PathLike, tee_stdout, tee_stderr
+from .fileutils import PathLike
 from .parameters import Parameters
 from .plugin import TemplatePlugin
 from .results import Results
@@ -130,7 +129,6 @@ class PluginPyARC(TemplatePlugin):
         if os.path.exists(exe) is False:
             raise RuntimeError(f"PyARC executable '{exe}' is missing.")
         self._pyarc_exec = Path(exe)
-        
 
     def prerun(self, params: Parameters) -> None:
         """Generate PyARC input files
@@ -143,11 +141,6 @@ class PluginPyARC(TemplatePlugin):
         print("Pre-run for PyARC Plugin")
         self._run_time = time.time_ns()
         super().prerun(params, filename=self.pyarc_inp_name)
-        sys.path.insert(0, '{}'.format(self._pyarc_exec))
-        import PyARC
-        self.pyarc = PyARC.PyARC()
-        self.od = os.path.abspath(Path.cwd())
-        self.wd = os.path.abspath("{}/{}".format(Path.cwd(),"/tmpdir"))
 
     def run(self, **kwargs: Mapping):
         """Run PyARC
@@ -158,11 +151,17 @@ class PluginPyARC(TemplatePlugin):
             Keyword arguments passed on to :func:`pyarc.execute`
         """
         print("Run for PyARC Plugin")
+        sys.path.insert(0, f'{self._pyarc_exec}')
+        import PyARC
+        self.pyarc = PyARC.PyARC()
         self.pyarc.user_object.do_run = True
         self.pyarc.user_object.do_postrun = True
-        self.pyarc.execute(["-i", self.pyarc_inp_name, "-w", self.wd, "-o", self.od])
-        os.chdir(self.od) # TODO: I don't know why but I keep going to self._pyarc_exec after execution - this is very wierd!
-        shutil.rmtree(self.wd)
+        od = Path.cwd()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            self.pyarc.execute(["-i", self.pyarc_inp_name, "-w", tmpdir, "-o", str(od)], **kwargs)
+        sys.path.pop(0)  # Restore sys.path to original state
+        os.chdir(od) # TODO: I don't know why but I keep going to self._pyarc_exec after execution - this is very wierd!
 
     def postrun(self, params: Parameters) -> ResultsPyARC:
         """Collect information from PyARC and create results object
@@ -179,7 +178,8 @@ class PluginPyARC(TemplatePlugin):
         print("Post-run for PyARC Plugin")
 
         time = datetime.fromtimestamp(self._run_time * 1e-9)
-        inputs = [self.pyarc_inp_name] # TODO: + self.supp_inputs (this is currently not done because the supp_inputs would get removed!)
+        inputs = [p.name for p in self.supp_inputs]
+        inputs.append(self.pyarc_inp_name)
         outputs = [p for p in Path.cwd().iterdir() if p.name not in inputs]
         return ResultsPyARC(params, time, inputs, outputs, self.pyarc.user_object)
 
