@@ -3,12 +3,10 @@
 
 from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime
-import os
 from pathlib import Path
 import shutil
-import subprocess
 import time
-from typing import List
+from typing import List, Optional
 
 import h5py
 import numpy as np
@@ -130,8 +128,9 @@ class PluginMOOSE(TemplatePlugin):
     """
 
     def  __init__(self, template_file: str, show_stdout: bool = False,
-                  show_stderr: bool = False, n_cpu: int = 1, supp_inputs: List[str] = []):
-        super().__init__(template_file)
+                  show_stderr: bool = False, n_cpu: int = 1,
+                  supp_inputs: Optional[List[str]] = None):
+        super().__init__(template_file, supp_inputs)
         self._moose_exec = Path('moose-opt')
         self.moose_inp_name = "MOOSE.i"
         self.show_stdout = show_stdout
@@ -139,7 +138,6 @@ class PluginMOOSE(TemplatePlugin):
         if n_cpu < 1:
             raise RuntimeError("The CPU number used to run MOOSE app must be a natural number.")
         self.n_cpu = n_cpu
-        self.supp_inputs = [Path(f).resolve() for f in supp_inputs]
 
     @property
     def moose_exec(self) -> Path:
@@ -206,6 +204,8 @@ class PluginMOOSE(TemplatePlugin):
         print("Post-run for MOOSE Plugin")
 
         time = datetime.fromtimestamp(self._run_time * 1e-9)
-        inputs = ['MOOSE.i']
+        # Start with non-templated input files
+        inputs = [Path.cwd() / p.name for p in self.supp_inputs]
+        inputs.append('MOOSE.i')
         outputs = [p for p in Path.cwd().iterdir() if p.name not in inputs]
         return ResultsMOOSE(params, time, inputs, outputs)

@@ -2,22 +2,32 @@
 # SPDX-License-Identifier: MIT
 
 from abc import ABC, abstractmethod
-import os
 from pathlib import Path
 import shutil
-from typing import Optional
+from typing import Optional, List
 from astropy import units as u
 import copy
 
 from .database import Database
-from .fileutils import cd_tmpdir
+from .fileutils import cd_tmpdir, PathLike
 from .parameters import Parameters
 from .results import Results
 from .template import TemplateModelBuilder
 
 
 class Plugin(ABC):
-    """Class defining the Plugin interface"""
+    """Class defining the Plugin interface
+
+    Parameters
+    ----------
+    supp_inputs
+        Supplemental input files
+    """
+
+    def __init__(self, supp_inputs: Optional[List[PathLike]] = None):
+        self.supp_inputs = []
+        if supp_inputs is not None:
+            self.supp_inputs = [Path(f).resolve() for f in supp_inputs]
 
     @abstractmethod
     def prerun(self, params):
@@ -61,11 +71,12 @@ class Plugin(ABC):
         db = Database()
 
         with cd_tmpdir():
+            # Copy supplemental inputs to temporary directory
+            cwd = Path.cwd()
+            for path in self.supp_inputs:
+                shutil.copy(str(path), str(cwd))  # Remove str() for Python 3.8+
+
             # Run workflow in temporary directory
-            if hasattr(self, 'supp_inputs'):
-                des = os.getcwd()
-                for sifp in self.supp_inputs:
-                    shutil.copy(str(sifp), des)
             self.prerun(params)
             self.run()
             result = self.postrun(params)
@@ -112,7 +123,7 @@ class Plugin(ABC):
 
             if isinstance(params_copy[key], u.quantity.Quantity):
 
-                # Unit conversion for temperature needs to be done separately because 
+                # Unit conversion for temperature needs to be done separately because
                 # astropy uses a different method to convert temperature.
                 # Variables are converted to SI by default.
 
@@ -133,8 +144,12 @@ class TemplatePlugin(Plugin):
     ----------
     template_file
         Path to template file
+    supp_inputs
+        Supplemental input files
+
     """
-    def  __init__(self, template_file: str):
+    def  __init__(self, template_file: str, supp_inputs: Optional[List[PathLike]] = None):
+        super().__init__(self, supp_inputs)
         self.model_builder = TemplateModelBuilder(template_file)
 
     def prerun(self, params: Parameters, filename: Optional[str] = None):
