@@ -5,6 +5,7 @@ Training on WATTS is enabled with a suite of simple examples:
 ## Example 1
 * [__example1a__](example1a_SAM/README.md) - Showcasing MOOSE plugin for SAM execution
 * [__example1b__](example1b_BISON/README.md) - Showcasing MOOSE plugin for BISON execution
+* [__example1c__](example1c_PyARC/README.md) - Showcasing PyARC execution
 ## Example 2
 * [__example2__](example2_SAM_OpenMC/README.md) - Workflow with MOOSE/SAM and OpenMC
 ## Example 3

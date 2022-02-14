@@ -31,7 +31,7 @@ class Results:
     """
 
     def __init__(self, plugin: str, params: Parameters, time: datetime,
-                 inputs: List[PathLike], outputs: List[PathLike]):
+                 inputs: List[PathLike], outputs: List[PathLike], python_results = None):
         self.base_path = Path.cwd()
         self.plugin = plugin
         self.parameters = Parameters(params)
@@ -96,6 +96,8 @@ class Results:
                 result = watts.ResultsOpenMC._from_hdf5(h5file)
             elif plugin == 'MOOSE':
                 result = watts.ResultsMOOSE._from_hdf5(h5file)
+            elif plugin == 'PyARC':
+                result = watts.ResultsPyARC._from_hdf5(h5file)
             else:
                 raise RuntimeError(f"Unrecognized plugin in results: {plugin}")
 
