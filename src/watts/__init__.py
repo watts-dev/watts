@@ -4,6 +4,7 @@
 from .plugin import *
 from .plugin_openmc import *
 from .plugin_moose import *
+from .plugin_pyarc import *
 from .template import *
 from .parameters import *
 from .database import *

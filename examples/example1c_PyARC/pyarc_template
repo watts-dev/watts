@@ -1,0 +1,72 @@
+=arc
+geometry{
+
+    materials{
+        material ( LEU ) {
+            temp    = 300
+            adens{ 
+                 aden ( u235 ) = 2.0e-2  % atom density in at/barn-cm
+                 aden ( u238 ) = 2.0e-2  % atom density in at/barn-cm
+                 aden ( o16 ) = 8.0e-2  % atom density in at/barn-cm
+            }
+            lumped_element_aden( lu35 ) = 1e-3
+        }
+        material ( LEU2 ) {
+            temp    = 300
+            adens{ 
+                 aden ( u236 ) = 2.0e-2  % atom density in at/barn-cm
+                 aden ( u237 ) = 2.0e-2  % atom density in at/barn-cm
+                 aden ( o16 ) = 8.0e-2  % atom density in at/barn-cm
+            }
+        }
+    }
+    surfaces{
+        hexagon ( hex ){ orientation=y   normal = z  pitch = {{ assembly_pitch }} }
+        plane ( z0 ) { z = 0.0  }
+        plane ( z10 ) { z = {{ assembly_length }} }
+    }
+
+    reactor{
+        lower_axial_surf=z0
+        upper_axial_surf=z10
+        
+        lower_boundary_condition=reflective
+        upper_boundary_condition=reflective
+        reactor_hex_lattice {
+            pitch         = hex
+            num_ring      = 1
+            fill          = [ assembly ]
+        }
+        assembly ( assembly ) {
+            sub_assembly ( sub_assembly_name ) {
+                lower_axial_surf=z0
+                upper_axial_surf=z10
+                material=LEU
+            }
+        }
+    }
+}
+calculations{
+
+    mcc3{
+       xslib            = "endf7.0"
+       egroupname       = ANL33
+       scattering_order = 1
+       lumped_element_text_file( lu35 ) = "lumped_test5.son"
+        cell( a ){
+            associated_sub_assembly     = sub_assembly_name
+        }
+    }
+    dif3d{
+        power           = 1.0
+        geometry_type   = hexagonal_infinite_lattice
+        isotxs          = previous
+        run_dif3d       = true
+        max_axial_mesh_size = 0.05
+        dif_fd_options{}
+    }
+}
+
+
+
+end
