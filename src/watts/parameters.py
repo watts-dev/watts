@@ -8,7 +8,6 @@ from datetime import datetime
 from getpass import getuser
 from typing import Any, Union
 from warnings import warn
-from astropy import units as u
 
 import h5py
 from prettytable import PrettyTable
@@ -29,7 +28,6 @@ _LOAD_FUNCS = {
 
 ParametersMetadata = namedtuple('ParametersMetadata', ['user', 'time'])
 
-
 class Parameters(MutableMapping):
     """User parameters used to generate inputs that are created by plugins
 
@@ -47,7 +45,6 @@ class Parameters(MutableMapping):
         self._dict = {}
         self._metadata = {}
         self._warn_duplicates = False
-        self.convert_param = []
 
         # Mimic the behavior of a normal dict object.
         if args:
@@ -118,13 +115,6 @@ class Parameters(MutableMapping):
             warn(f"Key {key} has already been added to parameters")
         self._dict[key] = value
         self._metadata[key] = ParametersMetadata(user, time)
-
-        if isinstance(value, dict) and "current_unit" in value.keys():
-            u.imperial.enable()
-            params_quantity = u.Quantity(value["value"], u.Unit(value["current_unit"]))
-            self._dict[key] = params_quantity
-            self.convert_param.append(key)
-
 
     def get_metadata(self, key: Any) -> ParametersMetadata:
         """Get metadata associated with a key

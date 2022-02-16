@@ -7,8 +7,6 @@ from functools import lru_cache
 from pathlib import Path
 import time
 from typing import Callable, Mapping, List
-from astropy import units as u
-import copy
 
 import h5py
 
@@ -118,6 +116,20 @@ class PluginOpenMC(Plugin):
         self.show_stdout = show_stdout
         self.show_stderr = show_stderr
 
+    def convert_unit(self, params: Parameters, unit_system, unit_temperature):
+        """Convert units of parameters
+
+        Parameters
+        ----------
+        params
+            Parameters used when rendering template
+        unit_system
+            Desired unit system: SI or CGS
+        unit_temperature
+            Desired unit for temperature parameter
+        """
+        return super().convert_unit(params, unit_system, unit_temperature)
+
     def prerun(self, params: Parameters) -> None:
         """Generate OpenMC input files
 
@@ -128,11 +140,11 @@ class PluginOpenMC(Plugin):
         """
         # Make a copy of params and convert units if necessary
         # The original params remains unchanged
-        self._convert_unit(params)
+        params_copy = self.convert_unit(params, unit_system='cgs', unit_temperature='K')
 
         print("Pre-run for OpenMC Plugin")
         self._run_time = time.time_ns()
-        self.model_builder(self.params_copy)
+        self.model_builder(params_copy)
 
     def run(self, **kwargs: Mapping):
         """Run OpenMC
@@ -187,24 +199,3 @@ class PluginOpenMC(Plugin):
 
         time = datetime.fromtimestamp(self._run_time * 1e-9)
         return ResultsOpenMC(params, time, inputs, outputs)
-
-
-    def _convert_unit(self, params: Parameters):
-        # Function to convert units to CGS
-        u.imperial.enable()
-        self.params_copy = copy.deepcopy(params)
-
-        for key in self.params_copy.keys():
-            if key in self.params_copy.convert_param:
-
-                temperature_units = ['Kelvin', 'Celsius', 'Rankine', 'Fahrenheit',
-                                    'deg_C', 'deg_R', 'deg_F']
-
-                # Unit conversion for temperature needs to be done separately because 
-                # astropy uses a different method to convert temperature.
-                # Variables are converted to CGS by default.
-
-                if self.params_copy[key].unit in temperature_units:
-                    self.params_copy[key] = self.params_copy[key].to(u.K, equivalencies=u.temperature()).value
-                else:
-                    self.params_copy[key] = self.params_copy[key].cgs.value
