@@ -4,7 +4,7 @@
 from pathlib import Path
 from datetime import datetime
 
-from astropy.units import Quantity
+from astropy.units import Quantity, kilometer
 import watts
 import pytest
 import numpy as np
@@ -31,6 +31,7 @@ def test_parameters_roundtrip(run_in_tmpdir):
     params['float_scalar'] = 6.022e23
     params['str_scalar'] = 'WATTS is great'
     params['bool_scalar'] = True
+    params['quantity_scalar'] = Quantity(3.0, 'J/kg')
     params['list_int'] = [0, 1, 2]
     params['list_float'] = [10.0, 20.0, 30.0]
     params['list_str'] = ['PWR', 'BWR', 'SFR', 'LMFR']
@@ -43,6 +44,7 @@ def test_parameters_roundtrip(run_in_tmpdir):
     params['array_int'] = np.array([0, 1, 2])
     params['array_float'] = np.array([10., 20., 30.])
     params['array_bool'] = np.array([True, False, False, True])
+    params['array_quantity'] = np.array([1.0, 2.0, 5.0]) * kilometer
     # Numpy array of strings doesn't work because internally numpy uses UTF-32,
     # which is not supported in h5py
     #params['array_str'] = np.array(['ANL', 'ORNL', 'LANL'])

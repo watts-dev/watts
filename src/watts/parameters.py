@@ -11,7 +11,7 @@ import textwrap
 from typing import Any, Union
 from warnings import warn
 
-from astropy import units as u
+import astropy.units as u
 import h5py
 from prettytable import PrettyTable
 
@@ -19,17 +19,51 @@ from prettytable import PrettyTable
 # Enable imperial units
 u.imperial.enable()
 
+# Normally saving parameters to HDF5 is as simple as calling:
+#
+#   obj.create_dataset(key, data=value)
+#
+# However, in some cases we need to transform the value before writing or add
+# extra metadata in the dataset. To do this, we setup a mapping of Python types
+# to functions that create a dataset.
+
+def _generate_save_func(dtype):
+    def make_dataset(obj, key, value):
+        dataset = obj.create_dataset(key, data=dtype(value))
+        return dataset
+    return make_dataset
+
+_default_save_func = _generate_save_func(lambda x: x)
+
+def _quantity_save_func(obj, key, value):
+    dataset = _default_save_func(obj, key, value)
+    dataset.attrs['unit'] = str(value.unit)
+    return dataset
+
 _SAVE_FUNCS = {
-    'set': list
+    'set': _generate_save_func(list),
+    'Quantity': _quantity_save_func
 }
 
+# In an HDF5 file, all iterable objects just appear as plain arrays (represented
+# by h5py as numpy arrays). To "round trip" data correctly, we again setup a
+# mapping of Python types to functions that load data out of a datset and
+# perform any transformation needed.
+
+def _generate_load_func(dtype):
+    return lambda obj, value: dtype(value)
+
+def _quantity_load_func(obj, value):
+    return u.Quantity(value, obj.attrs['unit'])
+
 _LOAD_FUNCS = {
-    'tuple': tuple,
-    'list': list,
-    'set': set,
-    'float': float,
-    'int': int,
-    'bool': bool
+    'tuple': _generate_load_func(tuple),
+    'list': _generate_load_func(list),
+    'set': _generate_load_func(set),
+    'float': _generate_load_func(float),
+    'int': _generate_load_func(int),
+    'bool': _generate_load_func(bool),
+    'Quantity': _quantity_load_func
 }
 
 ParametersMetadata = namedtuple('ParametersMetadata', ['user', 'time'])
@@ -209,10 +243,8 @@ class Parameters(MutableMapping):
             else:
                 # Convert type if necessary. If the type is not listed, return a
                 # "null" function that just returns the original value
-                func = _SAVE_FUNCS.get(type(value).__name__, lambda x: x)
-                file_value = func(value)
-
-                dset = h5_obj.create_dataset(key, data=file_value)
+                func = _SAVE_FUNCS.get(type(value).__name__, _default_save_func)
+                dset = func(h5_obj, key, value)
                 dset.attrs['type'] = type(value).__name__
                 if isinstance(mapping, type(self)):
                     add_metadata(dset, self._metadata[key])
@@ -253,8 +285,8 @@ class Parameters(MutableMapping):
 
                 # Convert type if indicated. If the type is not listed, return a
                 # "null" function that just returns the original value
-                func = _LOAD_FUNCS.get(obj.attrs['type'], lambda x: x)
-                mapping[key] = func(value)
+                func = _LOAD_FUNCS.get(obj.attrs['type'], lambda obj, x: x)
+                mapping[key] = func(obj, value)
 
                 if root:
                     self._metadata[key] = metadata_from_obj(obj)

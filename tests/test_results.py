@@ -6,7 +6,6 @@ from pathlib import Path
 
 import watts
 import numpy as np
-from astropy import units as u
 
 
 def test_results_openmc(run_in_tmpdir):
