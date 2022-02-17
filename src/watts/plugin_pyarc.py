@@ -142,7 +142,7 @@ class PluginPyARC(TemplatePlugin):
         # Make a copy of params and convert units if necessary
         # The original params remains unchanged
 
-        params_copy = super().convert_unit(params, unit_system='si', unit_temperature='K')
+        params_copy = params.convert_units()
 
         print("Pre-run for PyARC Plugin")
         self._run_time = time.time_ns()

@@ -128,10 +128,8 @@ class PluginOpenMC(Plugin):
         params
             Parameters used by the OpenMC template
         """
-        # Make a copy of params and convert units if necessary
-        # The original params remains unchanged
-
-        params_copy = super().convert_unit(params, unit_system='cgs', unit_temperature='K')
+        # Convert quantities in parameters to CGS system
+        params_copy = params.convert_units(system='cgs')
 
         print("Pre-run for OpenMC Plugin")
         self._run_time = time.time_ns()

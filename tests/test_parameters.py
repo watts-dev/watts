@@ -4,10 +4,12 @@
 from pathlib import Path
 from datetime import datetime
 
+from astropy.units import Quantity
 import watts
 import pytest
 import numpy as np
 import h5py
+
 
 def _compare_params(params, other):
     # Make sure key/value pairs match original parameters
@@ -127,3 +129,29 @@ def test_parameters_duplicates():
     params.warn_duplicates = True
     with pytest.warns(UserWarning):
         params['a'] = 8
+
+
+def test_unit_conversion(run_in_tmpdir):
+    params = watts.Parameters()
+
+    # Test with various unit conversion formats
+    params['He_inlet_temp'] = Quantity(600, "Celsius")  # 873.15 K
+    params['He_cp'] = Quantity(4.9184126, "BTU/(kg*K)") # 5189.2 J/kg-K
+    params['He_Pressure'] = Quantity(7.0, "MPa") # 7e6 Pa
+    params['Height_FC'] = Quantity(2000, "mm") # 2 m
+
+    # Check that unit conversion in the MOOSE plugin is correct
+    params_si = params.convert_units(system='si')
+
+    assert params_si["He_inlet_temp"] == 873.15    # K
+    assert round(params_si["He_cp"], 1) == 5189.2  # J/kg-K
+    assert params_si["He_Pressure"] == 7_000_000.0 # Pa
+    assert params_si["Height_FC"] == 2.0           # m
+
+    # Check that unit conversion in the openmc plugin is correct
+    params_cgs = params.convert_units(system='cgs')
+
+    assert params_cgs["He_inlet_temp"] == 873.15         # K
+    assert round(params_cgs["He_cp"], -3) == 51892000.0  # J/g-K
+    assert params_cgs["He_Pressure"] == 70_000_000.0     # P/s
+    assert params_cgs["Height_FC"] == 200.0              # cm

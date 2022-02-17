@@ -1,17 +1,23 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
-import textwrap
+from __future__ import annotations
+import copy
 from collections import namedtuple
 from collections.abc import MutableMapping, Mapping, Iterable
 from datetime import datetime
 from getpass import getuser
+import textwrap
 from typing import Any, Union
 from warnings import warn
 
+from astropy import units as u
 import h5py
 from prettytable import PrettyTable
 
+
+# Enable imperial units
+u.imperial.enable()
 
 _SAVE_FUNCS = {
     'set': list
@@ -277,7 +283,7 @@ class Parameters(MutableMapping):
             self._load_mapping(self, filename_or_obj)
 
     @classmethod
-    def from_hdf5(cls, filename_or_obj: Union[str, h5py.Group]):
+    def from_hdf5(cls, filename_or_obj: Union[str, h5py.Group]) -> Parameters:
         """Return parameters from HDF5 file/group
 
         Parameters
@@ -287,4 +293,34 @@ class Parameters(MutableMapping):
         """
         params = cls()
         params.load(filename_or_obj)
+        return params
+
+    def convert_units(self, system: str = 'si', temperature: str = 'K',
+                     inplace: bool = False) -> Parameters:
+        """Perform unit conversion
+
+        Parameters
+        ----------
+        system
+            Desired unit system: 'si' or 'cgs'
+        temperature
+            Desired unit for temperature conversions
+        inplace
+            Whether to modify the parameters (True) or return a copy (False)
+
+        Returns
+        -------
+        A :class:`Parameters` instance with converted units
+        """
+        params = self if inplace else copy.deepcopy(self)
+
+        for key, value in params.items():
+            if isinstance(value, u.Quantity):
+                # Unit conversion for temperature needs to be done separately because
+                # astropy uses a different method to convert temperature.
+                if value.unit.physical_type == 'temperature':
+                    params[key] = value.to(temperature, equivalencies=u.temperature()).value
+                else:
+                    params[key] = getattr(value, system).value
+
         return params
