@@ -31,8 +31,8 @@ jobs:
         shell: bash
         run: |
           pip install -U pip
-          pushd /opt/openmc
-          pip install -e .
+          pushd /root/OpenMC/openmc
+          pip install .[test]
           popd
           pip install .[test]
 
