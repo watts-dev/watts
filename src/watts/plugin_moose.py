@@ -205,7 +205,7 @@ class PluginMOOSE(TemplatePlugin):
 
         time = datetime.fromtimestamp(self._run_time * 1e-9)
         # Start with non-templated input files
-        inputs = [Path.cwd() / p.name for p in self.extra_inputs]
+        inputs = [p.name for p in self.extra_inputs]
         inputs.append('MOOSE.i')
         outputs = [p for p in Path.cwd().iterdir() if p.name not in inputs]
         return ResultsMOOSE(params, time, inputs, outputs)

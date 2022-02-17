@@ -56,15 +56,16 @@ added to WATTS and are available for your use.
 MOOSE Plugin
 ~~~~~~~~~~
 
-The :class:`~watts.PluginMOOSE` class enables MOOSE simulations using a templated
-input file. This is demonstrated here for a SAM application, but other examples based on BISON are also available. 
-For MOOSE codes such as SAM or BISON that use text-based input files, WATTS relies on
-the `Jinja <https://jinja.palletsprojects.com>`_ templating engine for handling
-templated variables and expressions. The templated input file looks like a
-normal MOOSE input file where some values have been replaced with
-**variables**, which are denoted by ``{{`` and ``}}`` pairs and get replaced
-with actual values when the template is *rendered*. For example, a templated
-input file might look as follows:
+The :class:`~watts.PluginMOOSE` class enables MOOSE simulations using a
+templated input file. This is demonstrated here for a SAM application, but other
+examples based on BISON are also available. For MOOSE codes such as SAM or BISON
+that use text-based input files, WATTS relies on the `Jinja
+<https://jinja.palletsprojects.com>`_ templating engine for handling templated
+variables and expressions. The templated input file looks like a normal MOOSE
+input file where some values have been replaced with **variables**, which are
+denoted by ``{{`` and ``}}`` pairs and get replaced with actual values when the
+template is *rendered*. For example, a templated input file might look as
+follows:
 
 .. code-block:: jinja
 
@@ -81,8 +82,9 @@ If the templated input file is ``sam_template.inp``, the SAM code will rely the 
 
     moose_plugin = watts.PluginMOOSE('sam_template.inp')
 
-The MOOSE plugin provides the option to specify supplementary input files (in `supp_inputs` option) that 
-will be copied together with the templated input file (mesh or cross-section files).
+The MOOSE plugin provides the option to specify non-templated input files (in
+`extra_inputs` option) that will be copied together with the templated input
+file (mesh or cross-section files).
 
 The SAM executable defaults to ``sam-opt`` (assumed to be present on your
 :envvar:`PATH`) but can also be specified explicitly with the
@@ -163,7 +165,7 @@ PyARC Plugin
 ~~~~~~~~~~~~~
 
 The :class:`~watts.PluginPyARC` class handles PyARC execution in a similar
-manner to the :class:`~watts.PluginSAM` class for SAM. PyARC use text-based 
+manner to the :class:`~watts.PluginSAM` class for SAM. PyARC use text-based
 input files which can be templated as follows:
 
 .. code-block:: jinja
@@ -176,15 +178,15 @@ input files which can be templated as follows:
 
 If the templated input file is `pyarc_template`, then the PyARC plugin can be instantiated with following command line::
 
-    pyarc_plugin = watts.PluginPyARC('pyarc_template', show_stdout=True, supp_inputs=['lumped_test5.son'])
+    pyarc_plugin = watts.PluginPyARC('pyarc_template', show_stdout=True, extra_inputs=['lumped_test5.son'])
 
 The path to PyARC directory must be specified explicitly with the
 :attr:`~watts.PluginPyARC.pyarc_exec` attribute::
 
     pyarc_plugin.pyarc_exec  = "/path/to/PyARC"
 
-To execute PyARC, the :meth:`~watts.PluginPyARC.workflow` method is called 
-the same way as other Plugins. 
+To execute PyARC, the :meth:`~watts.PluginPyARC.workflow` method is called
+the same way as other Plugins.
 
 Results
 +++++++
