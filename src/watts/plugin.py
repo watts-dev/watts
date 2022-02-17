@@ -86,7 +86,7 @@ class Plugin(ABC):
 
         return result
 
-    def convert_unit(self, params: Parameters, unit_system, unit_temperature):
+    def convert_unit(self, params: Parameters, unit_system: str, unit_temperature: str):
         """Perform unit conversion
 
         Parameters
@@ -117,13 +117,13 @@ class Plugin(ABC):
                 # Variables are converted to SI by default.
 
                 if params_copy[key].unit in temperature_units:
-                    params_copy[key] = params_copy[key].to(u.Unit(unit_temperature), equivalencies=u.temperature()).value
+                    params_copy[key] = params_copy[key].to(unit_temperature, equivalencies=u.temperature()).value
                 else:
                     if unit_system == 'cgs':
                         params_copy[key] = params_copy[key].cgs.value
                     elif unit_system == 'si':
                         params_copy[key] = params_copy[key].si.value
-        return(params_copy)
+        return params_copy
 
 
 class TemplatePlugin(Plugin):

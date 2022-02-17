@@ -116,20 +116,6 @@ class PluginOpenMC(Plugin):
         self.show_stdout = show_stdout
         self.show_stderr = show_stderr
 
-    def convert_unit(self, params: Parameters, unit_system, unit_temperature):
-        """Convert units of parameters
-
-        Parameters
-        ----------
-        params
-            Parameters used when rendering template
-        unit_system
-            Desired unit system: SI or CGS
-        unit_temperature
-            Desired unit for temperature parameter
-        """
-        return super().convert_unit(params, unit_system, unit_temperature)
-
     def prerun(self, params: Parameters) -> None:
         """Generate OpenMC input files
 
@@ -140,7 +126,8 @@ class PluginOpenMC(Plugin):
         """
         # Make a copy of params and convert units if necessary
         # The original params remains unchanged
-        params_copy = self.convert_unit(params, unit_system='cgs', unit_temperature='K')
+
+        params_copy = super().convert_unit(params, unit_system='cgs', unit_temperature='K')
 
         print("Pre-run for OpenMC Plugin")
         self._run_time = time.time_ns()
