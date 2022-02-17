@@ -128,6 +128,7 @@ class PluginMOOSE(TemplatePlugin):
         Path to MOOSE executable
 
     """
+
     def  __init__(self, template_file: str, show_stdout: bool = False,
                   show_stderr: bool = False, n_cpu: int = 1, supp_inputs: List[str] = []):
         super().__init__(template_file)
@@ -167,12 +168,16 @@ class PluginMOOSE(TemplatePlugin):
         ----------
         params
             Parameters used when rendering template
-
         """
-        self._run_time = time.time_ns()
         # Render the template
+        # Make a copy of params and convert units if necessary
+        # The original params remains unchanged
+
+        params_copy = super().convert_unit(params, unit_system='si', unit_temperature='K')
+
         print("Pre-run for MOOSE Plugin")
-        super().prerun(params, filename=self.moose_inp_name)
+        self._run_time = time.time_ns()
+        super().prerun(params_copy, filename=self.moose_inp_name)
 
     def run(self):
         """Run MOOSE"""
@@ -185,7 +190,6 @@ class PluginMOOSE(TemplatePlugin):
             func_stderr = tee_stderr if self.show_stderr else redirect_stderr
             with func_stdout(outfile), func_stderr(outfile):
                 run_proc(["mpiexec", "-n", str(self.n_cpu) , self.moose_exec, "-i", self.moose_inp_name])
-
 
     def postrun(self, params: Parameters) -> ResultsMOOSE:
         """Read MOOSE results and create results object

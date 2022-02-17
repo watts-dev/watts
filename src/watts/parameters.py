@@ -28,7 +28,6 @@ _LOAD_FUNCS = {
 
 ParametersMetadata = namedtuple('ParametersMetadata', ['user', 'time'])
 
-
 class Parameters(MutableMapping):
     """User parameters used to generate inputs that are created by plugins
 

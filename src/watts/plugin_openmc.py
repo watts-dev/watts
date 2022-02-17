@@ -124,9 +124,14 @@ class PluginOpenMC(Plugin):
         params
             Parameters used by the OpenMC template
         """
+        # Make a copy of params and convert units if necessary
+        # The original params remains unchanged
+
+        params_copy = super().convert_unit(params, unit_system='cgs', unit_temperature='K')
+
         print("Pre-run for OpenMC Plugin")
         self._run_time = time.time_ns()
-        self.model_builder(params)
+        self.model_builder(params_copy)
 
     def run(self, **kwargs: Mapping):
         """Run OpenMC
@@ -181,4 +186,3 @@ class PluginOpenMC(Plugin):
 
         time = datetime.fromtimestamp(self._run_time * 1e-9)
         return ResultsOpenMC(params, time, inputs, outputs)
-
