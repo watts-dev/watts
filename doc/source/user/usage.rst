@@ -45,13 +45,31 @@ By themselves, :class:`~watts.Parameters` are not very useful, but when
 combined with plugin classes, they become building blocks for sophisticated
 workflows.
 
+Units
+~~~~~
+
+To handle codes that use different unit systems, WATTS relies on `Astropy <https://www.astropy.org>`_ to perform unit conversion on parameters to ensure that the correct units are used for each code. For instance, MOOSE-based codes use the SI units while OpenMC uses the CGS units. With the built-in unit-conversion capability, a parameter needs only to be set once in any unit system and WATTS can automatically convert it to the correct unit for different codes. To use the unit-conversion capability, parameters need to be set to the ``astropy.units.quantity.Quantity`` class 
+as follows::
+
+    from astropy import units as u
+
+    Quantity = u.Quantity
+
+    params['control_pin_rad'] = Quantity(9.9, "mm")
+    params['He_inlet_temp'] = Quantity(600, "Celsius")
+    params['He_cp'] = Quantity(4.9184126, "BTU/(kg*K)")
+
+with the format of ``Quantity(<value>, <current unit>)``. Imperial units can also be enabled as 
+follows::
+
+    u.imperial.enable()
+
 Plugins
 +++++++
 
 Using a particular code within WATTS requires a "plugin" that controls input file
-generation, execution, and post-processing. Two plugin classes,
-:class:`~watts.PluginMOOSE` and :class:`~watts.PluginOpenMC`, have already been
-added to WATTS and are available for your use.
+generation, execution, and post-processing. Three plugin classes,
+:class:`~watts.PluginMOOSE`, :class:`~watts.PluginOpenMC`, and :class:`~watts.PluginPyARC`, have already been added to WATTS and are available for your use.
 
 MOOSE Plugin
 ~~~~~~~~~~
