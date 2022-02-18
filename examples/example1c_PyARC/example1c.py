@@ -3,13 +3,20 @@
 
 import os
 import watts
+from astropy import units as u
 
+# Uses Astropy for unit conversion
+u.imperial.enable()    # Enable imperial units
+Quantity = u.Quantity
 params = watts.Parameters()
 
 # TH params
 
-params['assembly_pitch'] = 20e-2  # m
-params['assembly_length'] = 0.13   # m
+params['assembly_pitch'] = Quantity(20, "cm")  # 20e-2  m
+params['assembly_length'] = Quantity(13, "cm")  # 0.13 m
+params['temp'] = Quantity(26.85, "Celsius")  # 300 K
+
+
 
 params.show_summary(show_metadata=False, sort_by='key')
 

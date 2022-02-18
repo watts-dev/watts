@@ -138,9 +138,15 @@ class PluginPyARC(TemplatePlugin):
         params
             Parameters used by the PyARC template
         """
+        # Render the template
+        # Make a copy of params and convert units if necessary
+        # The original params remains unchanged
+
+        params_copy = super().convert_unit(params, unit_system='si', unit_temperature='K')
+
         print("Pre-run for PyARC Plugin")
         self._run_time = time.time_ns()
-        super().prerun(params, filename=self.pyarc_inp_name)
+        super().prerun(params_copy, filename=self.pyarc_inp_name)
 
     def run(self, **kwargs: Mapping):
         """Run PyARC
