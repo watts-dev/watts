@@ -3,6 +3,7 @@
 
 from pathlib import Path
 from datetime import datetime
+import warnings
 
 from astropy.units import Quantity, kilometer
 import watts
@@ -117,17 +118,16 @@ def test_parameters_show_summary(capsys):
     assert out == expected_out
 
 
-@pytest.mark.xfail
-def test_parameters_duplicates_xfail():
-    # By default, no warning is given so this test is expected to fail
-    # TODO: when pytest 7.0 is released, use pytest.does_not_warn()
-    params = watts.Parameters(a=3)
-    with pytest.warns(UserWarning):
-        params['a'] = 8
-
-
 def test_parameters_duplicates():
     params = watts.Parameters(a=3)
+
+    # By default, overwriting a parameter shouldn't produce a warning. If a
+    # warning is given, the filter below will result in a test failure
+    with warnings.catch_warnings():
+        warnings.simplefilter('error')
+        params['a'] = 8
+
+    # In this case, we expect a warning to be produced
     params.warn_duplicates = True
     with pytest.warns(UserWarning):
         params['a'] = 8
