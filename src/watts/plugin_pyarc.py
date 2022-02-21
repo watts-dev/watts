@@ -45,7 +45,7 @@ class ResultsPyARC(Results):
     def stdout(self) -> str:
         return (self.base_path / "PyARC_log.txt").read_text()
 
-    def _save_PyARC(self, user_object) -> dict:
+    def _save_PyARC(self, results_data) -> dict:
         """Return PyARC results in a dictionary
 
         Returns
@@ -53,17 +53,8 @@ class ResultsPyARC(Results):
         Results from PyARC results
 
         """
-        results_data = {}
-        results_data["mcc3"] = user_object.results_keff_mcc3
-        results_data["dif3d"] = user_object.results_keff_dif3d
-        results_data["proteus_nodal"] = user_object.results_keff_nodal
-        results_data["rzmflx"] = user_object.results_keff_rzmflx
-        results_data["persent_pert"] = user_object.results_kpert_persent
-        results_data["persent_sens"] = user_object.results_kuq_persent
-        results_data["gamsor"] = user_object.results_power_gamsor
-        results_data["dassh"] = user_object.results_dassh
-        # TODO - this is minimum information that can be brought back easily. 
-        # More should be returned but will require work on PyARC.
+
+        # TODO: need to provide results_data as hdf5 file and extract the information here using _from_hdf5
         return results_data
 
     def save(self, filename: PathLike):
@@ -181,5 +172,5 @@ class PluginPyARC(TemplatePlugin):
         inputs = [p.name for p in self.supp_inputs]
         inputs.append(self.pyarc_inp_name)
         outputs = [p for p in Path.cwd().iterdir() if p.name not in inputs]
-        return ResultsPyARC(params, time, inputs, outputs, self.pyarc.user_object)
+        return ResultsPyARC(params, time, inputs, outputs, self.pyarc.user_object.results)
 
