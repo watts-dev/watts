@@ -6,12 +6,8 @@ import os
 import watts
 from statistics import mean
 from openmc_template import build_openmc_model
-from astropy import units as u
+from astropy.units import Quantity
 
-
-# Uses Astropy for unit conversion
-u.imperial.enable()    # Enable imperial units
-Quantity = u.Quantity
 
 params = watts.Parameters()
 

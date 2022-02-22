@@ -5,8 +5,6 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 import shutil
 from typing import Optional, List
-from astropy import units as u
-import copy
 
 from .database import Database
 from .fileutils import cd_tmpdir, PathLike
@@ -96,45 +94,6 @@ class Plugin(ABC):
         db.add_result(result)
 
         return result
-
-    def convert_unit(self, params: Parameters, unit_system: str, unit_temperature: str):
-        """Perform unit conversion
-
-        Parameters
-        ----------
-        params
-            Parameters used when rendering template
-        unit_system
-            Desired unit system: SI or CGS
-        unit_temperature
-            Desired unit for temperature parameter
-
-        Returns
-        -------
-        A copy of params with the converted units
-        """
-        u.imperial.enable()
-        params_copy = copy.deepcopy(params)
-
-        temperature_units = ['Kelvin', 'Celsius', 'Rankine', 'Fahrenheit',
-                            'deg_C', 'deg_R', 'deg_F']
-
-        for key in params_copy.keys():
-
-            if isinstance(params_copy[key], u.quantity.Quantity):
-
-                # Unit conversion for temperature needs to be done separately because
-                # astropy uses a different method to convert temperature.
-                # Variables are converted to SI by default.
-
-                if params_copy[key].unit in temperature_units:
-                    params_copy[key] = params_copy[key].to(unit_temperature, equivalencies=u.temperature()).value
-                else:
-                    if unit_system == 'cgs':
-                        params_copy[key] = params_copy[key].cgs.value
-                    elif unit_system == 'si':
-                        params_copy[key] = params_copy[key].si.value
-        return params_copy
 
 
 class TemplatePlugin(Plugin):

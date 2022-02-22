@@ -1,29 +1,69 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
-import textwrap
+from __future__ import annotations
+import copy
 from collections import namedtuple
 from collections.abc import MutableMapping, Mapping, Iterable
 from datetime import datetime
 from getpass import getuser
+import textwrap
 from typing import Any, Union
 from warnings import warn
 
+import astropy.units as u
 import h5py
 from prettytable import PrettyTable
 
 
+# Enable imperial units
+u.imperial.enable()
+
+# Normally saving parameters to HDF5 is as simple as calling:
+#
+#   obj.create_dataset(key, data=value)
+#
+# However, in some cases we need to transform the value before writing or add
+# extra metadata in the dataset. To do this, we setup a mapping of Python types
+# to functions that create a dataset.
+
+def _generate_save_func(dtype):
+    def make_dataset(obj, key, value):
+        dataset = obj.create_dataset(key, data=dtype(value))
+        return dataset
+    return make_dataset
+
+_default_save_func = _generate_save_func(lambda x: x)
+
+def _quantity_save_func(obj, key, value):
+    dataset = _default_save_func(obj, key, value)
+    dataset.attrs['unit'] = str(value.unit)
+    return dataset
+
 _SAVE_FUNCS = {
-    'set': list
+    'set': _generate_save_func(list),
+    'Quantity': _quantity_save_func
 }
 
+# In an HDF5 file, all iterable objects just appear as plain arrays (represented
+# by h5py as numpy arrays). To "round trip" data correctly, we again setup a
+# mapping of Python types to functions that load data out of a datset and
+# perform any transformation needed.
+
+def _generate_load_func(dtype):
+    return lambda obj, value: dtype(value)
+
+def _quantity_load_func(obj, value):
+    return u.Quantity(value, obj.attrs['unit'])
+
 _LOAD_FUNCS = {
-    'tuple': tuple,
-    'list': list,
-    'set': set,
-    'float': float,
-    'int': int,
-    'bool': bool
+    'tuple': _generate_load_func(tuple),
+    'list': _generate_load_func(list),
+    'set': _generate_load_func(set),
+    'float': _generate_load_func(float),
+    'int': _generate_load_func(int),
+    'bool': _generate_load_func(bool),
+    'Quantity': _quantity_load_func
 }
 
 ParametersMetadata = namedtuple('ParametersMetadata', ['user', 'time'])
@@ -203,10 +243,8 @@ class Parameters(MutableMapping):
             else:
                 # Convert type if necessary. If the type is not listed, return a
                 # "null" function that just returns the original value
-                func = _SAVE_FUNCS.get(type(value).__name__, lambda x: x)
-                file_value = func(value)
-
-                dset = h5_obj.create_dataset(key, data=file_value)
+                func = _SAVE_FUNCS.get(type(value).__name__, _default_save_func)
+                dset = func(h5_obj, key, value)
                 dset.attrs['type'] = type(value).__name__
                 if isinstance(mapping, type(self)):
                     add_metadata(dset, self._metadata[key])
@@ -247,8 +285,8 @@ class Parameters(MutableMapping):
 
                 # Convert type if indicated. If the type is not listed, return a
                 # "null" function that just returns the original value
-                func = _LOAD_FUNCS.get(obj.attrs['type'], lambda x: x)
-                mapping[key] = func(value)
+                func = _LOAD_FUNCS.get(obj.attrs['type'], lambda obj, x: x)
+                mapping[key] = func(obj, value)
 
                 if root:
                     self._metadata[key] = metadata_from_obj(obj)
@@ -277,7 +315,7 @@ class Parameters(MutableMapping):
             self._load_mapping(self, filename_or_obj)
 
     @classmethod
-    def from_hdf5(cls, filename_or_obj: Union[str, h5py.Group]):
+    def from_hdf5(cls, filename_or_obj: Union[str, h5py.Group]) -> Parameters:
         """Return parameters from HDF5 file/group
 
         Parameters
@@ -287,4 +325,34 @@ class Parameters(MutableMapping):
         """
         params = cls()
         params.load(filename_or_obj)
+        return params
+
+    def convert_units(self, system: str = 'si', temperature: str = 'K',
+                     inplace: bool = False) -> Parameters:
+        """Perform unit conversion
+
+        Parameters
+        ----------
+        system
+            Desired unit system: 'si' or 'cgs'
+        temperature
+            Desired unit for temperature conversions
+        inplace
+            Whether to modify the parameters (True) or return a copy (False)
+
+        Returns
+        -------
+        A :class:`Parameters` instance with converted units
+        """
+        params = self if inplace else copy.deepcopy(self)
+
+        for key, value in params.items():
+            if isinstance(value, u.Quantity):
+                # Unit conversion for temperature needs to be done separately because
+                # astropy uses a different method to convert temperature.
+                if value.unit.physical_type == 'temperature':
+                    params[key] = value.to(temperature, equivalencies=u.temperature()).value
+                else:
+                    params[key] = getattr(value, system).value
+
         return params
