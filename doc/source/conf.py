@@ -73,3 +73,18 @@ html_theme_options = {
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+html_logo = '_static/watts.svg'
+html_theme_options = {
+    "favicons": [
+        {
+            "rel": "icon",
+            "sizes": "16x16",
+            "href": "watts_16x16.png",
+        },
+        {
+            "rel": "icon",
+            "sizes": "32x32",
+            "href": "watts_32x32.png",
+        },
+    ]
+}
