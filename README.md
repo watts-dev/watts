@@ -14,10 +14,7 @@ questions, please contact [watts@anl.gov](mailto:watts@anl.gov).
 
 ## Installation
 
-- git clone https://github.com/watts-dev/watts
-- cd watts
-- pip install -U pip
-- pip install .
+- pip install watts
 
 ## Documentation
 
