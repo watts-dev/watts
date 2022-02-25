@@ -6,7 +6,7 @@ from pathlib import Path
 import os
 import tempfile
 import time
-from typing import Mapping, List
+from typing import Mapping, List, Optional
 
 import h5py
 import sys
@@ -89,12 +89,12 @@ class PluginPyARC(TemplatePlugin):
     template_file
         Templated PyARC input
     show_stdout
-        Whether to display output from stdout when SAM is run
+        Whether to display output from stdout when PyARC is run
     show_stderr
-        Whether to display output from stderr when SAM is run
-    supp_inputs
-        List of supplementary input files that are needed for running PyARC
-    
+        Whether to display output from stderr when PyARC is run
+    extra_inputs
+        List of extra (non-templated) input files that are needed
+
     Attributes
     ----------
     pyarc_exec
@@ -103,13 +103,13 @@ class PluginPyARC(TemplatePlugin):
     """
 
     def  __init__(self, template_file: str, show_stdout: bool = False,
-                  show_stderr: bool = False, supp_inputs: List[str] = []):
-        super().__init__(template_file)
+                  show_stderr: bool = False,
+                  extra_inputs: Optional[List[str]] = None):
+        super().__init__(template_file, extra_inputs)
         self._pyarc_exec = Path(os.environ.get('PyARC_DIR', 'PyARC.py'))
         self.pyarc_inp_name = "pyarc_input.son"
         self.show_stdout = show_stdout
         self.show_stderr = show_stderr
-        self.supp_inputs = [Path(f).resolve() for f in supp_inputs]
 
     @property
     def pyarc_exec(self) -> Path:
@@ -129,9 +129,15 @@ class PluginPyARC(TemplatePlugin):
         params
             Parameters used by the PyARC template
         """
+        # Render the template
+        # Make a copy of params and convert units if necessary
+        # The original params remains unchanged
+
+        params_copy = params.convert_units()
+
         print("Pre-run for PyARC Plugin")
         self._run_time = time.time_ns()
-        super().prerun(params, filename=self.pyarc_inp_name)
+        super().prerun(params_copy, filename=self.pyarc_inp_name)
 
     def run(self, **kwargs: Mapping):
         """Run PyARC
@@ -169,7 +175,7 @@ class PluginPyARC(TemplatePlugin):
         print("Post-run for PyARC Plugin")
 
         time = datetime.fromtimestamp(self._run_time * 1e-9)
-        inputs = [p.name for p in self.supp_inputs]
+        inputs = [p.name for p in self.extra_inputs]
         inputs.append(self.pyarc_inp_name)
         outputs = [p for p in Path.cwd().iterdir() if p.name not in inputs]
         return ResultsPyARC(params, time, inputs, outputs, self.pyarc.user_object.results)

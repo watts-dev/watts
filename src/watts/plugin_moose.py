@@ -3,12 +3,10 @@
 
 from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime
-import os
 from pathlib import Path
 import shutil
-import subprocess
 import time
-from typing import List
+from typing import List, Optional
 
 import h5py
 import numpy as np
@@ -119,8 +117,8 @@ class PluginMOOSE(TemplatePlugin):
         Whether to display output from stderr when MOOSE is run
     n_cpu
         Number of processors to be used to run MOOSE application
-    supp_inputs
-        List of supplementary input files that are needed for running the MOOSE application
+    extra_inputs
+        List of extra (non-templated) input files that are needed
 
     Attributes
     ----------
@@ -130,8 +128,9 @@ class PluginMOOSE(TemplatePlugin):
     """
 
     def  __init__(self, template_file: str, show_stdout: bool = False,
-                  show_stderr: bool = False, n_cpu: int = 1, supp_inputs: List[str] = []):
-        super().__init__(template_file)
+                  show_stderr: bool = False, n_cpu: int = 1,
+                  extra_inputs: Optional[List[str]] = None):
+        super().__init__(template_file, extra_inputs)
         self._moose_exec = Path('moose-opt')
         self.moose_inp_name = "MOOSE.i"
         self.show_stdout = show_stdout
@@ -139,7 +138,6 @@ class PluginMOOSE(TemplatePlugin):
         if n_cpu < 1:
             raise RuntimeError("The CPU number used to run MOOSE app must be a natural number.")
         self.n_cpu = n_cpu
-        self.supp_inputs = [Path(f).resolve() for f in supp_inputs]
 
     @property
     def moose_exec(self) -> Path:
@@ -173,7 +171,7 @@ class PluginMOOSE(TemplatePlugin):
         # Make a copy of params and convert units if necessary
         # The original params remains unchanged
 
-        params_copy = super().convert_unit(params, unit_system='si', unit_temperature='K')
+        params_copy = params.convert_units()
 
         print("Pre-run for MOOSE Plugin")
         self._run_time = time.time_ns()
@@ -206,6 +204,8 @@ class PluginMOOSE(TemplatePlugin):
         print("Post-run for MOOSE Plugin")
 
         time = datetime.fromtimestamp(self._run_time * 1e-9)
-        inputs = ['MOOSE.i']
+        # Start with non-templated input files
+        inputs = [p.name for p in self.extra_inputs]
+        inputs.append('MOOSE.i')
         outputs = [p for p in Path.cwd().iterdir() if p.name not in inputs]
         return ResultsMOOSE(params, time, inputs, outputs)
