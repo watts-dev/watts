@@ -6,9 +6,8 @@ from pathlib import Path
 import shutil
 from typing import List
 
-import h5py
+import dill
 
-import watts
 from .fileutils import PathLike, open_file
 from .parameters import Parameters
 
@@ -61,48 +60,28 @@ class Results:
             self.outputs[i] = dst_path / output.name
         self.base_path = dst_path
 
-    def _save(self, obj: h5py.Group):
-        obj.attrs['plugin'] = self.plugin
-        obj.attrs['time'] = self.time.isoformat()
-        param_group = obj.create_group('parameters')
-        self.parameters.save(param_group)
-        inputs = [str(p) for p in self.inputs]
-        obj.create_dataset('inputs', data=inputs)
-        outputs = [str(p) for p in self.outputs]
-        obj.create_dataset('outputs', data=outputs)
+    def save(self, filename: PathLike):
+        """Save results to a pickle file
 
-    @staticmethod
-    def _load(obj: h5py.Group):
-            time = datetime.fromisoformat(obj.attrs['time'])
-            parameters = Parameters.from_hdf5(obj['parameters'])
-            inputs = list(obj['inputs'][()].astype('str'))
-            inputs = [Path(p) for p in inputs]
-            outputs = list(obj['outputs'][()].astype('str'))
-            outputs = [Path(p) for p in outputs]
-            return time, parameters, inputs, outputs
+        Parameters
+        ----------
+        filename
+            File to save results to
+        """
+        with open(filename, 'wb') as fh:
+            fh.write(dill.dumps(self))
 
     @classmethod
-    def from_hdf5(cls, filename: PathLike):
-        """Load results from an HDF5 file
+    def from_pickle(cls, filename: PathLike):
+        """Load results from a pickle file
 
         Parameters
         ----------
         filename
             Path to load results from
         """
-        with h5py.File(filename, 'r') as h5file:
-            plugin = h5file.attrs['plugin']
-            if plugin == 'OpenMC':
-                result = watts.ResultsOpenMC._from_hdf5(h5file)
-            elif plugin == 'MOOSE':
-                result = watts.ResultsMOOSE._from_hdf5(h5file)
-            elif plugin == 'PyARC':
-                result = watts.ResultsPyARC._from_hdf5(h5file)
-            else:
-                raise RuntimeError(f"Unrecognized plugin in results: {plugin}")
-
-        result.base_path = Path(filename).parent
-        return result
+        with open(filename, 'rb') as fh:
+            return dill.loads(fh.read())
 
     def open_folder(self):
         """Open folder containing results"""

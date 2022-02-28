@@ -8,14 +8,12 @@ from collections.abc import MutableMapping, Mapping, Iterable
 from datetime import datetime
 from getpass import getuser
 import textwrap
-from typing import Any, Union
+from typing import Any, Union, BinaryIO
 from warnings import warn
 
 import astropy.units as u
-import h5py
+import dill
 from prettytable import PrettyTable
-
-from .h5utils import save_mapping, load_mapping
 
 # Enable imperial units
 u.imperial.enable()
@@ -27,7 +25,7 @@ class Parameters(MutableMapping):
 
     This class behaves like a normal Python dictionary except that it stores
     metadata on (key, value) pairs and provides the ability to save/load the
-    data to an HDF5 file.
+    data to a pickle file.
 
     Attributes
     ----------
@@ -181,64 +179,55 @@ class Parameters(MutableMapping):
             headers = headers[:2]
         print(table.get_string(fields=headers, sortby=field_to_name[sort_by]))
 
-    def _save_mapping(self, h5_obj):
-        # Save parameters to HDF5
-        save_mapping(self, h5_obj)
+    def _save_mapping(self, file_obj):
+        file_obj.write(dill.dumps(self))
 
-        # Create metadata for top-level objects
-        for key in self:
-            obj = h5_obj[key]
-            obj.attrs['user'] = self._metadata[key].user
-            obj.attrs['time'] = self._metadata[key].time.isoformat()
-
-    def save(self, filename_or_obj: Union[str, h5py.Group]):
-        """Save parameters to an HDF5 file/group
+    def save(self, filename_or_obj: Union[str, BinaryIO]):
+        """Save parameters to a pickle file
 
         Parameters
         ----------
         filename_or_obj
-            Path to HDF5 file or HDF5 group object to write to
+            Path to open file or file object write to
         """
         if isinstance(filename_or_obj, str):
-            with h5py.File(filename_or_obj, 'w') as h5file:
-                self._save_mapping(h5file)
+            with open(filename_or_obj, 'wb') as file_obj:
+                self._save_mapping(file_obj)
         else:
-            # If HDF5 file/group was passed, use it directly
+            # If file object was passed, use it directly
             self._save_mapping(filename_or_obj)
 
-    def _load_mapping(self, h5_obj):
-        # Load parameters from HDF5
-        load_mapping(self, h5_obj)
+    def _load_mapping(self, file_obj):
+        # Load parameters from pickle
+        data = dill.loads(file_obj.read())
 
-        # Add metadata if it exists
-        for key, obj in h5_obj.items():
-            user = obj.attrs['user']
-            time = datetime.fromisoformat(obj.attrs['time'])
-            self._metadata[key] = ParametersMetadata(user, time)
+        # Update current instance
+        self.update(data)
+        self._metadata.update(data._metadata)
 
-    def load(self, filename_or_obj: Union[str, h5py.Group]):
-        """Load parameters from an HDF5 file
+    def load(self, filename_or_obj: Union[str, BinaryIO]):
+        """Load parameters from a pickle file
 
         Parameters
         ----------
         filename_or_obj
-            Path to HDF5 file or HDF5 group object to read from
+            Path to pickle file or file object to read from
         """
         if isinstance(filename_or_obj, str):
-            with h5py.File(filename_or_obj, 'r') as fh:
+            with open(filename_or_obj, 'rb') as fh:
                 self._load_mapping(fh)
         else:
-            # If HDF5 file/group was passed, use it directly
+            # If file object was passed, use it directly
             self._load_mapping(filename_or_obj)
 
     @classmethod
-    def from_hdf5(cls, filename_or_obj: Union[str, h5py.Group]) -> Parameters:
-        """Return parameters from HDF5 file/group
+    def from_pickle(cls, filename_or_obj: Union[str, BinaryIO]) -> Parameters:
+        """Return parameters from a pickle file
 
         Parameters
         ----------
         filename_or_obj
-            Path to HDF5 file or HDF5 group object to read from
+            Path to pickle file or file object to read from
         """
         params = cls()
         params.load(filename_or_obj)
