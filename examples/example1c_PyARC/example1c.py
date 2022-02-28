@@ -20,7 +20,7 @@ for key in pyarc_result.results_data:
     print(key, pyarc_result.results_data[key])
 print(pyarc_result.inputs)
 print(pyarc_result.outputs)
-params['keff-dif3d'] = pyarc_result.results_data["dif3d"][0.0]
-params['keff-mcc3'] = pyarc_result.results_data["mcc3"][('R', 0, 1, 'A', 1)]
+params['keff-dif3d'] = pyarc_result.results_data["keff_dif3d"][0.0]
+params['keff-mcc3'] = pyarc_result.results_data["keff_mcc3"][('R', 0, 1, 'A', 1)]
 
 params.show_summary(show_metadata=True, sort_by='key')

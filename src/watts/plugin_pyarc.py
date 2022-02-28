@@ -37,34 +37,13 @@ class ResultsPyARC(Results):
     """
 
     def __init__(self, params: Parameters, time: datetime,
-                 inputs: List[Path], outputs: List[Path], user_object):
-        super().__init__('PyARC', params, time, inputs, outputs, user_object)
-        self.results_data = self._save_PyARC(user_object)
+                 inputs: List[Path], outputs: List[Path], results_data):
+        super().__init__('PyARC', params, time, inputs, outputs, results_data)
+        self.results_data = results_data
 
     @property
     def stdout(self) -> str:
         return (self.base_path / "PyARC_log.txt").read_text()
-
-    def _save_PyARC(self, user_object) -> dict:
-        """Return PyARC results in a dictionary
-
-        Returns
-        -------
-        Results from PyARC results
-
-        """
-        results_data = {}
-        results_data["mcc3"] = user_object.results_keff_mcc3
-        results_data["dif3d"] = user_object.results_keff_dif3d
-        results_data["proteus_nodal"] = user_object.results_keff_nodal
-        results_data["rzmflx"] = user_object.results_keff_rzmflx
-        results_data["persent_pert"] = user_object.results_kpert_persent
-        results_data["persent_sens"] = user_object.results_kuq_persent
-        results_data["gamsor"] = user_object.results_power_gamsor
-        results_data["dassh"] = user_object.results_dassh
-        # TODO - this is minimum information that can be brought back easily.
-        # More should be returned but will require work on PyARC.
-        return results_data
 
     def save(self, filename: PathLike):
         """Save results to an HDF5 file
@@ -187,5 +166,5 @@ class PluginPyARC(TemplatePlugin):
         inputs = [p.name for p in self.extra_inputs]
         inputs.append(self.pyarc_inp_name)
         outputs = [p for p in Path.cwd().iterdir() if p.name not in inputs]
-        return ResultsPyARC(params, time, inputs, outputs, self.pyarc.user_object)
+        return ResultsPyARC(params, time, inputs, outputs, self.pyarc.user_object.results)
 
