@@ -37,25 +37,13 @@ class ResultsPyARC(Results):
     """
 
     def __init__(self, params: Parameters, time: datetime,
-                 inputs: List[Path], outputs: List[Path], user_object):
-        super().__init__('PyARC', params, time, inputs, outputs, user_object)
-        self.results_data = self._save_PyARC(user_object)
+                 inputs: List[Path], outputs: List[Path], results_data):
+        super().__init__('PyARC', params, time, inputs, outputs, results_data)
+        self.results_data = results_data
 
     @property
     def stdout(self) -> str:
         return (self.base_path / "PyARC_log.txt").read_text()
-
-    def _save_PyARC(self, results_data) -> dict:
-        """Return PyARC results in a dictionary
-
-        Returns
-        -------
-        Results from PyARC results
-
-        """
-
-        # TODO: need to provide results_data as hdf5 file and extract the information here using _from_hdf5
-        return results_data
 
     def save(self, filename: PathLike):
         """Save results to an HDF5 file
