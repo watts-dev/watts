@@ -179,7 +179,7 @@ class Parameters(MutableMapping):
             headers = headers[:2]
         print(table.get_string(fields=headers, sortby=field_to_name[sort_by]))
 
-    def _save_mapping(self, file_obj):
+    def _save_mapping(self, file_obj: BinaryIO):
         file_obj.write(dill.dumps(self))
 
     def save(self, filename_or_obj: Union[str, BinaryIO]):
@@ -197,7 +197,7 @@ class Parameters(MutableMapping):
             # If file object was passed, use it directly
             self._save_mapping(filename_or_obj)
 
-    def _load_mapping(self, file_obj):
+    def _load_mapping(self, file_obj: BinaryIO):
         # Load parameters from pickle
         data = dill.loads(file_obj.read())
 
