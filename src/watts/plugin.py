@@ -107,7 +107,7 @@ class TemplatePlugin(Plugin):
         Extra (non-templated) input files
 
     """
-    def  __init__(self, template_file: str, extra_inputs: Optional[List[PathLike]] = None):
+    def __init__(self, template_file: str, extra_inputs: Optional[List[PathLike]] = None):
         super().__init__(extra_inputs)
         self.model_builder = TemplateModelBuilder(template_file)
 

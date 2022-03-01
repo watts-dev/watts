@@ -16,7 +16,7 @@ from .results import Results
 
 
 class ResultsPyARC(Results):
-    """OpenMC simulation results
+    """PyARC simulation results
 
     Parameters
     ----------
@@ -28,15 +28,14 @@ class ResultsPyARC(Results):
         List of input files
     outputs
         List of output files
-
-    Attributes
-    ----------
+    results_data
+        PyARC results
 
     """
 
     def __init__(self, params: Parameters, time: datetime,
-                 inputs: List[Path], outputs: List[Path], results_data):
-        super().__init__('PyARC', params, time, inputs, outputs, results_data)
+                 inputs: List[Path], outputs: List[Path], results_data: dict):
+        super().__init__('PyARC', params, time, inputs, outputs)
         self.results_data = results_data
 
     @property
@@ -65,9 +64,9 @@ class PluginPyARC(TemplatePlugin):
 
     """
 
-    def  __init__(self, template_file: str, show_stdout: bool = False,
-                  show_stderr: bool = False,
-                  extra_inputs: Optional[List[str]] = None):
+    def __init__(self, template_file: str, show_stdout: bool = False,
+                 show_stderr: bool = False,
+                 extra_inputs: Optional[List[str]] = None):
         super().__init__(template_file, extra_inputs)
         self._pyarc_exec = Path(os.environ.get('PyARC_DIR', 'PyARC.py'))
         self.pyarc_inp_name = "pyarc_input.son"
@@ -121,7 +120,7 @@ class PluginPyARC(TemplatePlugin):
         with tempfile.TemporaryDirectory() as tmpdir:
             self.pyarc.execute(["-i", self.pyarc_inp_name, "-w", tmpdir, "-o", str(od)], **kwargs)
         sys.path.pop(0)  # Restore sys.path to original state
-        os.chdir(od) # TODO: I don't know why but I keep going to self._pyarc_exec after execution - this is very wierd!
+        os.chdir(od)  # TODO: I don't know why but I keep going to self._pyarc_exec after execution - this is very wierd!
 
     def postrun(self, params: Parameters) -> ResultsPyARC:
         """Collect information from PyARC and create results object
