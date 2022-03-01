@@ -64,7 +64,7 @@ class Database:
         self._results = []
         for dir in sorted(self.path.iterdir(), key=lambda x: x.stat().st_ctime):
             try:
-                self._results.append(Results.from_hdf5(dir / ".result_info.h5"))
+                self._results.append(Results.from_pickle(dir / ".result_info.pkl"))
             except Exception:
                 warn(f"Could not read results from {dir}")
 
@@ -121,7 +121,7 @@ class Database:
         self._results.append(result)
 
         # Save result info that can be recreated
-        result.save(result.base_path / ".result_info.h5")
+        result.save(result.base_path / ".result_info.pkl")
 
     def clear(self):
         """Remove all results from database"""

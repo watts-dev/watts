@@ -4,12 +4,10 @@
 from datetime import datetime
 from pathlib import Path
 import os
+import sys
 import tempfile
 import time
 from typing import Mapping, List, Optional
-
-import h5py
-import sys
 
 from .fileutils import PathLike
 from .parameters import Parameters
@@ -44,29 +42,6 @@ class ResultsPyARC(Results):
     @property
     def stdout(self) -> str:
         return (self.base_path / "PyARC_log.txt").read_text()
-
-    def save(self, filename: PathLike):
-        """Save results to an HDF5 file
-
-        Parameters
-        ----------
-        filename
-            File to save results to
-        """
-        with h5py.File(filename, 'w') as h5file:
-            super()._save(h5file)
-
-    @classmethod
-    def _from_hdf5(cls, obj: h5py.Group):
-        """Load results from an HDF5 file
-
-        Parameters
-        ----------
-        obj
-            HDF5 group to load results from
-        """
-        time, parameters, inputs, outputs = Results._load(obj)
-        return cls(parameters, time, inputs, outputs)
 
 
 class PluginPyARC(TemplatePlugin):
@@ -167,4 +142,3 @@ class PluginPyARC(TemplatePlugin):
         inputs.append(self.pyarc_inp_name)
         outputs = [p for p in Path.cwd().iterdir() if p.name not in inputs]
         return ResultsPyARC(params, time, inputs, outputs, self.pyarc.user_object.results)
-

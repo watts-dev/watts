@@ -8,63 +8,15 @@ from collections.abc import MutableMapping, Mapping, Iterable
 from datetime import datetime
 from getpass import getuser
 import textwrap
-from typing import Any, Union
+from typing import Any, Union, BinaryIO
 from warnings import warn
 
 import astropy.units as u
-import h5py
+import dill
 from prettytable import PrettyTable
-
 
 # Enable imperial units
 u.imperial.enable()
-
-# Normally saving parameters to HDF5 is as simple as calling:
-#
-#   obj.create_dataset(key, data=value)
-#
-# However, in some cases we need to transform the value before writing or add
-# extra metadata in the dataset. To do this, we setup a mapping of Python types
-# to functions that create a dataset.
-
-def _generate_save_func(dtype):
-    def make_dataset(obj, key, value):
-        dataset = obj.create_dataset(key, data=dtype(value))
-        return dataset
-    return make_dataset
-
-_default_save_func = _generate_save_func(lambda x: x)
-
-def _quantity_save_func(obj, key, value):
-    dataset = _default_save_func(obj, key, value)
-    dataset.attrs['unit'] = str(value.unit)
-    return dataset
-
-_SAVE_FUNCS = {
-    'set': _generate_save_func(list),
-    'Quantity': _quantity_save_func
-}
-
-# In an HDF5 file, all iterable objects just appear as plain arrays (represented
-# by h5py as numpy arrays). To "round trip" data correctly, we again setup a
-# mapping of Python types to functions that load data out of a datset and
-# perform any transformation needed.
-
-def _generate_load_func(dtype):
-    return lambda obj, value: dtype(value)
-
-def _quantity_load_func(obj, value):
-    return u.Quantity(value, obj.attrs['unit'])
-
-_LOAD_FUNCS = {
-    'tuple': _generate_load_func(tuple),
-    'list': _generate_load_func(list),
-    'set': _generate_load_func(set),
-    'float': _generate_load_func(float),
-    'int': _generate_load_func(int),
-    'bool': _generate_load_func(bool),
-    'Quantity': _quantity_load_func
-}
 
 ParametersMetadata = namedtuple('ParametersMetadata', ['user', 'time'])
 
@@ -73,7 +25,7 @@ class Parameters(MutableMapping):
 
     This class behaves like a normal Python dictionary except that it stores
     metadata on (key, value) pairs and provides the ability to save/load the
-    data to an HDF5 file.
+    data to a pickle file.
 
     Attributes
     ----------
@@ -227,101 +179,55 @@ class Parameters(MutableMapping):
             headers = headers[:2]
         print(table.get_string(fields=headers, sortby=field_to_name[sort_by]))
 
-    def _save_mapping(self, mapping, h5_obj):
-        # Helper function to add metadata
-        def add_metadata(obj, metadata):
-            obj.attrs['user'] = metadata.user
-            obj.attrs['time'] = metadata.time.isoformat()
+    def _save_mapping(self, file_obj: BinaryIO):
+        file_obj.write(dill.dumps(self))
 
-        for key, value in mapping.items():
-            if isinstance(value, Mapping):
-                # If this item is a dictionary, make recursive call
-                group = h5_obj.create_group(key)
-                if isinstance(mapping, type(self)):
-                    add_metadata(group, self._metadata[key])
-                self._save_mapping(value, group)
-            else:
-                # Convert type if necessary. If the type is not listed, return a
-                # "null" function that just returns the original value
-                func = _SAVE_FUNCS.get(type(value).__name__, _default_save_func)
-                dset = func(h5_obj, key, value)
-                dset.attrs['type'] = type(value).__name__
-                if isinstance(mapping, type(self)):
-                    add_metadata(dset, self._metadata[key])
-
-    def save(self, filename_or_obj: Union[str, h5py.Group]):
-        """Save parameters to an HDF5 file/group
+    def save(self, filename_or_obj: Union[str, BinaryIO]):
+        """Save parameters to a pickle file
 
         Parameters
         ----------
         filename_or_obj
-            Path to HDF5 file or HDF5 group object to write to
+            Path to open file or file object write to
         """
         if isinstance(filename_or_obj, str):
-            with h5py.File(filename_or_obj, 'w') as h5file:
-                self._save_mapping(self, h5file)
+            with open(filename_or_obj, 'wb') as file_obj:
+                self._save_mapping(file_obj)
         else:
-            # If HDF5 file/group was passed, use it directly
-            self._save_mapping(self, filename_or_obj)
+            # If file object was passed, use it directly
+            self._save_mapping(filename_or_obj)
 
-    def _load_mapping(self, mapping, h5_obj, root=True):
-        # Helper function to get metadata
-        def metadata_from_obj(obj):
-            user = obj.attrs['user']
-            time = datetime.fromisoformat(obj.attrs['time'])
-            return ParametersMetadata(user, time)
+    def _load_mapping(self, file_obj: BinaryIO):
+        # Load parameters from pickle
+        data = dill.loads(file_obj.read())
 
-        for key, obj in h5_obj.items():
-            if isinstance(obj, h5py.Dataset):
-                # If dataset stores a string type, it needs to be decoded so
-                # that it doesn't return a bytes object
-                if h5py.check_string_dtype(obj.dtype) is not None:
-                    if obj.shape == ():
-                        value = obj[()].decode()
-                    else:
-                        value = obj[()].astype('str')
-                else:
-                    value = obj[()]
+        # Update current instance
+        self.update(data)
+        self._metadata.update(data._metadata)
 
-                # Convert type if indicated. If the type is not listed, return a
-                # "null" function that just returns the original value
-                func = _LOAD_FUNCS.get(obj.attrs['type'], lambda obj, x: x)
-                mapping[key] = func(obj, value)
-
-                if root:
-                    self._metadata[key] = metadata_from_obj(obj)
-
-            elif isinstance(obj, h5py.Group):
-                # For groups, load the mapping recursively
-                mapping[key] = {}
-                if root:
-                    self._metadata[key] = metadata_from_obj(obj)
-
-                self._load_mapping(mapping[key], obj, root=False)
-
-    def load(self, filename_or_obj: Union[str, h5py.Group]):
-        """Load parameters from an HDF5 file
+    def load(self, filename_or_obj: Union[str, BinaryIO]):
+        """Load parameters from a pickle file
 
         Parameters
         ----------
         filename_or_obj
-            Path to HDF5 file or HDF5 group object to read from
+            Path to pickle file or file object to read from
         """
         if isinstance(filename_or_obj, str):
-            with h5py.File(filename_or_obj, 'r') as fh:
-                self._load_mapping(self, fh)
+            with open(filename_or_obj, 'rb') as fh:
+                self._load_mapping(fh)
         else:
-            # If HDF5 file/group was passed, use it directly
-            self._load_mapping(self, filename_or_obj)
+            # If file object was passed, use it directly
+            self._load_mapping(filename_or_obj)
 
     @classmethod
-    def from_hdf5(cls, filename_or_obj: Union[str, h5py.Group]) -> Parameters:
-        """Return parameters from HDF5 file/group
+    def from_pickle(cls, filename_or_obj: Union[str, BinaryIO]) -> Parameters:
+        """Return parameters from a pickle file
 
         Parameters
         ----------
         filename_or_obj
-            Path to HDF5 file or HDF5 group object to read from
+            Path to pickle file or file object to read from
         """
         params = cls()
         params.load(filename_or_obj)

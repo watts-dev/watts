@@ -41,12 +41,12 @@ def test_results_openmc(run_in_tmpdir):
     assert len(results.statepoints) == 1
 
     # Saving
-    p = Path('myresults.h5')
+    p = Path('myresults.pkl')
     results.save(p)
     assert p.is_file()
 
     # Ensure results read from file match
-    new_results = watts.Results.from_hdf5(p)
+    new_results = watts.Results.from_pickle(p)
     assert isinstance(new_results, watts.ResultsOpenMC)
     assert new_results.parameters == results.parameters
     assert new_results.time == results.time
@@ -91,12 +91,12 @@ prop1,prop2
     np.testing.assert_equal(results.csv_data['prop2'], [1, 2, 3])
 
     # Saving
-    p = Path('myresults.h5')
+    p = Path('myresults.pkl')
     results.save(p)
     assert p.is_file()
 
     # Ensure results read from file match
-    new_results = watts.Results.from_hdf5(p)
+    new_results = watts.Results.from_pickle(p)
     assert isinstance(new_results, watts.ResultsMOOSE)
     assert new_results.parameters == results.parameters
     assert new_results.time == results.time

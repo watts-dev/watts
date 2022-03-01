@@ -9,7 +9,6 @@ from astropy.units import Quantity, kilometer
 import watts
 import pytest
 import numpy as np
-import h5py
 
 
 def _compare_params(params, other):
@@ -46,21 +45,19 @@ def test_parameters_roundtrip(run_in_tmpdir):
     params['array_float'] = np.array([10., 20., 30.])
     params['array_bool'] = np.array([True, False, False, True])
     params['array_quantity'] = np.array([1.0, 2.0, 5.0]) * kilometer
-    # Numpy array of strings doesn't work because internally numpy uses UTF-32,
-    # which is not supported in h5py
-    #params['array_str'] = np.array(['ANL', 'ORNL', 'LANL'])
+    params['array_str'] = np.array(['ANL', 'ORNL', 'LANL'])
     params['dict'] = {
         'int': 7,
         'float': 0.0253,
         'str': 'String inside dictionary'
     }
 
-    # Save to HDF5
-    params.save('params.h5')
-    assert Path('params.h5').is_file()
+    # Save to pickle file
+    params.save('params.pkl')
+    assert Path('params.pkl').is_file()
 
-    # Load parameters from HDF5
-    new_params = watts.Parameters.from_hdf5('params.h5')
+    # Load parameters from pickle file
+    new_params = watts.Parameters.from_pickle('params.pkl')
 
     # Compare original parameters with one loaded from file
     _compare_params(params, new_params)
@@ -74,24 +71,6 @@ def test_parameters_set():
 
     assert params['key'] == 7
     assert params.get_metadata('key') == (user, time)
-
-
-def test_parameters_not_toplevel(run_in_tmpdir):
-    """Test saving/loading parameters when not at top-level of HDF5 file"""
-    params = watts.Parameters(var_one=1, var_two='two', var_three=3.0)
-
-    # Write parameters to /mygroup within test.h5
-    with h5py.File('test.h5', 'w') as fh:
-        group = fh.create_group('mygroup')
-        params.save(group)
-
-    # Read parameters from /mygroup
-    with h5py.File('test.h5', 'r') as fh:
-        group = fh['mygroup']
-        new_model = watts.Parameters.from_hdf5(group)
-
-    # Compare original parameters with one from group in file
-    _compare_params(params, new_model)
 
 
 def test_parameters_show_summary(capsys):

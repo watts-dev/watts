@@ -33,13 +33,13 @@ object::
 Most native Python datatypes (:class:`int`, :class:`float`, :class:`bool`,
 :class:`str`, :class:`list`, :class:`set`, :class:`tuple`, :class:`dict`) are
 supported along with :class:`NumPy arrays <numpy.ndarray>` as well. Parameters
-can be saved to an HDF5 file::
+can be saved to a pickle file::
 
-    params.save('parameters.h5')
+    params.save('parameters.pkl')
 
-and later re-created using the :meth:`~watts.Parameters.from_hdf5` method::
+and later re-created using the :meth:`~watts.Parameters.from_pickle` method::
 
-    loaded_params = watts.Parameters.from_hdf5('parameters.h5')
+    loaded_params = watts.Parameters.from_pickle('parameters.pkl')
 
 By themselves, :class:`~watts.Parameters` are not very useful, but when
 combined with plugin classes, they become building blocks for sophisticated

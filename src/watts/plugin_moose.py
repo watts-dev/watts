@@ -8,7 +8,6 @@ import shutil
 import time
 from typing import List, Optional
 
-import h5py
 import numpy as np
 import pandas as pd
 
@@ -79,29 +78,6 @@ class ResultsMOOSE(Results):
                         csv_data[new_name] = np.array(vector_csv_df[name], dtype=float)
 
         return csv_data
-
-    def save(self, filename: PathLike):
-        """Save results to an HDF5 file
-
-        Parameters
-        ----------
-        filename
-            File to save results to
-        """
-        with h5py.File(filename, 'w') as h5file:
-            super()._save(h5file)
-
-    @classmethod
-    def _from_hdf5(cls, obj: h5py.Group):
-        """Load results from an HDF5 file
-
-        Parameters
-        ----------
-        obj
-            HDF5 group to load results from
-        """
-        time, parameters, inputs, outputs = Results._load(obj)
-        return cls(parameters, time, inputs, outputs)
 
 
 class PluginMOOSE(TemplatePlugin):

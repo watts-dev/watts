@@ -8,8 +8,6 @@ from pathlib import Path
 import time
 from typing import Callable, Mapping, List, Optional
 
-import h5py
-
 from .fileutils import PathLike, tee_stdout, tee_stderr
 from .parameters import Parameters
 from .plugin import Plugin
@@ -71,29 +69,6 @@ class ResultsOpenMC(Results):
     @property
     def stdout(self) -> str:
         return (self.base_path / "OpenMC_log.txt").read_text()
-
-    def save(self, filename: PathLike):
-        """Save results to an HDF5 file
-
-        Parameters
-        ----------
-        filename
-            File to save results to
-        """
-        with h5py.File(filename, 'w') as h5file:
-            super()._save(h5file)
-
-    @classmethod
-    def _from_hdf5(cls, obj: h5py.Group):
-        """Load results from an HDF5 file
-
-        Parameters
-        ----------
-        obj
-            HDF5 group to load results from
-        """
-        time, parameters, inputs, outputs = Results._load(obj)
-        return cls(parameters, time, inputs, outputs)
 
 
 class PluginOpenMC(Plugin):
