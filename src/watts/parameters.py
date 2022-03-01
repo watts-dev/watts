@@ -76,6 +76,9 @@ class Parameters(MutableMapping):
     def __len__(self):
         return len(self._dict)
 
+    def __repr__(self):
+        return repr(self._dict)
+
     @property
     def warn_duplicates(self) -> bool:
         return self._warn_duplicates
