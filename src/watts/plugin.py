@@ -52,7 +52,7 @@ class Plugin(ABC):
                 return path / unique_name
             i += 1
 
-    def workflow(self, params: Parameters, name='Workflow') -> Results:
+    def __call__(self, params: Parameters, name='Workflow') -> Results:
         """Run the complete workflow for the plugin
 
         Parameters

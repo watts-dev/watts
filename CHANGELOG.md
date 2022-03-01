@@ -7,9 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+* SAS4A/SASSY-1 Plugin
+
 ### Changes
 
 * Serialization/deserialization handled through dill instead of h5py
+* Calling a plugin is called via the `__call__` method instead of `workflow`
 
 ## [0.1.0]
 
