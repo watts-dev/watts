@@ -48,7 +48,8 @@ intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'numpy': ('https://numpy.org/doc/stable/', None),
     'openmc': ('https://docs.openmc.org/en/stable/', None),
-    'astropy': ('https://docs.astropy.org/en/stable/', None)
+    'astropy': ('https://docs.astropy.org/en/stable/', None),
+    'jinja2': ('https://jinja.palletsprojects.com/en/3.0.x/', None)
 }
 
 import watts
