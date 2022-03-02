@@ -103,3 +103,53 @@ prop1,prop2
     assert new_results.inputs == results.inputs
     assert new_results.outputs == results.outputs
     assert new_results.stdout == results.stdout
+
+
+def test_results_sas(run_in_tmpdir):
+    params = watts.Parameters(city='Chicago', population=2.7e6)
+    now = datetime.now()
+
+    # Create some fake input files
+    sas_inp = Path('sas.inp')
+    sas_inp.touch()
+    inputs = [sas_inp]
+
+    # Create fake output files
+    csv = Path('SAS_csv.csv')
+    csv.write_text("""\
+prop1,prop2
+3.5,1
+4.0,2
+5.0,3
+    """)
+    stdout = Path('SAS_log.txt')
+    stdout.write_text('SAS standard out\n')
+    outputs = [csv, stdout]
+
+    results = watts.ResultsSAS(params, now, inputs, outputs)
+
+    # Sanity checks
+    assert results.plugin == 'SAS'
+    assert results.parameters == params
+    assert results.time == now
+    assert results.inputs == inputs
+    assert results.outputs == outputs
+
+    # Other attributes
+    assert results.stdout == 'SAS standard out\n'
+    np.testing.assert_equal(results.csv_data['prop1'], [3.5, 4.0, 5.0])
+    np.testing.assert_equal(results.csv_data['prop2'], [1, 2, 3])
+
+    # Saving
+    p = Path('myresults.pkl')
+    results.save(p)
+    assert p.is_file()
+
+    # Ensure results read from file match
+    new_results = watts.Results.from_pickle(p)
+    assert isinstance(new_results, watts.ResultsSAS)
+    assert new_results.parameters == results.parameters
+    assert new_results.time == results.time
+    assert new_results.inputs == results.inputs
+    assert new_results.outputs == results.outputs
+    assert new_results.stdout == results.stdout
