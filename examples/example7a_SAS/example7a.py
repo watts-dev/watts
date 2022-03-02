@@ -38,10 +38,10 @@ params.show_summary(show_metadata=False, sort_by='key')
 # SAS Workflow
 # Set SAS directory as sas_dir
 sas_plugin = watts.PluginSAS('sas_template') # Show all the output
-sas_dir = "~/SAS"
-sas_plugin.sas_exec = sas_dir + "/bin/sas-5.5-Darwin-x86_64.x" # Path to SAS executable
-sas_plugin.conv_channel = sas_dir + "/Tools/macOS/CHANNELtoCSV-Darwin-x86_64.x" # Path to utility to convert "CHANNEL.dat" files to ".csv"
-sas_plugin.conv_primar4 = sas_dir + "/Tools/macOS/PRIMAR4toCSV-Darwin-x86_64.x" # Path to utility to convert "PRIMAR4.dat" files to ".csv"
+sas_dir = "/path/to/SAS" # Path to SAS directory
+sas_plugin.sas_exec = sas_dir + "/bin/sas-5.5-Darwin-x86_64.x" # SAS executable
+sas_plugin.conv_channel = sas_dir + "/Tools/macOS/CHANNELtoCSV-Darwin-x86_64.x" # SAS utility to convert "CHANNEL.dat" files to ".csv"
+sas_plugin.conv_primar4 = sas_dir + "/Tools/macOS/PRIMAR4toCSV-Darwin-x86_64.x" # SAS utility to convert "PRIMAR4.dat" files to ".csv"
 sas_result = sas_plugin.workflow(params)
 for key in sas_result.csv_data:
     print(key, sas_result.csv_data[key])
