@@ -12,6 +12,7 @@ import os
 import glob
 import numpy as np
 import pandas as pd
+import platform
 
 from .fileutils import PathLike, run as run_proc, tee_stdout, tee_stderr
 from .parameters import Parameters
@@ -79,8 +80,6 @@ class PluginSAS(TemplatePlugin):
         Whether to display output from stdout when SAS is run
     show_stderr
         Whether to display output from stderr when SAS is run
-    n_cpu
-        Number of processors to be used to run SAS application
     extra_inputs
         List of extra (non-templated) input files that are needed
 
@@ -95,7 +94,15 @@ class PluginSAS(TemplatePlugin):
                   show_stderr: bool = False,
                   extra_inputs: Optional[List[str]] = None):
         super().__init__(template_file, extra_inputs)
-        self._sas_exec = Path('sas-5.5-Darwin-x86_64.x')
+
+        # Check OS to make sure the default name of the executable is correct.
+        # Linux and macOS have different executables but both are ".x".
+        # The Windows executable is ".exe". 
+        if platform.system() == 'Linux' or platform.system() == 'Darwin':
+            self._sas_exec = Path('sas.x')
+        elif platform.system() == 'Windows':
+            self._sas_exec = Path('sas.exe')
+
         self.sas_inp_name = "SAS.inp"
         self.show_stdout = show_stdout
         self.show_stderr = show_stderr

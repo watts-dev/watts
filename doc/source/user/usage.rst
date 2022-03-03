@@ -226,20 +226,22 @@ input files which can be templated as follows:
     7     1                {{ tmax }} 
 
 If the templated input file is `sas_template`, then the SAS4A/SASSY-1 plugin can be
-instantiated with following command line::
+instantiated with the following command line::
 
     sas_plugin = watts.PluginSAS('sas_template', show_stdout=True)
 
-The path to the SAS4A/SASSY-1 executable must be specified explicitly with the :attr:`~watts.PluginSAS.sas_exec` attribute::
+The SAS executable is OS-dependent. It defaults to ``sas.x`` (assumed to be present on your
+:envvar:`PATH`) for Linux and macOS, and ``sas.exe`` for Windows. However, the executable can also be specified explicitly with the
+:attr:`~watts.PluginSAS.sas_exec` attribute::
 
-    sas_plugin.sas_exec  = "/path/to/SAS"
+    sas_plugin.sas_exec = "/path/to/sas-exec"
 
 Furthermore, the paths to the SAS utilities that convert the ".dat" files to ".csv" files must be specified with the :attr:`~watts.PluginSAS.conv_channel` and :attr:`~watts.PluginSAS.conv_primar4` attributes::
 
     sas_plugin.conv_channel  = "/path/to/SAS_channel_utility"
     sas_plugin.conv_primar4  = "/path/to/SAS_primar4_utility"
 
-To execute PyARC, the :meth:`~watts.PluginSAS.workflow` method is called
+Similar to the SAS executable, the utilities are also OS dependent. To execute SAS, the :meth:`~watts.PluginSAS.workflow` method is called
 the same way as other Plugins.
 
 Results
