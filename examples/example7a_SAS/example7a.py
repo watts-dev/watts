@@ -36,12 +36,16 @@ params['betai_6'] = 5.0E-04
 params.show_summary(show_metadata=False, sort_by='key')
 
 # SAS Workflow
-# Set SAS directory as sas_dir
+# Set SAS directory as sas_dir (SAS_DIR is environment variable)
+# Linux and macOS have different executables but both are ".x".
+# The Windows executable is ".exe". 
+# SAS executable and post-processing utilities are assumed to be
+# in the same directory in this example.
+sas_dir = os.environ["SAS_DIR"] 
 sas_plugin = watts.PluginSAS('sas_template') # Show all the output
-sas_dir = "/path/to/SAS" # Path to SAS directory
-sas_plugin.sas_exec = sas_dir + "/bin/sas-5.5-Darwin-x86_64.x" # SAS executable
-sas_plugin.conv_channel = sas_dir + "/Tools/macOS/CHANNELtoCSV-Darwin-x86_64.x" # SAS utility to convert "CHANNEL.dat" files to ".csv"
-sas_plugin.conv_primar4 = sas_dir + "/Tools/macOS/PRIMAR4toCSV-Darwin-x86_64.x" # SAS utility to convert "PRIMAR4.dat" files to ".csv"
+sas_plugin.sas_exec = sas_dir + "/sas.x" # SAS executable
+sas_plugin.conv_channel = sas_dir + "/CHANNELtoCSV.x" # SAS utility to convert "CHANNEL.dat" files to ".csv"
+sas_plugin.conv_primar4 = sas_dir + "/PRIMAR4toCSV.x" # SAS utility to convert "PRIMAR4.dat" files to ".csv"
 sas_result = sas_plugin.workflow(params)
 for key in sas_result.csv_data:
     print(key, sas_result.csv_data[key])

@@ -19,4 +19,5 @@ Training on WATTS is enabled with a suite of simple examples:
 ## Example 6
 * [__example6__](example6_adv_multiapps/README.md) - Advance MOOSE MultiApp calculation
 ## Example 7
-* [__example7a__](example7a_SAS/README.md) - Showcasing SAS plugin
+* [__example7a__](example7a_SAS/README.md) - Showcasing SAS plugin with a single pin problem
+* [__example7b__](example7b_SAS/README.md) - Showcasing SAS plugin with a simple sodium loop problem
