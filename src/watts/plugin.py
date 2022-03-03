@@ -10,7 +10,7 @@ from .database import Database
 from .fileutils import cd_tmpdir, PathLike
 from .parameters import Parameters
 from .results import Results
-from .template import TemplateModelBuilder
+from .template import TemplateRenderer
 
 
 class Plugin(ABC):
@@ -107,9 +107,9 @@ class TemplatePlugin(Plugin):
         Extra (non-templated) input files
 
     """
-    def  __init__(self, template_file: str, extra_inputs: Optional[List[PathLike]] = None):
+    def __init__(self, template_file: PathLike, extra_inputs: Optional[List[PathLike]] = None):
         super().__init__(extra_inputs)
-        self.model_builder = TemplateModelBuilder(template_file)
+        self.render_template = TemplateRenderer(template_file)
 
     def prerun(self, params: Parameters, filename: Optional[str] = None):
         """Render the template based on model parameters
@@ -119,7 +119,7 @@ class TemplatePlugin(Plugin):
         params
             Parameters used to render template
         filename
-            Keyword arguments passed to the
+            Filename for rendered template
         """
         # Render the template
-        self.model_builder(params, filename=filename)
+        self.render_template(params, filename=filename)

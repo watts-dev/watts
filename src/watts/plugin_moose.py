@@ -63,11 +63,13 @@ class ResultsMOOSE(Results):
         if csv_file.exists():
             csv_file_df = pd.read_csv(csv_file)
             for column_name in csv_file_df.columns:
-                csv_data[column_name] =  np.array(csv_file_df[column_name])
+                csv_data[column_name] = np.array(csv_file_df[column_name])
 
-        # Read MOOSE's vector postprocesssor '.csv' files and save the parameters as individual array
+        # Read MOOSE's vector postprocesssor '.csv' files and save the
+        # parameters as individual array
         for output in self.outputs:
-            if output.name.startswith(f"{input_file.stem}_csv_") and not output.name.endswith("_0000.csv"):
+            if (output.name.startswith(f"{input_file.stem}_csv_") and
+                not output.name.endswith("_0000.csv")):
                 vector_csv_df = pd.read_csv(output)
                 csv_param = list(set(vector_csv_df.columns) - {"id", "x", "y", "z"})
                 csv_data[output.stem] = np.array(vector_csv_df[csv_param[0]], dtype=float)
@@ -103,9 +105,9 @@ class PluginMOOSE(TemplatePlugin):
 
     """
 
-    def  __init__(self, template_file: str, show_stdout: bool = False,
-                  show_stderr: bool = False, n_cpu: int = 1,
-                  extra_inputs: Optional[List[str]] = None):
+    def __init__(self, template_file: str, show_stdout: bool = False,
+                 show_stderr: bool = False, n_cpu: int = 1,
+                 extra_inputs: Optional[List[str]] = None):
         super().__init__(template_file, extra_inputs)
         self._moose_exec = Path('moose-opt')
         self.moose_inp_name = "MOOSE.i"
@@ -163,7 +165,8 @@ class PluginMOOSE(TemplatePlugin):
             func_stdout = tee_stdout if self.show_stdout else redirect_stdout
             func_stderr = tee_stderr if self.show_stderr else redirect_stderr
             with func_stdout(outfile), func_stderr(outfile):
-                run_proc(["mpiexec", "-n", str(self.n_cpu) , self.moose_exec, "-i", self.moose_inp_name])
+                run_proc(["mpiexec", "-n", str(self.n_cpu), self.moose_exec,
+                          "-i", self.moose_inp_name])
 
     def postrun(self, params: Parameters) -> ResultsMOOSE:
         """Read MOOSE results and create results object

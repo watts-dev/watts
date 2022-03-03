@@ -20,6 +20,7 @@ u.imperial.enable()
 
 ParametersMetadata = namedtuple('ParametersMetadata', ['user', 'time'])
 
+
 class Parameters(MutableMapping):
     """User parameters used to generate inputs that are created by plugins
 
@@ -74,6 +75,9 @@ class Parameters(MutableMapping):
 
     def __len__(self):
         return len(self._dict)
+
+    def __repr__(self):
+        return repr(self._dict)
 
     @property
     def warn_duplicates(self) -> bool:
@@ -234,7 +238,7 @@ class Parameters(MutableMapping):
         return params
 
     def convert_units(self, system: str = 'si', temperature: str = 'K',
-                     inplace: bool = False) -> Parameters:
+                      inplace: bool = False) -> Parameters:
         """Perform unit conversion
 
         Parameters

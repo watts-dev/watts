@@ -1,5 +1,5 @@
-#SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
-#SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
+# SPDX-License-Identifier: MIT
 
 from datetime import datetime
 from pathlib import Path
@@ -30,7 +30,7 @@ class Results:
     """
 
     def __init__(self, plugin: str, params: Parameters, time: datetime,
-                 inputs: List[PathLike], outputs: List[PathLike], python_results = None):
+                 inputs: List[PathLike], outputs: List[PathLike]):
         self.base_path = Path.cwd()
         self.plugin = plugin
         self.parameters = Parameters(params)
