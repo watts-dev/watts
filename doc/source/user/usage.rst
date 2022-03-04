@@ -238,8 +238,8 @@ The SAS executable is OS-dependent. It defaults to ``sas.x`` (assumed to be pres
 
 Furthermore, the paths to the SAS utilities that convert the ".dat" files to ".csv" files must be specified with the :attr:`~watts.PluginSAS.conv_channel` and :attr:`~watts.PluginSAS.conv_primar4` attributes::
 
-    sas_plugin.conv_channel  = "/path/to/SAS_channel_utility"
-    sas_plugin.conv_primar4  = "/path/to/SAS_primar4_utility"
+    sas_plugin.conv_channel  = "/path/to/CHANNELtoCSV.x"
+    sas_plugin.conv_primar4  = "/path/to/PRIMAR4toCSV.x"
 
 Similar to the SAS executable, the utilities are also OS dependent. To execute SAS, the :meth:`~watts.PluginSAS.workflow` method is called
 the same way as other Plugins.

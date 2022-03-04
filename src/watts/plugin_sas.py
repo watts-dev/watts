@@ -95,13 +95,17 @@ class PluginSAS(TemplatePlugin):
                   extra_inputs: Optional[List[str]] = None):
         super().__init__(template_file, extra_inputs)
 
-        # Check OS to make sure the default name of the executable is correct.
+        # Check OS to make sure the extension of the executable is correct.
         # Linux and macOS have different executables but both are ".x".
         # The Windows executable is ".exe". 
         if platform.system() == 'Linux' or platform.system() == 'Darwin':
-            self._sas_exec = Path('sas.x')
+            self._sas_exec = Path(os.environ["SAS_DIR"] + "/sas.x")
+            self._conv_channel = Path(os.environ["SAS_DIR"] + "/CHANNELtoCSV.x")
+            self._conv_primar4 = Path(os.environ["SAS_DIR"] + "/PRIMAR4toCSV.x")
         elif platform.system() == 'Windows':
-            self._sas_exec = Path('sas.exe')
+            self._sas_exec = Path(os.environ["SAS_DIR"] + "/sas.exe")
+            self._conv_channel = Path(os.environ["SAS_DIR"] + "/CHANNELtoCSV.exe")
+            self._conv_primar4 = Path(os.environ["SAS_DIR"] + "/PRIMAR4toCSV.exe")
 
         self.sas_inp_name = "SAS.inp"
         self.show_stdout = show_stdout
@@ -111,21 +115,31 @@ class PluginSAS(TemplatePlugin):
     def sas_exec(self) -> Path:
         return self._sas_exec
 
+    @property
+    def conv_channel(self) -> Path:
+        return self._conv_channel
+
+    @property
+    def conv_primar4(self) -> Path:
+        return self._conv_primar4
+
     @sas_exec.setter
     def sas_exec(self, exe: PathLike):
         if shutil.which(exe) is None:
             raise RuntimeError(f"SAS executable '{exe}' is missing.")
         self._sas_exec = Path(exe)
 
-    def options(self, sas_exec):
-        """Input SAS user-specified options
+    @conv_channel.setter
+    def conv_channel(self, exe: PathLike):
+        if shutil.which(exe) is None:
+            raise RuntimeError(f"CHANNELtoCSV utility executable '{exe}' is missing.")
+        self._conv_channel = Path(exe)
 
-        Parameters
-        ----------
-        sas_exec
-            Path to SAS executable
-        """
-        self.sas_exec = sas_exec
+    @conv_primar4.setter
+    def conv_primar4(self, exe: PathLike):
+        if shutil.which(exe) is None:
+            raise RuntimeError(f"PRIMAR4toCSV utility executable '{exe}' is missing.")
+        self._conv_primar4 = Path(exe)
 
     def prerun(self, params: Parameters):
         """Generate the SAS input based on the template
@@ -174,10 +188,12 @@ class PluginSAS(TemplatePlugin):
         # Convert CHANNEl.dat and PRIMER4.dat to csv files
         # using SAS utilities. Check if files exist because
         # they may not be outputted per user's choice.
+        # Doesn't work with run_proc(). Use os.system() for now.
+        # Needs to convert PosixPath back to string.
         if Path("CHANNEL.dat").is_file():
-            os.system(self.conv_channel + " <CHANNEL.dat> CHANNEL.csv") # Doesn't work with run_proc(). Use os.system() for now.
+            os.system(str(self.conv_channel) + " <CHANNEL.dat> CHANNEL.csv") 
         if Path("PRIMAR4.dat").is_file():
-            os.system(self.conv_primar4 + " <PRIMAR4.dat> PRIMAR4.csv") # Doesn't work with run_proc(). Use os.system() for now.
+            os.system(str(self.conv_primar4) + " <PRIMAR4.dat> PRIMAR4.csv") 
 
         time = datetime.fromtimestamp(self._run_time * 1e-9)
         # Start with non-templated input files
