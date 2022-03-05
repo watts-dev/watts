@@ -98,14 +98,11 @@ class PluginSAS(TemplatePlugin):
         # Check OS to make sure the extension of the executable is correct.
         # Linux and macOS have different executables but both are ".x".
         # The Windows executable is ".exe". 
-        if platform.system() == 'Linux' or platform.system() == 'Darwin':
-            self._sas_exec = Path(os.environ["SAS_DIR"] + "/sas.x")
-            self._conv_channel = Path(os.environ["SAS_DIR"] + "/CHANNELtoCSV.x")
-            self._conv_primar4 = Path(os.environ["SAS_DIR"] + "/PRIMAR4toCSV.x")
-        elif platform.system() == 'Windows':
-            self._sas_exec = Path(os.environ["SAS_DIR"] + "/sas.exe")
-            self._conv_channel = Path(os.environ["SAS_DIR"] + "/CHANNELtoCSV.exe")
-            self._conv_primar4 = Path(os.environ["SAS_DIR"] + "/PRIMAR4toCSV.exe")
+        sas_dir = Path(os.environ.get("SAS_DIR", ""))
+        ext = "exe" if platform.system() == "Windows" else "x"
+        self._sas_exec = sas_dir / f"sas.{ext}"
+        self._conv_channel = sas_dir / f"CHANNELtoCSV.{ext}"
+        self._conv_primar4 = sas_dir / f"PRIMAR4toCSV.{ext}"
 
         self.sas_inp_name = "SAS.inp"
         self.show_stdout = show_stdout
