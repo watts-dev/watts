@@ -213,7 +213,7 @@ To execute PyARC, the :meth:`~watts.PluginPyARC.workflow` method is called
 the same way as other Plugins.
 
 SAS4A/SASSY-1 Plugin
-~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 The :class:`~watts.PluginSAS` class handles SAS4A/SASSY-1 execution in a similar
 manner to the :class:`~watts.PluginMOOSE` class for MOOSE. SAS4A/SASSY-1 use text-based
