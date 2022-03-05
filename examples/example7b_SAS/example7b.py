@@ -1,47 +1,46 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
-#########################################################
-# Example problem of runing SAS4A/SASSY-1 with WATTS.
-# This is a simple sodium loop that uses the channel (core)
-# and PRIMAR-4 module. Sodium is heated in the core, then
-# flows upwward through a series of pipes to a heat
-# exchanger (IHX), then downward to a pump, and lastly
-# back to the outlet of the core. A tank with cover gas is 
-# used to provide compressible space. The design of
-# loop is a simplified version of the loop by Zhang et al.
-# (https://doi.org/10.1016/j.nucengdes.2021.111149). The
-# dimensions of this simplified loop are arbitrarily selected.
-#                         ___
-#     -------------------[   ]
-#    |                   [   ]
-#    |                   [ I ]
-#    |  P                [ H ]
-#    |  I                [ X ]
-#    |  P                [   ]
-#    |  E                [___]
-#    |                     |
-#    |                     |
-#    *                     |
-#    *                     |
-#    *                     |
-#    *                     |
-#    *                     |
-#    *  C                  |                
-#    *  O                  |              ____________
-#    *  R                  |             |            |
-#    *  R                  |             |            |
-#    *                     |             |------------|
-#    *                     |             |            |
-#    *                     |             |            |
-#    *                     |             |            |
-#    *                    ____           |            |
-#    *                   [    ]          |            |
-#     -------------------[    ]----------|____________|
-#                        [____]               TANK
-#                         PUMP 
-#
-##########################################################
+"""
+Example problem of runing SAS4A/SASSY-1 with WATTS.
+This is a simple sodium loop that uses the channel (core)
+and PRIMAR-4 module. Sodium is heated in the core, then
+flows upwward through a series of pipes to a heat
+exchanger (IHX), then downward to a pump, and lastly
+back to the outlet of the core. A tank with cover gas is 
+used to provide compressible space. The design of
+loop is a simplified version of the loop by Zhang et al.
+(https://doi.org/10.1016/j.nucengdes.2021.111149). The
+dimensions of this simplified loop are arbitrarily selected.
+                        ___
+    -------------------[   ]
+   |                   [   ]
+   |                   [ I ]
+   |  P                [ H ]
+   |  I                [ X ]
+   |  P                [   ]
+   |  E                [___]
+   |                     |
+   |                     |
+   *                     |
+   *                     |
+   *                     |
+   *                     |
+   *                     |
+   *  C                  |                
+   *  O                  |              ____________
+   *  R                  |             |            |
+   *  R                  |             |            |
+   *                     |             |------------|
+   *                     |             |            |
+   *                     |             |            |
+   *                     |             |            |
+   *                    ____           |            |
+   *                   [    ]          |            |
+    -------------------[    ]----------|____________|
+                       [____]               TANK
+                        PUMP 
+"""
 
 from math import cos, pi
 import os

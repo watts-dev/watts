@@ -1,6 +1,10 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
+import os
+import glob
+import subprocess
+import platform
 from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime
 from pathlib import Path
@@ -8,11 +12,8 @@ import shutil
 import time
 from typing import List, Optional
 
-import os
-import glob
 import numpy as np
 import pandas as pd
-import platform
 
 from .fileutils import PathLike, run as run_proc, tee_stdout, tee_stderr
 from .parameters import Parameters
@@ -44,13 +45,13 @@ class ResultsSAS(Results):
     def __init__(self, params: Parameters, time: datetime,
                  inputs: List[PathLike], outputs: List[PathLike]):
         super().__init__('SAS', params, time, inputs, outputs)
-        self.csv_data = self._save_sas_csv()
+        self.csv_data = self._get_sas_csv_data()
 
     @property
     def stdout(self) -> str:
         return (self.base_path / "SAS_log.txt").read_text()
 
-    def _save_sas_csv(self) -> dict:
+    def _get_sas_csv_data(self) -> dict:
         """Read all sas '.csv' files and return results in a dictionary
 
         Returns
@@ -176,7 +177,7 @@ class PluginSAS(TemplatePlugin):
         params
             Parameters used to create SAS model
 
-        Returns
+        Returnss
         -------
         SAS results object
         """
@@ -185,12 +186,10 @@ class PluginSAS(TemplatePlugin):
         # Convert CHANNEl.dat and PRIMER4.dat to csv files
         # using SAS utilities. Check if files exist because
         # they may not be outputted per user's choice.
-        # Doesn't work with run_proc(). Use os.system() for now.
-        # Needs to convert PosixPath back to string.
         if Path("CHANNEL.dat").is_file():
-            os.system(str(self.conv_channel) + " <CHANNEL.dat> CHANNEL.csv") 
+            subprocess.run(str(self.conv_channel) + " <CHANNEL.dat> CHANNEL.csv", shell=True)
         if Path("PRIMAR4.dat").is_file():
-            os.system(str(self.conv_primar4) + " <PRIMAR4.dat> PRIMAR4.csv") 
+            subprocess.run(str(self.conv_primar4) + " <PRIMAR4.dat> PRIMAR4.csv", shell=True)
 
         time = datetime.fromtimestamp(self._run_time * 1e-9)
         # Start with non-templated input files
