@@ -115,6 +115,8 @@ Once your pull request is submitted, a member of the WATTS core development team
 will review your pull request. They will check your contribution against the
 above checklist to ensure that it is of sufficient quality.
 
+.. _install_develop:
+
 Installation for Developers
 +++++++++++++++++++++++++++
 
