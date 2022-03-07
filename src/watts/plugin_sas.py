@@ -187,9 +187,12 @@ class PluginSAS(TemplatePlugin):
         # using SAS utilities. Check if files exist because
         # they may not be outputted per user's choice.
         if Path("CHANNEL.dat").is_file():
-            subprocess.run(str(self.conv_channel) + " <CHANNEL.dat> CHANNEL.csv", shell=True)
+            with open("CHANNEL.dat", "r") as file_in, open("CHANNEL.csv", "w") as file_out:
+                subprocess.run(str(self.conv_channel), stdin=file_in, stdout=file_out)
+                
         if Path("PRIMAR4.dat").is_file():
-            subprocess.run(str(self.conv_primar4) + " <PRIMAR4.dat> PRIMAR4.csv", shell=True)
+            with open("PRIMAR4.dat", "r") as file_in, open("PRIMAR4.csv", "w") as file_out:
+                subprocess.run(str(self.conv_primar4), stdin=file_in, stdout=file_out)
 
         time = datetime.fromtimestamp(self._run_time * 1e-9)
         # Start with non-templated input files
