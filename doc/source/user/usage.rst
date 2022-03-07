@@ -212,6 +212,38 @@ The path to PyARC directory must be specified explicitly with the
 To execute PyARC, the :meth:`~watts.PluginPyARC.workflow` method is called
 the same way as other Plugins.
 
+SAS4A/SASSY-1 Plugin
+~~~~~~~~~~~~~~~~~~~~
+
+The :class:`~watts.PluginSAS` class handles SAS4A/SASSY-1 execution in a similar
+manner to the :class:`~watts.PluginMOOSE` class for MOOSE. SAS4A/SASSY-1 use text-based
+input files which can be templated as follows:
+
+.. code-block:: jinja
+
+    47    1        {{ flow_per_pin }}
+    3     1 {{ total_reactor_power }}
+    7     1                {{ tmax }} 
+
+If the templated input file is `sas_template`, then the SAS4A/SASSY-1 plugin can be
+instantiated with the following command line::
+
+    sas_plugin = watts.PluginSAS('sas_template', show_stdout=True)
+
+The SAS executable is OS-dependent. It defaults to ``sas.x`` (assumed to be present on your
+:envvar:`PATH`) for Linux and macOS, and ``sas.exe`` for Windows. However, the executable can also be specified explicitly with the
+:attr:`~watts.PluginSAS.sas_exec` attribute::
+
+    sas_plugin.sas_exec = "/path/to/sas-exec"
+
+Furthermore, the paths to the SAS utilities that convert the ".dat" files to ".csv" files must be specified with the :attr:`~watts.PluginSAS.conv_channel` and :attr:`~watts.PluginSAS.conv_primar4` attributes::
+
+    sas_plugin.conv_channel  = "/path/to/CHANNELtoCSV.x"
+    sas_plugin.conv_primar4  = "/path/to/PRIMAR4toCSV.x"
+
+Similar to the SAS executable, the utilities are also OS dependent. To execute SAS, the :meth:`~watts.PluginSAS.workflow` method is called
+the same way as other Plugins.
+
 Results
 +++++++
 
