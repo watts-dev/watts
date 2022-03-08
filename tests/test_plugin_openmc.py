@@ -37,7 +37,7 @@ def test_openmc_plugin():
     assert plugin.model_builder == build_openmc_model
 
     params = watts.Parameters(radius=6.38)
-    result = plugin.workflow(params)
+    result = plugin(params)
 
     # Sanity checks
     assert isinstance(result, watts.ResultsOpenMC)
@@ -88,7 +88,7 @@ def test_extra_inputs(run_in_tmpdir):
     # Use OpenMC plugin with extra inputs
     plugin = watts.PluginOpenMC(extra_inputs=['geometry.xml', 'materials.xml', 'settings.xml'])
     params = watts.Parameters()
-    result = plugin.workflow(params)
+    result = plugin(params)
 
     input_names = {p.name for p in result.inputs}
     assert input_names == {'geometry.xml', 'materials.xml', 'settings.xml'}

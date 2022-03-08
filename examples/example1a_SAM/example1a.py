@@ -49,7 +49,7 @@ moose_app_type = "SAM"
 app_dir = os.environ[moose_app_type.upper() + "_DIR"]
 moose_plugin = watts.PluginMOOSE(moose_app_type.lower() + '_template') # show all the output
 moose_plugin.moose_exec = app_dir + "/" + moose_app_type.lower() + "-opt"
-moose_result = moose_plugin.workflow(params)
+moose_result = moose_plugin(params)
 for key in moose_result.csv_data:
     print(key, moose_result.csv_data[key])
 print(moose_result.inputs)

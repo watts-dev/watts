@@ -63,7 +63,7 @@ while conv_it:
     app_dir = os.environ[moose_app_type.upper() + "_DIR"]
     sam_plugin = watts.PluginMOOSE('../example1a_SAM/sam_template', show_stderr=True) # show only error
     sam_plugin.moose_exec = app_dir + "/" + moose_app_type.lower() + "-opt"
-    sam_result = sam_plugin.workflow(params)
+    sam_result = sam_plugin(params)
 
     # get temperature from SAM results
     params['temp'] = mean([sam_result.csv_data[f'avg_Tgraphite_{i}'][-1] for i in range(1, 6)])
@@ -74,7 +74,7 @@ while conv_it:
 
     # Run OpenMC plugin
     openmc_plugin = watts.PluginOpenMC(build_openmc_model, show_stderr=True) # show only error
-    openmc_result = openmc_plugin.workflow(params)
+    openmc_result = openmc_plugin(params)
     print("KEFF = ", openmc_result.keff)
     list_keff.append(openmc_result.keff)
 
