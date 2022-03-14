@@ -2,12 +2,17 @@
 # SPDX-License-Identifier: MIT
 
 """
-This is a simple example to demonstrate how to use WATTS
-to perform parametric study. This demonstration uses SAM
-with a single-channel model. The input power of the channel 
-is varied. The demonstration also incudes an approach to
-save selected results from different runs into a single
-CSV file for easier comparison, visualization, post-processing.
+This example demonstrates how to use WATTS to perform 
+multiple runs and extract selected results from the runs. 
+The demonstration incudes an approach to save selected 
+results from different runs into a single CSV file for 
+ease of comparison, visualization, post-processing.
+This demonstration uses SAM with a single PbCoreChannel
+with a inlet and outlet boundary conditions. The input 
+power of the channel is varied. The simulation is run 
+as transient where the end time is varied to artificially
+create results of different lengths to show that the 
+output CSV file can accept columns of different lengths.
 """
 
 from math import cos, pi
