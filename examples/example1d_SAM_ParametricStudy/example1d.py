@@ -48,7 +48,7 @@ params.show_summary(show_metadata=False, sort_by='key')
 moose_app_type = "SAM"
 app_dir = os.environ[moose_app_type.upper() + "_DIR"]
 
-power = [100000, 250000, 300000, 400000, 500000] # Watts
+power = [100_000, 250_000, 300_000, 400_000, 500_000] # Watts
 endtime = [50, 100, 100, 50, 50] # End time is varied to artificially create results of different lengths.
 results_dict = {} # Create empty dictionary
 for i in range(len(power)):
