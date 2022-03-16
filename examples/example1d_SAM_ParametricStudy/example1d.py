@@ -8,7 +8,7 @@ The demonstration includes an approach to save selected
 results from different runs into a single CSV file for 
 ease of comparison, visualization, post-processing.
 This demonstration uses SAM with a single PbCoreChannel
-with a inlet and outlet boundary conditions. The input 
+with inlet and outlet boundary conditions. The input 
 power of the channel is varied. The simulation is run 
 as transient where the end time is varied to artificially
 create results of different lengths to show that the 
