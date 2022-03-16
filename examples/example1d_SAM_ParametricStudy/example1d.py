@@ -4,7 +4,7 @@
 """
 This example demonstrates how to use WATTS to perform 
 multiple runs and extract selected results from the runs. 
-The demonstration incudes an approach to save selected 
+The demonstration includes an approach to save selected 
 results from different runs into a single CSV file for 
 ease of comparison, visualization, post-processing.
 This demonstration uses SAM with a single PbCoreChannel
