@@ -65,5 +65,8 @@ for i in range(len(power)):
     results_dict[f'max_Tcoolant_{i+1}'] = moose_result.csv_data['max_Tcoolant']
     results_dict[f'max_Tw_{i+1}'] = moose_result.csv_data['max_Tw']
 
-df = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in results_dict.items()])) # Store dictionary items as dataframe. Columns of unequal lengths are padded with NaN.
-df.reindex(sorted(df.columns), axis=1).to_csv('results.csv') # Sort column names alphabetically and save as CSV file.
+# Store dictionary items as dataframe. Columns of unequal lengths are padded with NaN.
+df = pd.DataFrame({k: pd.Series(v) for k, v in results_dict.items()})
+
+# Sort column names alphabetically and save as CSV file
+df.sort_index(axis=1).to_csv('results.csv') 
