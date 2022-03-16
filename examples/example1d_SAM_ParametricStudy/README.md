@@ -13,5 +13,3 @@ This example provides a demonstration on how to use WATTS to perform multiple ru
 - Parametric study
 - Results extraction
 - Post-processing
-
-## Notes
