@@ -9,10 +9,9 @@ This example provides a demonstration on how to use WATTS to perform multiple ru
 - SAM
 
 ## Keywords
-<ul>  
-<li>Parametric study</li>
-<li>Results extraction</li>
-<li>Post-processing</li>
-</ul>
+ 
+- Parametric study
+- Results extraction
+- Post-processing
 
 ## Notes
