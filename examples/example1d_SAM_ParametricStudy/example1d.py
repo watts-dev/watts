@@ -6,7 +6,7 @@ This example demonstrates how to use WATTS to perform
 multiple runs and extract selected results from the runs. 
 The demonstration includes an approach to save selected 
 results from different runs into a single CSV file for 
-ease of comparison, visualization, post-processing.
+ease of comparison, visualization, and post-processing.
 This demonstration uses SAM with a single PbCoreChannel
 with inlet and outlet boundary conditions. The input 
 power of the channel is varied. The simulation is run 
