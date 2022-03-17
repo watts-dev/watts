@@ -13,3 +13,9 @@ This example provides a demonstration on how to use WATTS to perform multiple ru
 - Parametric study
 - Results extraction
 - Post-processing
+
+## File descriptions
+
+- example1d.py: WATTS workflow for this example. This is the file to execute to run the problem described above.
+- sam_template: SAM templated input file.
+- results.csv: An example of CSV file that will be generated through running this example.
