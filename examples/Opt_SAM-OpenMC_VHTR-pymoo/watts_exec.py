@@ -13,7 +13,6 @@ varied by the optimization algorithm. The best solutions are being
 returned.
 """
 
-from example4 import *
 import numpy as np
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.optimize import minimize
