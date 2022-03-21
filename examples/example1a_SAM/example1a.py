@@ -4,11 +4,8 @@
 from math import cos, pi
 import os
 import watts
-from astropy import units as u
+from astropy.units import Quantity
 
-# Uses Astropy for unit conversion
-u.imperial.enable()    # Enable imperial units
-Quantity = u.Quantity
 
 params = watts.Parameters()
 
@@ -30,7 +27,7 @@ for i in range(1, 6):
 params['ax_ref'] = 20 # cm
 params['num_cool_pins'] = 1*6+2*6+6*2/2
 params['num_fuel_pins'] = 6+6+6+3*6+2*6/2+6/3
-params['Height_FC'] = Quantity(2000, "mm") # Automatically converts to 'm' for MOOSE and 'cm' for openmc 
+params['Height_FC'] = Quantity(2000, "mm") # Automatically converts to 'm' for MOOSE and 'cm' for openmc
 params['Lattice_pitch'] = 2.0
 params['FuelPin_rad'] = 0.90 # cm
 params['cool_hole_rad'] = 0.60 # cm
@@ -52,7 +49,7 @@ moose_app_type = "SAM"
 app_dir = os.environ[moose_app_type.upper() + "_DIR"]
 moose_plugin = watts.PluginMOOSE(moose_app_type.lower() + '_template') # show all the output
 moose_plugin.moose_exec = app_dir + "/" + moose_app_type.lower() + "-opt"
-moose_result = moose_plugin.workflow(params)
+moose_result = moose_plugin(params)
 for key in moose_result.csv_data:
     print(key, moose_result.csv_data[key])
 print(moose_result.inputs)

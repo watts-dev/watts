@@ -6,12 +6,8 @@ import os
 import watts
 from statistics import mean
 from openmc_template import build_openmc_model
-from astropy import units as u
+from astropy.units import Quantity
 
-
-# Uses Astropy for unit conversion
-u.imperial.enable()    # Enable imperial units
-Quantity = u.Quantity
 
 params = watts.Parameters()
 
@@ -66,7 +62,7 @@ moose_app_type = "SAM"
 app_dir = os.environ[moose_app_type.upper() + "_DIR"]
 moose_plugin = watts.PluginMOOSE('../example1a_SAM/sam_template', show_stderr=True) # show only error
 moose_plugin.moose_exec = app_dir + "/" + moose_app_type.lower() + "-opt"
-moose_result = moose_plugin.workflow(params)
+moose_result = moose_plugin(params)
 for key in moose_result.csv_data:
     print(key, moose_result.csv_data[key])
 print(moose_result.inputs)
@@ -81,7 +77,7 @@ params.show_summary(show_metadata=False, sort_by='time')
 
 # Run OpenMC plugin
 openmc_plugin = watts.PluginOpenMC(build_openmc_model, show_stderr=True) # show only error
-openmc_result = openmc_plugin.workflow(params)
+openmc_result = openmc_plugin(params)
 print("KEFF = ", openmc_result.keff)
 print(openmc_result.inputs)
 print(openmc_result.outputs)

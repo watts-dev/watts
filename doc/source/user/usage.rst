@@ -33,38 +33,61 @@ object::
 Most native Python datatypes (:class:`int`, :class:`float`, :class:`bool`,
 :class:`str`, :class:`list`, :class:`set`, :class:`tuple`, :class:`dict`) are
 supported along with :class:`NumPy arrays <numpy.ndarray>` as well. Parameters
-can be saved to an HDF5 file::
+can be saved to a pickle file::
 
-    params.save('parameters.h5')
+    params.save('parameters.pkl')
 
-and later re-created using the :meth:`~watts.Parameters.from_hdf5` method::
+and later re-created using the :meth:`~watts.Parameters.from_pickle` method::
 
-    loaded_params = watts.Parameters.from_hdf5('parameters.h5')
+    loaded_params = watts.Parameters.from_pickle('parameters.pkl')
 
 By themselves, :class:`~watts.Parameters` are not very useful, but when
 combined with plugin classes, they become building blocks for sophisticated
 workflows.
 
+Units
+~~~~~
+
+To handle codes that use different unit systems, WATTS relies on the
+:class:`~astropy.units.Quantity` class from :mod:`astropy.units` to perform unit
+conversion on parameters to ensure that the correct units are used for each
+code. For instance, MOOSE-based codes use the SI units while OpenMC uses the CGS
+units. With the built-in unit-conversion capability, a parameter needs only to
+be set once in any unit system and WATTS can automatically convert it to the
+correct unit for different codes. To use the unit-conversion capability,
+parameters need to be set using the :class:`~astropy.units.Quantity` class as
+follows::
+
+    from astropy.units import Quantity
+
+    params['radius'] = Quantity(9.9, "mm")
+    params['inlet_temperature'] = Quantity(600, "Celsius")
+    params['c_p'] = Quantity(4.9184126, "BTU/(kg*K)")
+
+with the format of ``Quantity(value, unit)``.
+
 Plugins
 +++++++
 
-Using a particular code within WATTS requires a "plugin" that controls input file
-generation, execution, and post-processing. Two plugin classes,
-:class:`~watts.PluginMOOSE` and :class:`~watts.PluginOpenMC`, have already been
-added to WATTS and are available for your use.
+Using a particular code within WATTS requires a "plugin" that controls input
+file generation, execution, and post-processing. Three plugin classes,
+:class:`~watts.PluginMOOSE`, :class:`~watts.PluginOpenMC`, and
+:class:`~watts.PluginPyARC`, have already been added to WATTS and are available
+for your use.
 
 MOOSE Plugin
-~~~~~~~~~~
+~~~~~~~~~~~~
 
-The :class:`~watts.PluginMOOSE` class enables MOOSE simulations using a templated
-input file. This is demonstrated here for a SAM application, but other examples based on BISON are also available. 
-For MOOSE codes such as SAM or BISON that use text-based input files, WATTS relies on
-the `Jinja <https://jinja.palletsprojects.com>`_ templating engine for handling
-templated variables and expressions. The templated input file looks like a
-normal MOOSE input file where some values have been replaced with
-**variables**, which are denoted by ``{{`` and ``}}`` pairs and get replaced
-with actual values when the template is *rendered*. For example, a templated
-input file might look as follows:
+The :class:`~watts.PluginMOOSE` class enables MOOSE simulations using a
+templated input file. This is demonstrated here for a SAM application, but other
+examples based on BISON are also available. For MOOSE codes such as SAM or BISON
+that use text-based input files, WATTS relies on the `Jinja
+<https://jinja.palletsprojects.com>`_ templating engine for handling templated
+variables and expressions. The templated input file looks like a normal MOOSE
+input file where some values have been replaced with **variables**, which are
+denoted by ``{{`` and ``}}`` pairs and get replaced with actual values when the
+template is *rendered*. For example, a templated input file might look as
+follows:
 
 .. code-block:: jinja
 
@@ -77,12 +100,14 @@ input file might look as follows:
         Tsolid_sf = 1e-3
     []
 
-If the templated input file is ``sam_template.inp``, the SAM code will rely the general MOOSE plugin that can be created as::
+If the templated input file is ``sam_template.inp``, the SAM code will rely on
+the general MOOSE plugin that can be created as::
 
     moose_plugin = watts.PluginMOOSE('sam_template.inp')
 
-The MOOSE plugin provides the option to specify supplementary input files (in `supp_inputs` option) that 
-will be copied together with the templated input file (mesh or cross-section files).
+The MOOSE plugin provides the option to specify non-templated input files (in
+`extra_inputs` option) that will be copied together with the templated input
+file (mesh or cross-section files).
 
 The SAM executable defaults to ``sam-opt`` (assumed to be present on your
 :envvar:`PATH`) but can also be specified explicitly with the
@@ -90,8 +115,8 @@ The SAM executable defaults to ``sam-opt`` (assumed to be present on your
 
     moose_plugin.moose_exec = "/path/to/sam-opt"
 
-To execute SAM, the :meth:`~watts.PluginMOOSE.workflow` method is called and
-expects to receive an instance of :class:`~watts.Parameters`. For the above
+To execute SAM, the :class:`~watts.PluginMOOSE` instance is called as a function
+and expects to receive an instance of :class:`~watts.Parameters`. For the above
 template, the :class:`~watts.Parameters` instance should have ``He_Pressure``,
 ``He_velocity``, and ``He_inlet_temp`` parameters present. Thus, executing SAM
 with this templated input file along with corresponding parameters might look as
@@ -101,10 +126,10 @@ follows::
     params['He_Pressure'] = 2.0
     params['He_velocity'] = 1.0
     params['He_inlet_temp'] = 600.0
-    results = moose_plugin.workflow(params)
+    results = moose_plugin(params)
 
-Calling the :meth:`~watts.PluginMOOSE.workflow` method will render the templated
-input file (replace variables with values from the :class:`~watts.Parameters`
+Calling the :class:`~watts.PluginMOOSE` instance will render the templated input
+file (replace variables with values from the :class:`~watts.Parameters`
 instance), execute SAM, and collect the output files.
 
 Beyond simple variable substitution, Jinja has sophisticated capabilities for
@@ -117,7 +142,7 @@ OpenMC Plugin
 ~~~~~~~~~~~~~
 
 The :class:`~watts.PluginOpenMC` class handles OpenMC execution in a similar
-manner to the :class:`~watts.PluginSAM` class for SAM. However, for OpenMC,
+manner to the :class:`~watts.PluginMOOSE` class for MOOSE. However, for OpenMC,
 inputs are generated programmatically through the OpenMC Python API. Instead of
 writing a text template, for the OpenMC plugin you need to write a function that
 accepts an instance of :class:`~watts.Parameters` and generates the necessary
@@ -150,11 +175,11 @@ instantiated::
     openmc_plugin = watts.PluginOpenMC(godiva_model)
 
 Note how the function object itself is passed to the plugin. When the
-:meth:`~watts.PluginOpenMC.workflow` method is called, the "template" function
-is called and passed the user-specified :class:`~watts.Parameters`::
+:meth:`~watts.PluginOpenMC` instance is called, the "template" function is
+called and passed the user-specified :class:`~watts.Parameters`::
 
     params = watts.Parameters(radius=6.0)
-    results = openmc_plugin.workflow(params)
+    results = openmc_plugin(params)
 
 This will generate the OpenMC input files using the template parameters, run
 OpenMC, and collect the results.
@@ -163,7 +188,7 @@ PyARC Plugin
 ~~~~~~~~~~~~~
 
 The :class:`~watts.PluginPyARC` class handles PyARC execution in a similar
-manner to the :class:`~watts.PluginSAM` class for SAM. PyARC use text-based 
+manner to the :class:`~watts.PluginMOOSE` class for MOOSE. PyARC use text-based
 input files which can be templated as follows:
 
 .. code-block:: jinja
@@ -174,29 +199,66 @@ input files which can be templated as follows:
         plane ( z10 ) { z = {{ assembly_length }} }
     }
 
-If the templated input file is `pyarc_template`, then the PyARC plugin can be instantiated with following command line::
+If the templated input file is `pyarc_template`, then the PyARC plugin can be
+instantiated with following command line::
 
-    pyarc_plugin = watts.PluginPyARC('pyarc_template', show_stdout=True, supp_inputs=['lumped_test5.son'])
+    pyarc_plugin = watts.PluginPyARC('pyarc_template', show_stdout=True, extra_inputs=['lumped_test5.son'])
 
 The path to PyARC directory must be specified explicitly with the
 :attr:`~watts.PluginPyARC.pyarc_exec` attribute::
 
     pyarc_plugin.pyarc_exec  = "/path/to/PyARC"
 
-To execute PyARC, the :meth:`~watts.PluginPyARC.workflow` method is called 
-the same way as other Plugins. 
+To execute PyARC, the :meth:`~watts.PluginPyARC` instance is called directly the
+same way as other plugins.
+
+SAS4A/SASSY-1 Plugin
+~~~~~~~~~~~~~~~~~~~~
+
+The :class:`~watts.PluginSAS` class handles SAS4A/SASSY-1 execution in a similar
+manner to the :class:`~watts.PluginMOOSE` class for MOOSE. SAS4A/SASSY-1 use text-based
+input files which can be templated as follows:
+
+.. code-block:: jinja
+
+    47    1        {{ flow_per_pin }}
+    3     1 {{ total_reactor_power }}
+    7     1                {{ tmax }}
+
+If the templated input file is `sas_template`, then the SAS4A/SASSY-1 plugin can be
+instantiated with the following command line::
+
+    sas_plugin = watts.PluginSAS('sas_template', show_stdout=True)
+
+The SAS executable is OS-dependent. It defaults to ``sas.x`` (assumed to be
+present on your :envvar:`PATH`) for Linux and macOS, and ``sas.exe`` for
+Windows. However, the executable can also be specified explicitly with the
+:attr:`~watts.PluginSAS.sas_exec` attribute::
+
+    sas_plugin.sas_exec = "/path/to/sas-exec"
+
+Furthermore, the paths to the SAS utilities that convert the ".dat" files to
+".csv" files must be specified with the :attr:`~watts.PluginSAS.conv_channel`
+and :attr:`~watts.PluginSAS.conv_primar4` attributes::
+
+    sas_plugin.conv_channel  = "/path/to/CHANNELtoCSV.x"
+    sas_plugin.conv_primar4  = "/path/to/PRIMAR4toCSV.x"
+
+Similar to the SAS executable, the utilities are also OS dependent. To execute
+SAS, the :meth:`~watts.PluginSAS` instance is called directly in the same way as
+other plugins.
 
 Results
 +++++++
 
-When you run the :meth:`~watts.Plugin.workflow` method on a plugin, an instance
-of the :class:`~watts.Results` class specific to the plugin will be returned
-that contains information about the results. Every :class:`~watts.Results`
-object contains a list of input and output files that were generated:
+When you call a :meth:`~watts.Plugin` instance, an instance of the
+:class:`~watts.Results` class specific to the plugin will be returned that
+contains information about the results. Every :class:`~watts.Results` object
+contains a list of input and output files that were generated:
 
 .. code-block:: pycon
 
-    >>> results = plugin_openmc.workflow(params)
+    >>> results = plugin_openmc(params)
     >>> results.inputs
     [PosixPath('geometry.xml'),
      PosixPath('settings.xml'),
@@ -207,7 +269,7 @@ object contains a list of input and output files that were generated:
      PosixPath('statepoint.250.h5')]
 
 :class:`~watts.Results` objects also contain a copy of the
-:class:`~watts.Parameters` that were used at the time the workflow was run:
+:class:`~watts.Parameters` that were used at the time the plugin was called:
 
 .. code-block:: pycon
 
@@ -228,11 +290,11 @@ k-effective value at the end of the simulation:
     >>> results.keff
     1.0026170700986219+/-0.003342785895893627
 
-For SAM, the :class:`~watts.ResultsMOOSE` class
-provides a :attr:`~watts.ResultsMOOSE.csv_data` attribute that gathers the
-results from every CSV files generated by MOOSE applications (such as SAM or BISON)::
+For MOOSE, the :class:`~watts.ResultsMOOSE` class provides a
+:attr:`~watts.ResultsMOOSE.csv_data` attribute that gathers the results from
+every CSV files generated by MOOSE applications (such as SAM or BISON)::
 
-    moose_result = moose_plugin.workflow(params)
+    moose_result = moose_plugin(params)
     for key in moose_result.csv_data:
         print(key, moose_result.csv_data[key])
 
@@ -241,25 +303,25 @@ For PyARC, the :class:`~watts.ResultsPyARC` class
 provides a :attr:`~watts.ResultsPyARC.results_data` attribute that gathers the
 results stored in `PyARC.user_object`::
 
-    pyarc_result = pyarc_plugin.workflow(params)
+    pyarc_result = pyarc_plugin(params)
     for key in pyarc_result.results_data:
         print(key, pyarc_result.results_data[key])
 
 Database
 ++++++++
 
-When you call the :meth:`~watts.Plugin.workflow` method on a plugin, the
-:class:`~watts.Results` object and all accompanying files are automatically
-added to a database on disk for later retrieval. Interacting with this database
-can be done via the :class:`~watts.Database` class:
+When you call a :class:`~watts.Plugin` instance, the :class:`~watts.Results`
+object and all accompanying files are automatically added to a database on disk
+for later retrieval. Interacting with this database can be done via the
+:class:`~watts.Database` class:
 
 .. code-block:: pycon
 
     >>> db = watts.Database()
     >>> db.results
-    [<watts.plugin_openmc.ResultsOpenMC at 0x15530416bfd0>,
-     <watts.plugin_openmc.ResultsOpenMC at 0x15530416bbb0>,
-     <watts.plugin_moose.ResultsMOOSE at 0x1553043c8a30>]
+    [<ResultsOpenMC: 2022-01-01 12:05:02.130384>,
+     <ResultsOpenMC: 2022-01-01 12:11:38.037813>,
+     <ResultsMOOSE: 2022-01-02 08:45:12.846409>]
 
 By default, the database will be created in a user-specific data directory (on
 Linux machines, this is normally within ``~/.local/share``). However, the
@@ -268,9 +330,8 @@ location of the database can be specified::
     db = watts.Database('/opt/watts_db/')
 
 Creating a database this way doesn't change the default path used when running
-plugin workflows. If you want to change the default database path used in
-workflows, the :meth:`~watts.Database.set_default_path` classmethod should be
-used::
+plugins. If you want to change the default database path used in plugins, the
+:meth:`~watts.Database.set_default_path` classmethod should be used::
 
     >>> watts.Database.set_default_path('/opt/watts_db')
     >>> db = watts.Database()

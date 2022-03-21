@@ -48,8 +48,12 @@ intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'numpy': ('https://numpy.org/doc/stable/', None),
     'openmc': ('https://docs.openmc.org/en/stable/', None),
-    'h5py': ('https://docs.h5py.org/en/stable', None)
+    'astropy': ('https://docs.astropy.org/en/stable/', None),
+    'jinja2': ('https://jinja.palletsprojects.com/en/3.0.x/', None)
 }
+
+import watts
+version = release = watts.__version__
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -64,11 +68,31 @@ except ImportError as e:
 
 html_theme = 'pydata_sphinx_theme'
 
-html_theme_options = {
-    'github_url': 'https://github.com/watts-dev/watts',
-}
-
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
+html_logo = '_static/watts.svg'
+
+html_theme_options = {
+    "github_url": "https://github.com/watts-dev/watts",
+    "favicons": [
+        {
+            "rel": "icon",
+            "sizes": "16x16",
+            "href": "watts_16x16.png",
+        },
+        {
+            "rel": "icon",
+            "sizes": "32x32",
+            "href": "watts_32x32.png",
+        },
+    ],
+    "switcher": {
+        "json_url": "https://watts.readthedocs.io/en/latest/_static/switcher.json",
+        "url_template": "https://watts.readthedocs.io/en/{version}/",
+        "version_match": version if '-dev' not in version else 'dev',
+    },
+    "navbar_end": ["version-switcher", "navbar-icon-links"]
+}

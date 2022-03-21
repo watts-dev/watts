@@ -63,7 +63,7 @@ def calc_workflow(X):
     app_dir = os.environ[moose_app_type.upper() + "_DIR"]
     sam_plugin = watts.PluginMOOSE('../example1a_SAM/sam_template', show_stderr=False) # does not show anything
     sam_plugin.moose_exec = app_dir + "/" + moose_app_type.lower() + "-opt"
-    sam_result = sam_plugin.workflow(params)
+    sam_result = sam_plugin(params)
     max_Tf = max(sam_result.csv_data[f'max_Tf_{i}'][-1] for i in range(1, 6))
     avg_Tf = mean(sam_result.csv_data[f'avg_Tf_{i}'][-1] for i in range(1, 6))
     print("MaxTfuel / AvgTfuel= ", max_Tf, avg_Tf)
@@ -75,7 +75,7 @@ def calc_workflow(X):
 
     # Run OpenMC plugin
     openmc_plugin = watts.PluginOpenMC(build_openmc_model, show_stderr=False) # does not show anything
-    openmc_result = openmc_plugin.workflow(params)
+    openmc_result = openmc_plugin(params)
     print("KEFF = ", openmc_result.keff)
 
     return (openmc_result.keff.n, max_Tf, avg_Tf)

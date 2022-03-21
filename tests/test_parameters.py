@@ -3,11 +3,13 @@
 
 from pathlib import Path
 from datetime import datetime
+import warnings
 
+from astropy.units import Quantity, kilometer
 import watts
 import pytest
 import numpy as np
-import h5py
+
 
 def _compare_params(params, other):
     # Make sure key/value pairs match original parameters
@@ -29,6 +31,7 @@ def test_parameters_roundtrip(run_in_tmpdir):
     params['float_scalar'] = 6.022e23
     params['str_scalar'] = 'WATTS is great'
     params['bool_scalar'] = True
+    params['quantity_scalar'] = Quantity(3.0, 'J/kg')
     params['list_int'] = [0, 1, 2]
     params['list_float'] = [10.0, 20.0, 30.0]
     params['list_str'] = ['PWR', 'BWR', 'SFR', 'LMFR']
@@ -41,21 +44,20 @@ def test_parameters_roundtrip(run_in_tmpdir):
     params['array_int'] = np.array([0, 1, 2])
     params['array_float'] = np.array([10., 20., 30.])
     params['array_bool'] = np.array([True, False, False, True])
-    # Numpy array of strings doesn't work because internally numpy uses UTF-32,
-    # which is not supported in h5py
-    #params['array_str'] = np.array(['ANL', 'ORNL', 'LANL'])
+    params['array_quantity'] = np.array([1.0, 2.0, 5.0]) * kilometer
+    params['array_str'] = np.array(['ANL', 'ORNL', 'LANL'])
     params['dict'] = {
         'int': 7,
         'float': 0.0253,
         'str': 'String inside dictionary'
     }
 
-    # Save to HDF5
-    params.save('params.h5')
-    assert Path('params.h5').is_file()
+    # Save to pickle file
+    params.save('params.pkl')
+    assert Path('params.pkl').is_file()
 
-    # Load parameters from HDF5
-    new_params = watts.Parameters.from_hdf5('params.h5')
+    # Load parameters from pickle file
+    new_params = watts.Parameters.from_pickle('params.pkl')
 
     # Compare original parameters with one loaded from file
     _compare_params(params, new_params)
@@ -69,24 +71,6 @@ def test_parameters_set():
 
     assert params['key'] == 7
     assert params.get_metadata('key') == (user, time)
-
-
-def test_parameters_not_toplevel(run_in_tmpdir):
-    """Test saving/loading parameters when not at top-level of HDF5 file"""
-    params = watts.Parameters(var_one=1, var_two='two', var_three=3.0)
-
-    # Write parameters to /mygroup within test.h5
-    with h5py.File('test.h5', 'w') as fh:
-        group = fh.create_group('mygroup')
-        params.save(group)
-
-    # Read parameters from /mygroup
-    with h5py.File('test.h5', 'r') as fh:
-        group = fh['mygroup']
-        new_model = watts.Parameters.from_hdf5(group)
-
-    # Compare original parameters with one from group in file
-    _compare_params(params, new_model)
 
 
 def test_parameters_show_summary(capsys):
@@ -113,17 +97,42 @@ def test_parameters_show_summary(capsys):
     assert out == expected_out
 
 
-@pytest.mark.xfail
-def test_parameters_duplicates_xfail():
-    # By default, no warning is given so this test is expected to fail
-    # TODO: when pytest 7.0 is released, use pytest.does_not_warn()
-    params = watts.Parameters(a=3)
-    with pytest.warns(UserWarning):
-        params['a'] = 8
-
-
 def test_parameters_duplicates():
     params = watts.Parameters(a=3)
+
+    # By default, overwriting a parameter shouldn't produce a warning. If a
+    # warning is given, the filter below will result in a test failure
+    with warnings.catch_warnings():
+        warnings.simplefilter('error')
+        params['a'] = 8
+
+    # In this case, we expect a warning to be produced
     params.warn_duplicates = True
     with pytest.warns(UserWarning):
         params['a'] = 8
+
+
+def test_unit_conversion(run_in_tmpdir):
+    params = watts.Parameters()
+
+    # Test with various unit conversion formats
+    params['He_inlet_temp'] = Quantity(600, "Celsius")  # 873.15 K
+    params['He_cp'] = Quantity(4.9184126, "BTU/(kg*K)") # 5189.2 J/kg-K
+    params['He_Pressure'] = Quantity(7.0, "MPa") # 7e6 Pa
+    params['Height_FC'] = Quantity(2000, "mm") # 2 m
+
+    # Check that unit conversion in the MOOSE plugin is correct
+    params_si = params.convert_units(system='si')
+
+    assert params_si["He_inlet_temp"] == 873.15    # K
+    assert round(params_si["He_cp"], 1) == 5189.2  # J/kg-K
+    assert params_si["He_Pressure"] == 7_000_000.0 # Pa
+    assert params_si["Height_FC"] == 2.0           # m
+
+    # Check that unit conversion in the openmc plugin is correct
+    params_cgs = params.convert_units(system='cgs')
+
+    assert params_cgs["He_inlet_temp"] == 873.15         # K
+    assert round(params_cgs["He_cp"], -3) == 51892000.0  # J/g-K
+    assert params_cgs["He_Pressure"] == 70_000_000.0     # P/s
+    assert params_cgs["Height_FC"] == 200.0              # cm

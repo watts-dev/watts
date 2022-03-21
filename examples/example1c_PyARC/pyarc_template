@@ -3,7 +3,7 @@ geometry{
 
     materials{
         material ( LEU ) {
-            temp    = 300
+            temp    = {{ temp }}
             adens{ 
                  aden ( u235 ) = 2.0e-2  % atom density in at/barn-cm
                  aden ( u238 ) = 2.0e-2  % atom density in at/barn-cm
@@ -12,7 +12,7 @@ geometry{
             lumped_element_aden( lu35 ) = 1e-3
         }
         material ( LEU2 ) {
-            temp    = 300
+            temp    = {{ temp }}
             adens{ 
                  aden ( u236 ) = 2.0e-2  % atom density in at/barn-cm
                  aden ( u237 ) = 2.0e-2  % atom density in at/barn-cm

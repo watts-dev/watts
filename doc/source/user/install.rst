@@ -7,10 +7,9 @@ WATTS can be installed by running:
 
 .. code-block:: sh
 
-    git clone https://github.com/watts-dev/watts
-    cd watts
-    pip install -U pip
-    pip install .
+    pip install watts
+
+If you are developing a feature in WATTS, please see :ref:`install_develop`.
 
 Plugins
 +++++++
