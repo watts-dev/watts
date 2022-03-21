@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 from scipy.stats import qmc
-from example4 import *
+from watts_main import *
 
 sampler = qmc.LatinHypercube(d=2) # create a sampler for 2-dimension variable
 sample = sampler.random(n=10) # create 10 randomely distributed samples

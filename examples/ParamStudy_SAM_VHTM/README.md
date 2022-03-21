@@ -16,6 +16,6 @@ This example provides a demonstration on how to use WATTS to perform multiple ru
 
 ## File descriptions
 
-- [__example1d.py__](example1d.py): WATTS workflow for this example. This is the file to execute to run the problem described above.
+- [__watts_exec.py__](watts_exec.py): WATTS workflow for this example. This is the file to execute to run the problem described above.
 - [__sam_template__](sam_template): SAM templated input file.
 - [__results.csv__](results.csv): An example of CSV file that will be generated through running this example.

@@ -52,7 +52,7 @@ calculations{
        xslib            = "endf7.0"
        egroupname       = ANL33
        scattering_order = 1
-       lumped_element_text_file( lu35 ) = "lumped_test5.son"
+       lumped_element_text_file( lu35 ) = "lumped.son"
         cell( a ){
             associated_sub_assembly     = sub_assembly_name
         }

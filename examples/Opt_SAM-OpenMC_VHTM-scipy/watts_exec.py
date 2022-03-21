@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 from scipy.optimize import minimize
-from example4 import *
+from watts_main import *
 
 # initial X values required for scipy optimization
 X = [0.9, 0.6]
