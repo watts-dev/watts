@@ -74,7 +74,7 @@ params.show_summary(show_metadata=True, sort_by='time')
 
 moose_app_type = "SAM"
 app_dir = os.environ[moose_app_type.upper() + "_DIR"]
-moose_plugin = watts.PluginMOOSE('../example1a_SAM/sam_template', show_stderr=True) # show only error
+moose_plugin = watts.PluginMOOSE('../1App_SAM_VHTR/sam_template', show_stderr=True) # show only error
 moose_plugin.moose_exec = app_dir + "/" + moose_app_type.lower() + "-opt"
 moose_result = moose_plugin(params)
 for key in moose_result.csv_data:

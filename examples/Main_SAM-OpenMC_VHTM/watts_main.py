@@ -67,7 +67,7 @@ def calc_workflow(X):
     # set your SAM directorate as SAM_DIR
     moose_app_type = "SAM"
     app_dir = os.environ[moose_app_type.upper() + "_DIR"]
-    sam_plugin = watts.PluginMOOSE('../example1a_SAM/sam_template', show_stderr=False) # does not show anything
+    sam_plugin = watts.PluginMOOSE('../1App_SAM_VHTR/sam_template', show_stderr=False) # does not show anything
     sam_plugin.moose_exec = app_dir + "/" + moose_app_type.lower() + "-opt"
     sam_result = sam_plugin(params)
     max_Tf = max(sam_result.csv_data[f'max_Tf_{i}'][-1] for i in range(1, 6))

@@ -69,7 +69,7 @@ while conv_it:
     # MOOSE Workflow
     moose_app_type = "SAM"
     app_dir = os.environ[moose_app_type.upper() + "_DIR"]
-    sam_plugin = watts.PluginMOOSE('../example1a_SAM/sam_template', show_stderr=True) # show only error
+    sam_plugin = watts.PluginMOOSE('../1App_SAM_VHTR/sam_template', show_stderr=True) # show only error
     sam_plugin.moose_exec = app_dir + "/" + moose_app_type.lower() + "-opt"
     sam_result = sam_plugin(params)
 
