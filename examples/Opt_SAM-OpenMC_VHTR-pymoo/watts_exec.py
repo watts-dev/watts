@@ -14,6 +14,7 @@ returned.
 """
 
 import numpy as np
+from watts_main import *
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.optimize import minimize
 from pymoo.core.problem import ElementwiseProblem
