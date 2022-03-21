@@ -4,10 +4,12 @@
 import os
 import watts
 
-# A three-step three-level MultiApps system for a Microreactor Unit Cell is run here
-# First step is steady state simulation
-# Second step is a Null transient simulation to confirm the steady state obtained
-# Third step is a real transient simulation induced by loss of cooling capacity
+"""
+A three-step three-level MultiApps system for a Microreactor Unit Cell is run here
+First step is steady state simulation
+Second step is a Null transient simulation to confirm the steady state obtained
+Third step is a real transient simulation induced by loss of cooling capacity
+"""
 
 # set your SuperMoose directory as SUPER_MOOSE
 # As Sockeye is run through dynamic linking
