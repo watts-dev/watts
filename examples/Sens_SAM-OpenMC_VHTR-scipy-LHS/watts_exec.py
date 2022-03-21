@@ -1,6 +1,17 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
+"""
+This example demonstrates how to use WATTS to perform 
+sensitivity study by running SAM followed by OpenMC workflow. 
+This example uses the same simple VHTR unit-cell as 1App examples
+model with 1 coolant channel surrounded by graphite and fuel.
+The SciPy library is used to drive the sensitivity with a 
+Latin Hypercube Sampling (LHS). The fuel pin and coolant radius 
+are being varied by the sensitivity analysis and resulting 
+keff, max and average fuel temperatures are being analyzed.
+"""
+
 from scipy.stats import qmc
 from watts_main import *
 

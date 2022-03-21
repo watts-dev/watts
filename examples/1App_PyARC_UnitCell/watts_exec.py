@@ -1,6 +1,16 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
+"""
+This example demonstrates how to use WATTS to perform 
+PyARC simulations. The PyARC model is very simple 
+unit-cell that uses lumped fission product defined 
+in other file. Both MCC3 and DIF3D are being executed. 
+The example also applies unit-conversion
+capability of WATTS. Results from PyARC are extracted 
+and stored in params.
+"""
+
 import watts
 from astropy.units import Quantity
 

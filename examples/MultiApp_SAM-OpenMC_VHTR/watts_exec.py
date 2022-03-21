@@ -1,6 +1,20 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
+"""
+This example demonstrates how to use WATTS to perform 
+SAM calculations followed by OpenMC calculation. 
+This example uses a simple VHTR unit-cell
+model with 1 coolant channel surrounded by graphite and fuel.
+The demonstration includes the application of unit-conversion
+approach in WATTS. After execution of SAM using the MOOSE plugin,
+the results stored in CSV files are displayed to the user.
+Then, OpenMC is executed with temperature information coming
+from SAM calculated graphite temperature. After execution,
+the main results from OpenMC are printed out and stored
+in the params database.
+"""
+
 from math import cos, pi
 import os
 import watts

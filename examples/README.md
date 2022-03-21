@@ -5,6 +5,7 @@ Training on WATTS is enabled with a suite of simple examples:
 ## Examples with 1 Application
 * [__1App_SAM_VHTR__](1App_SAM_VHTR/README.md) - Showcasing MOOSE plugin for SAM execution
 * [__1App_BISON_MetalFuel__](1App_BISON_MetalFuel/README.md) - Showcasing MOOSE plugin for BISON execution
+* [__1App_OpenMC_VHTR__](1App_OpenMC_VHTR/README.md) - Showcasing OpenMC execution
 * [__1App_PyARC_UnitCell__](1App_PyARC_UnitCell/README.md) - Showcasing PyARC execution
 * [__1App_SAS_SinglePin__](1App_SAS_SinglePin/README.md) - Showcasing SAS plugin with a single pin problem
 * [__1App_SAS_SodiumLoop__](1App_SAS_SodiumLoop/README.md) - Showcasing SAS plugin with a simple sodium loop problem

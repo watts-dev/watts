@@ -1,6 +1,12 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
+"""
+This example just uses the workflow in `MultiApp_SAM-OpenMC_VHTR`
+and applies it in a procedure for re-use in optimization and 
+sensitivity analyses.
+"""
+
 from math import cos, pi
 import os
 import watts

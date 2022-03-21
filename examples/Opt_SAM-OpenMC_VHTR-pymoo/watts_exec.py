@@ -1,6 +1,18 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
+"""
+This example demonstrates how to use WATTS to perform 
+multi-criteria optimization study by running SAM followed by 
+OpenMC workflow. This example uses the same simple VHTR unit-cell 
+as 1App examples model with 1 coolant channel surrounded by graphite 
+and fuel. The pymoo library is used to drive the optimization using
+a Genetic Algorithm, which goal is to minimize both excess reactivity 
+and peak fuel temperature. The fuel pin and coolant radius are being 
+varied by the optimization algorithm. The best solutions are being 
+returned.
+"""
+
 from example4 import *
 import numpy as np
 from pymoo.algorithms.moo.nsga2 import NSGA2

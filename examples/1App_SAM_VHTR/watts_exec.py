@@ -1,6 +1,15 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
+"""
+This example demonstrates how to use WATTS to perform 
+SAM calculations. This example uses a simple VHTR unit-cell
+model with 1 coolant channel surrounded by graphite and fuel.
+The demonstration includes the application of unit-conversion
+approach in WATTS. After execution of SAM using the MOOSE plugin,
+the results stored in CSV files are displayed to the user.
+"""
+
 from math import cos, pi
 import os
 import watts

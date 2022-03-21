@@ -1,6 +1,14 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
+"""
+This example demonstrates how to use WATTS to perform several
+iterations where SAM calculations are followed by OpenMC 
+calculation and temperature/power information are exchanged
+until convergence. This example uses a simple VHTR unit-cell
+model with 1 coolant channel surrounded by graphite and fuel.
+"""
+
 from math import cos, pi
 import os
 import watts

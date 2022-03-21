@@ -1,4 +1,4 @@
-# Example1d - MOOSE/SAM Plugin
+# ParamStudy_SAM_VHTM
 
 ## Purpose
 
