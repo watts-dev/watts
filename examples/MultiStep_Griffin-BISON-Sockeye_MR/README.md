@@ -21,9 +21,8 @@ This example provides a demonstration on how to use WATTS to model multi-step Wo
 
 ## File descriptions
 
-- [__watts_exec.py__](watts_exec.py): Optimization definition with `SciPy`. This is the file to execute to run the problem described above.
+- [__watts_exec.py__](watts_exec.py): Workflow definition. This is the file to execute to run the problem described above.
 - [__unitcell_nogap_hom_xml_G11_df_MP.xml__](unitcell_nogap_hom_xml_G11_df_MP.xml): ISOXML file containing multigroup XS for Griffin
-- []
 - [__3D_unit_cell_FY21_level-1_bison.e__](3D_unit_cell_FY21_level-1_bison.e): Main mesh file.
 - [__3D_unit_cell_FY21_supersimple.e__](3D_unit_cell_FY21_supersimple.e): Another mesh file??
 
