@@ -11,6 +11,7 @@ This example provides a demonstration on how to use WATTS to model simple SAS mo
 ## Keywords
  
 - Single Pin
+- CHANNEL module
 
 ## File descriptions
 
