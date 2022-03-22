@@ -17,7 +17,7 @@ This example provides a demonstration on how to use WATTS to model multi-step Wo
 - MultiApp
 - Micro-reactor
 - Steady-state
-- Transiens
+- Transient
 
 ## File descriptions
 
