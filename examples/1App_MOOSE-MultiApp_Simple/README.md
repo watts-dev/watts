@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This example provides a demonstration on how to use WATTS to model simple MOOSE MultiApp model.
+This example provides a demonstration on how to use WATTS to perform a simple simulation leveraging MOOSE's MultiApps system.
 
 ## Code(s)
  
