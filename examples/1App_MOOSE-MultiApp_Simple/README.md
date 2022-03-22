@@ -10,7 +10,7 @@ This example provides a demonstration on how to use WATTS to perform a simple si
 
 ## Keywords
  
-- Simple MultiApp
+- Simple MultiApps
 
 ## File descriptions
 
