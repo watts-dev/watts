@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 """
-TODO
+This example provides a demonstration on how to use WATTS to perform a simple simulation leveraging MOOSE's MultiApps system.
 """
 
 from math import cos, pi
