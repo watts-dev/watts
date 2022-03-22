@@ -6,7 +6,7 @@ This example provides a demonstration on how to use WATTS to perform a simple si
 
 ## Code(s)
  
-- MOOSE MultiApp
+- MOOSE MultiApps
 
 ## Keywords
  
