@@ -20,7 +20,7 @@ params.show_summary(show_metadata=False, sort_by='key')
 # MOOSE Workflow
 # set your BISON directorate as BISON_DIR
 
-moose_app_type = "super_moose"
+moose_app_type = "bison"
 app_dir = os.environ[moose_app_type.upper() + "_DIR"]
 moose_plugin = watts.PluginMOOSE('main.tmpl', extra_inputs=['main_in.e', 'sub.i'])
 moose_plugin.moose_exec = app_dir + "/" + moose_app_type.lower() + "-opt"
