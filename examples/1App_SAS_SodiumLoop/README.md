@@ -7,6 +7,8 @@ This example provides a demonstration on how to use WATTS to model simple SAS mo
 ## Code(s)
  
 - SAS
+- CHANNEL module
+- PRIMAR4 module
 
 ## Keywords
  
