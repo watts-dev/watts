@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This example provides a demonstration on how to use WATTS to model multi-step Workflows using MOOSE codes.
+This example provides a demonstration on how to use WATTS to model multi-step Workflows for multiphysics simulation involving various MOOSE applications coupled by MOOSE's MultiApps system.
 
 ## Code(s)
  
