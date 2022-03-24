@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This example provides a demonstration on how to use WATTS to model simple SAS model.
+This example provides a demonstration on how to use WATTS for a simple SAS model.
 
 ## Code(s)
  
