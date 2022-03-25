@@ -4,6 +4,10 @@
         "version": "latest"
     },
     {
+        "name": "0.2.0",
+        "version": "v0.2.0"
+    },
+    {
         "name": "0.1.0",
         "version": "v0.1.0"
     }
