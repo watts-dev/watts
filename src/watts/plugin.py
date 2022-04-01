@@ -52,7 +52,7 @@ class Plugin(ABC):
                 return path / unique_name
             i += 1
 
-    def __call__(self, params: Parameters, name='Workflow') -> Results:
+    def __call__(self, params: Parameters, name: str = 'Workflow', **kwargs) -> Results:
         """Run the complete workflow for the plugin
 
         Parameters
@@ -61,6 +61,8 @@ class Plugin(ABC):
             Parameters used in generating inputs
         name
             Unique name for workflow
+        **kwargs
+            Keyword arguments passed to the `run` method
 
         Returns
         -------
@@ -76,7 +78,7 @@ class Plugin(ABC):
 
             # Run workflow in temporary directory
             self.prerun(params)
-            self.run()
+            self.run(**kwargs)
             result = self.postrun(params)
 
             # Create new directory for results and move files there
