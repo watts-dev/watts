@@ -107,11 +107,17 @@ class TemplatePlugin(Plugin):
         Path to template file
     extra_inputs
         Extra (non-templated) input files
+    extra_template_inputs
+        Extra templated input files
 
     """
-    def __init__(self, template_file: PathLike, extra_inputs: Optional[List[PathLike]] = None):
+    def __init__(self, template_file: PathLike, extra_inputs: Optional[List[PathLike]] = None,
+                 extra_template_inputs: Optional[List[PathLike]] = None):
         super().__init__(extra_inputs)
         self.render_template = TemplateRenderer(template_file)
+        self.extra_render_templates = []
+        if extra_template_inputs is not None:
+            self.extra_render_templates = [TemplateRenderer(f, '') for f in extra_template_inputs]
 
     def prerun(self, params: Parameters, filename: Optional[str] = None):
         """Render the template based on model parameters
@@ -125,3 +131,5 @@ class TemplatePlugin(Plugin):
         """
         # Render the template
         self.render_template(params, filename=filename)
+        for render_template in self.extra_render_templates:
+            render_template(params)

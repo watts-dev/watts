@@ -20,13 +20,14 @@ class TemplateRenderer:
     **template_kwargs
         Keywork arguments passed to :class:`jinja2.Template`
     """
-    def __init__(self, template_file: PathLike, **template_kwargs):
+    def __init__(self, template_file: PathLike, suffix: str = '.rendered', **template_kwargs):
         self.template_file = Path(template_file)
         self.template = jinja2.Template(
             self.template_file.read_text(),
             undefined=jinja2.StrictUndefined,
             **template_kwargs
         )
+        self.suffix = suffix
 
     def __call__(self, params: Parameters, filename: Optional[PathLike] = None):
         """Render the template
@@ -43,7 +44,7 @@ class TemplateRenderer:
         # Default rendered template filename
         if filename is None:
             name = self.template_file.name
-            out_path = self.template_file.with_name(f'{name}.rendered')
+            out_path = self.template_file.with_name(f'{name}{self.suffix}')
         else:
             out_path = Path(filename)
 

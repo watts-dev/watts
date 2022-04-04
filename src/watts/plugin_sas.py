@@ -198,5 +198,7 @@ class PluginSAS(TemplatePlugin):
         # Start with non-templated input files
         inputs = [p.name for p in self.extra_inputs]
         inputs.append(self.sas_inp_name)
+        for renderer in self.extra_render_templates:
+            inputs.append(renderer.template_file.name)
         outputs = [p for p in Path.cwd().iterdir() if p.name not in inputs]
         return ResultsSAS(params, time, inputs, outputs)
