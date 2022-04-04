@@ -1,7 +1,9 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
+from collections.abc import Sequence
 from pathlib import Path
+import pprint
 import shutil
 from typing import List, Union
 from warnings import warn
@@ -11,7 +13,7 @@ import platformdirs
 from .results import Results
 
 
-class Database:
+class Database(Sequence):
     """Database of simulation results
 
     Parameters
@@ -71,6 +73,15 @@ class Database:
         # Add instance to class-wide dictionary
         Database._instances[path.resolve()] = self
 
+    def __repr__(self):
+        return pprint.pformat(self._results)
+
+    def __getitem__(self, index):
+        return self._results[index]
+
+    def __len__(self):
+        return len(self._results)
+
     @property
     def path(self) -> Path:
         return self._path
@@ -105,10 +116,6 @@ class Database:
         """
         return cls._default_path
 
-    @property
-    def results(self) -> List[Results]:
-        return self._results
-
     def add_result(self, result: Results):
         """Add a result to the database
 
@@ -127,11 +134,11 @@ class Database:
         """Remove all results from database"""
         for dir in self.path.iterdir():
             shutil.rmtree(dir)
-        self.results.clear()
+        self._results.clear()
 
     def show_summary(self):
         """Show a summary of results in database"""
-        for result in self.results:
+        for result in self._results:
             rel_path = result.base_path.relative_to(self.path)
             print(result.time, result.plugin, str(rel_path),
                   f"({len(result.inputs)} inputs)",

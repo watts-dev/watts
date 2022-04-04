@@ -98,7 +98,7 @@ class PluginSAS(TemplatePlugin):
 
         # Check OS to make sure the extension of the executable is correct.
         # Linux and macOS have different executables but both are ".x".
-        # The Windows executable is ".exe". 
+        # The Windows executable is ".exe".
         sas_dir = Path(os.environ.get("SAS_DIR", ""))
         ext = "exe" if platform.system() == "Windows" else "x"
         self._sas_exec = sas_dir / f"sas.{ext}"
@@ -189,7 +189,7 @@ class PluginSAS(TemplatePlugin):
         if Path("CHANNEL.dat").is_file():
             with open("CHANNEL.dat", "r") as file_in, open("CHANNEL.csv", "w") as file_out:
                 subprocess.run(str(self.conv_channel), stdin=file_in, stdout=file_out)
-                
+
         if Path("PRIMAR4.dat").is_file():
             with open("PRIMAR4.dat", "r") as file_in, open("PRIMAR4.csv", "w") as file_out:
                 subprocess.run(str(self.conv_primar4), stdin=file_in, stdout=file_out)
@@ -197,6 +197,6 @@ class PluginSAS(TemplatePlugin):
         time = datetime.fromtimestamp(self._run_time * 1e-9)
         # Start with non-templated input files
         inputs = [p.name for p in self.extra_inputs]
-        inputs.append('SAS.inp')
+        inputs.append(self.sas_inp_name)
         outputs = [p for p in Path.cwd().iterdir() if p.name not in inputs]
         return ResultsSAS(params, time, inputs, outputs)

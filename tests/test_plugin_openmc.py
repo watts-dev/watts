@@ -63,7 +63,7 @@ def test_openmc_plugin():
 
     # Make sure result was added to database and agrees
     db = watts.Database()
-    last_result = db.results[-1]
+    last_result = db[-1]
     assert last_result.parameters['radius'] == result.parameters['radius']
     assert last_result.inputs == result.inputs
     assert last_result.outputs == result.outputs

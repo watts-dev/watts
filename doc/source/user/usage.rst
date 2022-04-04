@@ -182,7 +182,10 @@ called and passed the user-specified :class:`~watts.Parameters`::
     results = openmc_plugin(params)
 
 This will generate the OpenMC input files using the template parameters, run
-OpenMC, and collect the results.
+OpenMC, and collect the results. Note that any extra keyword arguments passed to
+the plugin are forwarded to the :func:`openmc.run` function. For example::
+
+    results = openmc_plugin(params, mpi_args=["mpiexec", "-n", "16"])
 
 PyARC Plugin
 ~~~~~~~~~~~~~
@@ -318,10 +321,12 @@ for later retrieval. Interacting with this database can be done via the
 .. code-block:: pycon
 
     >>> db = watts.Database()
-    >>> db.results
+    >>> db
     [<ResultsOpenMC: 2022-01-01 12:05:02.130384>,
      <ResultsOpenMC: 2022-01-01 12:11:38.037813>,
      <ResultsMOOSE: 2022-01-02 08:45:12.846409>]
+    >>> db[1]
+    <ResultsOpenMC: 2022-01-01 12:11:38.037813>
 
 By default, the database will be created in a user-specific data directory (on
 Linux machines, this is normally within ``~/.local/share``). However, the
@@ -344,7 +349,7 @@ To clear results from the database, simply use the
 .. code-block::
 
     >>> db.clear()
-    >>> db.results
+    >>> db
     []
 
 Be aware that clearing the database **will** delete all the corresponding
