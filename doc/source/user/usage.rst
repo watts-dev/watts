@@ -182,7 +182,10 @@ called and passed the user-specified :class:`~watts.Parameters`::
     results = openmc_plugin(params)
 
 This will generate the OpenMC input files using the template parameters, run
-OpenMC, and collect the results.
+OpenMC, and collect the results. Note that any extra keyword arguments passed to
+the plugin are forwarded to the :func:`openmc.run` function. For example::
+
+    results = openmc_plugin(params, mpi_args=["mpiexec", "-n", "16"])
 
 PyARC Plugin
 ~~~~~~~~~~~~~
