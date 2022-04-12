@@ -59,8 +59,8 @@ def test_add_results(run_in_tmpdir):
     db.add_result(get_result())
 
     # Basic sanity checks
-    assert len(db.results) == 2
-    for result in db.results:
+    assert len(db) == 2
+    for result in db:
         assert isinstance(result, watts.ResultsOpenMC)
         assert result.parameters['value'] == 1
         assert result.parameters['lab'] == 'Argonne'
@@ -69,4 +69,4 @@ def test_add_results(run_in_tmpdir):
 
     # Ensure database can be cleared
     db.clear()
-    assert len(db.results) == 0
+    assert len(db) == 0

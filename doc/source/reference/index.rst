@@ -12,7 +12,9 @@ API Reference
    watts.Parameters
    watts.Plugin
    watts.PluginOpenMC
-   watts.PluginSAM
+   watts.PluginMOOSE
+   watts.PluginPyARC
    watts.Results
    watts.ResultsOpenMC
-   watts.ResultsSAM
+   watts.ResultsMOOSE
+   watts.ResultsPyARC

@@ -3,14 +3,11 @@
 
 from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime
-import os
 from pathlib import Path
 import shutil
-import subprocess
 import time
-from typing import List
+from typing import List, Optional
 
-import h5py
 import numpy as np
 import pandas as pd
 
@@ -66,11 +63,13 @@ class ResultsMOOSE(Results):
         if csv_file.exists():
             csv_file_df = pd.read_csv(csv_file)
             for column_name in csv_file_df.columns:
-                csv_data[column_name] =  np.array(csv_file_df[column_name])
+                csv_data[column_name] = np.array(csv_file_df[column_name])
 
-        # Read MOOSE's vector postprocesssor '.csv' files and save the parameters as individual array
+        # Read MOOSE's vector postprocesssor '.csv' files and save the
+        # parameters as individual array
         for output in self.outputs:
-            if output.name.startswith(f"{input_file.stem}_csv_") and not output.name.endswith("_0000.csv"):
+            if (output.name.startswith(f"{input_file.stem}_csv_") and
+                not output.name.endswith("_0000.csv")):
                 vector_csv_df = pd.read_csv(output)
                 csv_param = list(set(vector_csv_df.columns) - {"id", "x", "y", "z"})
                 csv_data[output.stem] = np.array(vector_csv_df[csv_param[0]], dtype=float)
@@ -81,29 +80,6 @@ class ResultsMOOSE(Results):
                         csv_data[new_name] = np.array(vector_csv_df[name], dtype=float)
 
         return csv_data
-
-    def save(self, filename: PathLike):
-        """Save results to an HDF5 file
-
-        Parameters
-        ----------
-        filename
-            File to save results to
-        """
-        with h5py.File(filename, 'w') as h5file:
-            super()._save(h5file)
-
-    @classmethod
-    def _from_hdf5(cls, obj: h5py.Group):
-        """Load results from an HDF5 file
-
-        Parameters
-        ----------
-        obj
-            HDF5 group to load results from
-        """
-        time, parameters, inputs, outputs = Results._load(obj)
-        return cls(parameters, time, inputs, outputs)
 
 
 class PluginMOOSE(TemplatePlugin):
@@ -119,8 +95,8 @@ class PluginMOOSE(TemplatePlugin):
         Whether to display output from stderr when MOOSE is run
     n_cpu
         Number of processors to be used to run MOOSE application
-    supp_inputs
-        List of supplementary input files that are needed for running the MOOSE application
+    extra_inputs
+        List of extra (non-templated) input files that are needed
 
     Attributes
     ----------
@@ -129,9 +105,10 @@ class PluginMOOSE(TemplatePlugin):
 
     """
 
-    def  __init__(self, template_file: str, show_stdout: bool = False,
-                  show_stderr: bool = False, n_cpu: int = 1, supp_inputs: List[str] = []):
-        super().__init__(template_file)
+    def __init__(self, template_file: str, show_stdout: bool = False,
+                 show_stderr: bool = False, n_cpu: int = 1,
+                 extra_inputs: Optional[List[str]] = None):
+        super().__init__(template_file, extra_inputs)
         self._moose_exec = Path('moose-opt')
         self.moose_inp_name = "MOOSE.i"
         self.show_stdout = show_stdout
@@ -139,7 +116,6 @@ class PluginMOOSE(TemplatePlugin):
         if n_cpu < 1:
             raise RuntimeError("The CPU number used to run MOOSE app must be a natural number.")
         self.n_cpu = n_cpu
-        self.supp_inputs = [Path(f).resolve() for f in supp_inputs]
 
     @property
     def moose_exec(self) -> Path:
@@ -173,7 +149,7 @@ class PluginMOOSE(TemplatePlugin):
         # Make a copy of params and convert units if necessary
         # The original params remains unchanged
 
-        params_copy = super().convert_unit(params, unit_system='si', unit_temperature='K')
+        params_copy = params.convert_units()
 
         print("Pre-run for MOOSE Plugin")
         self._run_time = time.time_ns()
@@ -189,7 +165,8 @@ class PluginMOOSE(TemplatePlugin):
             func_stdout = tee_stdout if self.show_stdout else redirect_stdout
             func_stderr = tee_stderr if self.show_stderr else redirect_stderr
             with func_stdout(outfile), func_stderr(outfile):
-                run_proc(["mpiexec", "-n", str(self.n_cpu) , self.moose_exec, "-i", self.moose_inp_name])
+                run_proc(["mpiexec", "-n", str(self.n_cpu), self.moose_exec,
+                          "-i", self.moose_inp_name])
 
     def postrun(self, params: Parameters) -> ResultsMOOSE:
         """Read MOOSE results and create results object
@@ -206,6 +183,8 @@ class PluginMOOSE(TemplatePlugin):
         print("Post-run for MOOSE Plugin")
 
         time = datetime.fromtimestamp(self._run_time * 1e-9)
-        inputs = ['MOOSE.i']
+        # Start with non-templated input files
+        inputs = [p.name for p in self.extra_inputs]
+        inputs.append(self.moose_inp_name)
         outputs = [p for p in Path.cwd().iterdir() if p.name not in inputs]
         return ResultsMOOSE(params, time, inputs, outputs)

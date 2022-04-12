@@ -6,9 +6,7 @@ from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
 import time
-from typing import Callable, Mapping, List
-
-import h5py
+from typing import Callable, Mapping, List, Optional
 
 from .fileutils import PathLike, tee_stdout, tee_stderr
 from .parameters import Parameters
@@ -72,29 +70,6 @@ class ResultsOpenMC(Results):
     def stdout(self) -> str:
         return (self.base_path / "OpenMC_log.txt").read_text()
 
-    def save(self, filename: PathLike):
-        """Save results to an HDF5 file
-
-        Parameters
-        ----------
-        filename
-            File to save results to
-        """
-        with h5py.File(filename, 'w') as h5file:
-            super()._save(h5file)
-
-    @classmethod
-    def _from_hdf5(cls, obj: h5py.Group):
-        """Load results from an HDF5 file
-
-        Parameters
-        ----------
-        obj
-            HDF5 group to load results from
-        """
-        time, parameters, inputs, outputs = Results._load(obj)
-        return cls(parameters, time, inputs, outputs)
-
 
 class PluginOpenMC(Plugin):
     """Plugin for running OpenMC
@@ -103,15 +78,19 @@ class PluginOpenMC(Plugin):
     ----------
     model_builder
         Function that generates an OpenMC model
+    extra_inputs
+        Extra (non-templated) input files
     show_stdout
-        Whether to display output from stdout when SAM is run
+        Whether to display output from stdout when OpenMC is run
     show_stderr
-        Whether to display output from stderr when SAM is run
+        Whether to display output from stderr when OpenMC is run
 
     """
 
-    def __init__(self, model_builder: Callable[[Parameters], None],
+    def __init__(self, model_builder: Optional[Callable[[Parameters], None]] = None,
+                 extra_inputs: Optional[List[PathLike]] = None,
                  show_stdout: bool = False, show_stderr: bool = False):
+        super().__init__(extra_inputs)
         self.model_builder = model_builder
         self.show_stdout = show_stdout
         self.show_stderr = show_stderr
@@ -124,14 +103,13 @@ class PluginOpenMC(Plugin):
         params
             Parameters used by the OpenMC template
         """
-        # Make a copy of params and convert units if necessary
-        # The original params remains unchanged
-
-        params_copy = super().convert_unit(params, unit_system='cgs', unit_temperature='K')
+        # Convert quantities in parameters to CGS system
+        params_copy = params.convert_units(system='cgs')
 
         print("Pre-run for OpenMC Plugin")
         self._run_time = time.time_ns()
-        self.model_builder(params_copy)
+        if self.model_builder is not None:
+            self.model_builder(params_copy)
 
     def run(self, **kwargs: Mapping):
         """Run OpenMC
@@ -174,8 +152,13 @@ class PluginOpenMC(Plugin):
             matches.sort(key=lambda x: x.stat().st_mtime_ns)
             return matches
 
+        # Start with non-templated input files
+        inputs = [Path.cwd() / p.name for p in self.extra_inputs]
+
         # Get generated input files
-        inputs = files_since('*.xml', self._run_time)
+        for path in files_since('*.xml', self._run_time):
+            if path not in inputs:
+                inputs.append(path)
 
         # Get list of all output files
         outputs = ['OpenMC_log.txt']

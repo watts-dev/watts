@@ -37,7 +37,7 @@ def test_openmc_plugin():
     assert plugin.model_builder == build_openmc_model
 
     params = watts.Parameters(radius=6.38)
-    result = plugin.workflow(params)
+    result = plugin(params)
 
     # Sanity checks
     assert isinstance(result, watts.ResultsOpenMC)
@@ -63,9 +63,32 @@ def test_openmc_plugin():
 
     # Make sure result was added to database and agrees
     db = watts.Database()
-    last_result = db.results[-1]
+    last_result = db[-1]
     assert last_result.parameters['radius'] == result.parameters['radius']
     assert last_result.inputs == result.inputs
     assert last_result.outputs == result.outputs
     assert last_result.keff.n == result.keff.n
     assert last_result.keff.s == result.keff.s
+
+
+def test_extra_inputs(run_in_tmpdir):
+    # Create inputs manually -- 10 cm sphere of pure Pu239
+    model = openmc.model.Model()
+    mat = openmc.Material()
+    mat.add_nuclide('Pu239', 1.0)
+    mat.set_density('g/cm3', 10.0)
+    sph = openmc.Sphere(r=10.0, boundary_type='vacuum')
+    cell = openmc.Cell(fill=mat, region=-sph)
+    model.geometry = openmc.Geometry([cell])
+    model.settings.batches = 10
+    model.settings.inactive = 0
+    model.settings.particles = 1000
+    model.export_to_xml()
+
+    # Use OpenMC plugin with extra inputs
+    plugin = watts.PluginOpenMC(extra_inputs=['geometry.xml', 'materials.xml', 'settings.xml'])
+    params = watts.Parameters()
+    result = plugin(params)
+
+    input_names = {p.name for p in result.inputs}
+    assert input_names == {'geometry.xml', 'materials.xml', 'settings.xml'}

@@ -1,6 +1,8 @@
-# WATTS
+# <img valign="middle" src="doc/source/_static/watts.svg" height="75" height="75" alt="WATTS logo"/> WATTS
 
 [![License](https://img.shields.io/badge/license-MIT-green)](https://opensource.org/licenses/MIT)
+[![GitHub Actions build status (Linux)](https://github.com/watts-dev/watts/workflows/CI/badge.svg?branch=development)](https://github.com/watts-dev/watts/actions?query=workflow%3ACI)
+
 
 WATTS (Workflow and Template Toolkit for Simulation) provides a set of Python
 classes that can manage simulation workflows for multiple codes where
@@ -12,10 +14,7 @@ questions, please contact [watts@anl.gov](mailto:watts@anl.gov).
 
 ## Installation
 
-- git clone https://github.com/watts-dev/watts
-- cd watts
-- pip install -U pip
-- pip install .
+- pip install watts
 
 ## Documentation
 

@@ -2,22 +2,30 @@
 # SPDX-License-Identifier: MIT
 
 from abc import ABC, abstractmethod
-import os
 from pathlib import Path
 import shutil
-from typing import Optional
-from astropy import units as u
-import copy
+from typing import Optional, List
 
 from .database import Database
-from .fileutils import cd_tmpdir
+from .fileutils import cd_tmpdir, PathLike
 from .parameters import Parameters
 from .results import Results
-from .template import TemplateModelBuilder
+from .template import TemplateRenderer
 
 
 class Plugin(ABC):
-    """Class defining the Plugin interface"""
+    """Class defining the Plugin interface
+
+    Parameters
+    ----------
+    extra_inputs
+        Extra (non-templated) input files
+    """
+
+    def __init__(self, extra_inputs: Optional[List[PathLike]] = None):
+        self.extra_inputs = []
+        if extra_inputs is not None:
+            self.extra_inputs = [Path(f).resolve() for f in extra_inputs]
 
     @abstractmethod
     def prerun(self, params):
@@ -44,7 +52,7 @@ class Plugin(ABC):
                 return path / unique_name
             i += 1
 
-    def workflow(self, params: Parameters, name='Workflow') -> Results:
+    def __call__(self, params: Parameters, name: str = 'Workflow', **kwargs) -> Results:
         """Run the complete workflow for the plugin
 
         Parameters
@@ -53,6 +61,8 @@ class Plugin(ABC):
             Parameters used in generating inputs
         name
             Unique name for workflow
+        **kwargs
+            Keyword arguments passed to the `run` method
 
         Returns
         -------
@@ -61,13 +71,14 @@ class Plugin(ABC):
         db = Database()
 
         with cd_tmpdir():
+            # Copy extra inputs to temporary directory
+            cwd = Path.cwd()
+            for path in self.extra_inputs:
+                shutil.copy(str(path), str(cwd))  # Remove str() for Python 3.8+
+
             # Run workflow in temporary directory
-            if hasattr(self, 'supp_inputs'):
-                des = os.getcwd()
-                for sifp in self.supp_inputs:
-                    shutil.copy(str(sifp), des)
             self.prerun(params)
-            self.run()
+            self.run(**kwargs)
             result = self.postrun(params)
 
             # Create new directory for results and move files there
@@ -86,45 +97,6 @@ class Plugin(ABC):
 
         return result
 
-    def convert_unit(self, params: Parameters, unit_system: str, unit_temperature: str):
-        """Perform unit conversion
-
-        Parameters
-        ----------
-        params
-            Parameters used when rendering template
-        unit_system
-            Desired unit system: SI or CGS
-        unit_temperature
-            Desired unit for temperature parameter
-
-        Returns
-        -------
-        A copy of params with the converted units
-        """
-        u.imperial.enable()
-        params_copy = copy.deepcopy(params)
-
-        temperature_units = ['Kelvin', 'Celsius', 'Rankine', 'Fahrenheit',
-                            'deg_C', 'deg_R', 'deg_F']
-
-        for key in params_copy.keys():
-
-            if isinstance(params_copy[key], u.quantity.Quantity):
-
-                # Unit conversion for temperature needs to be done separately because 
-                # astropy uses a different method to convert temperature.
-                # Variables are converted to SI by default.
-
-                if params_copy[key].unit in temperature_units:
-                    params_copy[key] = params_copy[key].to(unit_temperature, equivalencies=u.temperature()).value
-                else:
-                    if unit_system == 'cgs':
-                        params_copy[key] = params_copy[key].cgs.value
-                    elif unit_system == 'si':
-                        params_copy[key] = params_copy[key].si.value
-        return params_copy
-
 
 class TemplatePlugin(Plugin):
     """Plugin that relies on generating a template file
@@ -133,9 +105,13 @@ class TemplatePlugin(Plugin):
     ----------
     template_file
         Path to template file
+    extra_inputs
+        Extra (non-templated) input files
+
     """
-    def  __init__(self, template_file: str):
-        self.model_builder = TemplateModelBuilder(template_file)
+    def __init__(self, template_file: PathLike, extra_inputs: Optional[List[PathLike]] = None):
+        super().__init__(extra_inputs)
+        self.render_template = TemplateRenderer(template_file)
 
     def prerun(self, params: Parameters, filename: Optional[str] = None):
         """Render the template based on model parameters
@@ -145,7 +121,7 @@ class TemplatePlugin(Plugin):
         params
             Parameters used to render template
         filename
-            Keyword arguments passed to the
+            Filename for rendered template
         """
         # Render the template
-        self.model_builder(params, filename=filename)
+        self.render_template(params, filename=filename)

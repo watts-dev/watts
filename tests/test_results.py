@@ -6,7 +6,6 @@ from pathlib import Path
 
 import watts
 import numpy as np
-from astropy import units as u
 
 
 def test_results_openmc(run_in_tmpdir):
@@ -42,12 +41,12 @@ def test_results_openmc(run_in_tmpdir):
     assert len(results.statepoints) == 1
 
     # Saving
-    p = Path('myresults.h5')
+    p = Path('myresults.pkl')
     results.save(p)
     assert p.is_file()
 
     # Ensure results read from file match
-    new_results = watts.Results.from_hdf5(p)
+    new_results = watts.Results.from_pickle(p)
     assert isinstance(new_results, watts.ResultsOpenMC)
     assert new_results.parameters == results.parameters
     assert new_results.time == results.time
@@ -92,12 +91,12 @@ prop1,prop2
     np.testing.assert_equal(results.csv_data['prop2'], [1, 2, 3])
 
     # Saving
-    p = Path('myresults.h5')
+    p = Path('myresults.pkl')
     results.save(p)
     assert p.is_file()
 
     # Ensure results read from file match
-    new_results = watts.Results.from_hdf5(p)
+    new_results = watts.Results.from_pickle(p)
     assert isinstance(new_results, watts.ResultsMOOSE)
     assert new_results.parameters == results.parameters
     assert new_results.time == results.time
@@ -106,37 +105,51 @@ prop1,prop2
     assert new_results.stdout == results.stdout
 
 
-def test_results_unit_conversion(run_in_tmpdir):
-    # Uses Astropy for unit conversion
-    u.imperial.enable()    # Enable imperial units
-    Quantity = u.Quantity
+def test_results_sas(run_in_tmpdir):
+    params = watts.Parameters(city='Chicago', population=2.7e6)
+    now = datetime.now()
 
-    # Create a fake template file
-    file = open("sam_template", "w")
-    file.close()
+    # Create some fake input files
+    sas_inp = Path('sas.inp')
+    sas_inp.touch()
+    inputs = [sas_inp]
 
-    params = watts.Parameters()
+    # Create fake output files
+    csv = Path('SAS_csv.csv')
+    csv.write_text("""\
+prop1,prop2
+3.5,1
+4.0,2
+5.0,3
+    """)
+    stdout = Path('SAS_log.txt')
+    stdout.write_text('SAS standard out\n')
+    outputs = [csv, stdout]
 
-    # Test with various unit conversion formats
-    params['He_inlet_temp'] = Quantity(600, "Celsius")  # 873.15 K
-    params['He_cp'] = Quantity(4.9184126, "BTU/(kg*K)") # 5189.2 J/kg-K
-    params['He_Pressure'] = Quantity(7.0, "MPa") # 7e6 Pa
-    params['Height_FC'] = Quantity(2000, "mm") # 2 m
+    results = watts.ResultsSAS(params, now, inputs, outputs)
 
-    # Check that unit conversion in the MOOSE plugin is correct
-    moose_plugin = watts.PluginMOOSE('sam_template', show_stderr=True)
-    params_moose = moose_plugin.convert_unit(params, unit_system='si', unit_temperature='K')
+    # Sanity checks
+    assert results.plugin == 'SAS'
+    assert results.parameters == params
+    assert results.time == now
+    assert results.inputs == inputs
+    assert results.outputs == outputs
 
-    assert params_moose["He_inlet_temp"] == 873.15
-    assert round(params_moose["He_cp"], 1) == 5189.2
-    assert params_moose["He_Pressure"] == 7000000.0
-    assert params_moose["Height_FC"] == 2.0    # Check that this parameter is in unit of 'm'
+    # Other attributes
+    assert results.stdout == 'SAS standard out\n'
+    np.testing.assert_equal(results.csv_data['prop1'], [3.5, 4.0, 5.0])
+    np.testing.assert_equal(results.csv_data['prop2'], [1, 2, 3])
 
-    # Check that unit conversion in the openmc plugin is correct
-    openmc_plugin = watts.PluginOpenMC("foo")
-    params_openmc = openmc_plugin.convert_unit(params, unit_system='cgs', unit_temperature='K')
+    # Saving
+    p = Path('myresults.pkl')
+    results.save(p)
+    assert p.is_file()
 
-    assert params_moose["He_inlet_temp"] == 873.15
-    assert round(params_moose["He_cp"], 1) == 5189.2
-    assert params_moose["He_Pressure"] == 7000000.0
-    assert params_openmc["Height_FC"] == 200.0  # Check that this parameter is in unit of 'cm'
+    # Ensure results read from file match
+    new_results = watts.Results.from_pickle(p)
+    assert isinstance(new_results, watts.ResultsSAS)
+    assert new_results.parameters == results.parameters
+    assert new_results.time == results.time
+    assert new_results.inputs == results.inputs
+    assert new_results.outputs == results.outputs
+    assert new_results.stdout == results.stdout

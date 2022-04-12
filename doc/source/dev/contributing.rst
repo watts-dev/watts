@@ -114,3 +114,17 @@ Review Process
 Once your pull request is submitted, a member of the WATTS core development team
 will review your pull request. They will check your contribution against the
 above checklist to ensure that it is of sufficient quality.
+
+.. _install_develop:
+
+Installation for Developers
++++++++++++++++++++++++++++
+
+As a developer, it is advisable to install WATTS from the local source tree in
+"`editable <https://pip.pypa.io/en/stable/cli/pip_install/#editable-installs>`_"
+mode::
+
+  pip install -e <path-to-watts-dir>
+
+This will install the package via a link to the original location so that any
+local changes are immediately reflected in your environment.
