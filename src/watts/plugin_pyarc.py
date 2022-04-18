@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
+from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime
 from pathlib import Path
 import os
@@ -9,7 +10,7 @@ import tempfile
 import time
 from typing import Mapping, List, Optional
 
-from .fileutils import PathLike
+from .fileutils import PathLike, tee_stdout, tee_stderr
 from .parameters import Parameters
 from .plugin import TemplatePlugin
 from .results import Results
@@ -117,8 +118,12 @@ class PluginPyARC(TemplatePlugin):
         self.pyarc.user_object.do_postrun = True
         od = Path.cwd()
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            self.pyarc.execute(["-i", self.pyarc_inp_name, "-w", tmpdir, "-o", str(od)], **kwargs)
+        with open('PyARC_log.txt', 'w') as f:
+            func_stdout = tee_stdout if self.show_stdout else redirect_stdout
+            func_stderr = tee_stderr if self.show_stderr else redirect_stderr
+            with func_stdout(f), func_stderr(f):
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    self.pyarc.execute(["-i", self.pyarc_inp_name, "-w", tmpdir, "-o", str(od)], **kwargs)
         sys.path.pop(0)  # Restore sys.path to original state
         os.chdir(od)  # TODO: I don't know why but I keep going to self._pyarc_exec after execution - this is very wierd!
 
