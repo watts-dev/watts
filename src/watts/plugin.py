@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 from abc import ABC, abstractmethod
+from datetime import datetime
 from pathlib import Path
 import shutil
 from typing import Optional, List
@@ -107,11 +108,37 @@ class TemplatePlugin(Plugin):
         Path to template file
     extra_inputs
         Extra (non-templated) input files
+    extra_template_inputs
+        Extra templated input files
 
     """
-    def __init__(self, template_file: PathLike, extra_inputs: Optional[List[PathLike]] = None):
+    def __init__(self, template_file: PathLike, extra_inputs: Optional[List[PathLike]] = None,
+                 extra_template_inputs: Optional[List[PathLike]] = None):
         super().__init__(extra_inputs)
         self.render_template = TemplateRenderer(template_file)
+        self.extra_render_templates = []
+        if extra_template_inputs is not None:
+            self.extra_render_templates = [TemplateRenderer(f, '') for f in extra_template_inputs]
+
+    def _get_result_input(self, input_filename: str):
+        """Get the data needed to create the postrun results object
+
+        Parameters
+        ----------
+        input_filename
+            Name of the input file for the plugin code
+
+        Returns
+        -------
+        tuple of data used to create the results object
+        """
+        time = datetime.fromtimestamp(self._run_time * 1e-9)
+        inputs = [p.name for p in self.extra_inputs]
+        inputs.append(input_filename)
+        for renderer in self.extra_render_templates:
+            inputs.append(renderer.template_file.name)
+        outputs = [p for p in Path.cwd().iterdir() if p.name not in inputs]
+        return time, inputs, outputs
 
     def prerun(self, params: Parameters, filename: Optional[str] = None):
         """Render the template based on model parameters
@@ -125,3 +152,5 @@ class TemplatePlugin(Plugin):
         """
         # Render the template
         self.render_template(params, filename=filename)
+        for render_template in self.extra_render_templates:
+            render_template(params)

@@ -141,8 +141,5 @@ class PluginPyARC(TemplatePlugin):
         """
         print("Post-run for PyARC Plugin")
 
-        time = datetime.fromtimestamp(self._run_time * 1e-9)
-        inputs = [p.name for p in self.extra_inputs]
-        inputs.append(self.pyarc_inp_name)
-        outputs = [p for p in Path.cwd().iterdir() if p.name not in inputs]
+        time, inputs, outputs = self._get_result_input(self.pyarc_inp_name)
         return ResultsPyARC(params, time, inputs, outputs, self.pyarc.user_object.results)
