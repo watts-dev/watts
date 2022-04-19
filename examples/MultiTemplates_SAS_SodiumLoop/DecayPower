@@ -1,0 +1,208 @@
+
+{#-
+  Create variables
+#}
+{# set fuel_axial_exp_coeff = 2.0E-05 #}
+{# set clad_axial_exp_coeff = 1.4E-05 #}
+{#-
+  Render the parameters
+#}
+
+#---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8
+#===============================================================================
+#
+#                    ######  #######  #####     #    #     #
+#                    #     # #       #     #   # #    #   #
+#                    #     # #       #        #   #    # #
+#                    #     # #####   #       #     #    #
+#                    #     # #       #       #######    #
+#                    #     # #       #     # #     #    #
+#                    ######  #######  #####  #     #    #
+#
+#                    ######  ####### #     # ####### ######
+#                    #     # #     # #  #  # #       #     #
+#                    #     # #     # #  #  # #       #     #
+#                    ######  #     # #  #  # #####   ######
+#                    #       #     # #  #  # #       #   #
+#                    #       #     # #  #  # #       #    #
+#                    #       #######  ## ##  ####### #     #
+#
+#---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8
+INPCHN    51     1     1
+#
+#                IDKCRV: Power or Decay Heat Curve for this Channel
+#                |
+   203     1     0  
+#
+    -1                                        
+#---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8
+INPCOM     1     1     1
+#
+#                NDKGRP: Number of Decay Heat Groups
+#                |
+    17     1     0                                           
+#
+#                NPOWDK: Number of Power Curves or Sets of Decay Heat Parameters
+#                |       
+    45     1     0
+#                              
+    -1
+#---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8
+POWINA    12     1     1
+#
+#                      DKBET2(L,IPW): Decay heat precursor yield for group L in 
+#                      |              decay heat curve IPW (New Model)
+#  511     1       0.020
+#  512     1       0.022
+#  513     1       0.017
+#  514     1       0.015
+#  515     1       0.014
+#  516     1       0.012
+#
+#                      DKLAM2(L,IPW):  Decay heat decay constant for group L in 
+#                      |               decay heat curve IPW (New Model)
+#  631     1       0.100
+#  632     1       0.050
+#  633     1       0.010
+#  634     1       0.005
+#  635     1       0.002
+#  636     1      0.0005
+#                                  
+    -1
+#---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8
+# AXIAL!!!
+#---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8
+INPCHN    51     1     1
+#
+#                IREACZ: Axial Reactivity Worth (0/1 = On MZ/MZC Mesh)
+#                |
+   365     1     1
+#
+#                IAXEXP: Calculate Simple Axial Expansion Feedback
+#                |
+   181     1     1
+#
+    -1
+#---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8
+INPCOM     1     1     1
+#
+#                MODEEX: Axial Expansion Option
+#                |       0: Force balance or free expansion (gap-dependent)
+#                |       1: Cladding control fuel expansion
+#                |       2: Independent free fuel-clad expansion
+#                |       3: Force balance all the time
+    55     1     2    
+#                              
+    -1
+#---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8
+PMATCH    63     1     1
+#
+#                      FUELEX: Fuel Axial Expansion Coefficient
+#                      | 
+    73     1     {{ fuel_axial_exp_coeff }}
+#
+#                      CLADEX: Clad Axial Expansion Coefficient
+#                      |     
+    74     1     {{ clad_axial_exp_coeff }}                       
+#
+#                      YFUEL: Fuel Young's Modulus
+#                      |           
+#   75     1     2.8E+09
+#
+#                      YCLAD: Clad Young's Modulus
+#                      |   
+#   76     1     1.5E+11                        
+#
+#                      EXPCFF: Effective Axial Expansion Multiplier
+#                      |       (For Simple Feedback Model Only)
+    79     1         1.0                                     
+#
+    -1
+#---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8
+#
+#  POWINC: Channel-Dependent Power Input (Floating Point)
+#
+POWINC    62     1     1            
+#
+#                      FUELRA: Doppler Axial Weighting Factor 
+#                      |  
+   208     1         0.0          Lower Reflector 1, Segment 1
+   209     1         0.0          Lower Reflector 1, Segment 2
+   216     1     1.1E-05          Fuel, Segment 1 
+   217     1     1.3E-05          Fuel, Segment 2
+   218     1     1.6E-05          Fuel, Segment 3
+   219     1     1.9E-05          Fuel, Segment 4
+   220     1     2.3E-05          Fuel, Segment 5
+   221     1     2.4E-05          Fuel, Segment 6
+   222     1     2.7E-05          Fuel, Segment 7
+   223     1     3.1E-05          Fuel, Segment 8
+   224     1     3.6E-05          Fuel, Segment 9
+   225     1     4.0E-05          Fuel, Segment 10
+   226     1     3.7E-05          Fuel, Segment 11
+   227     1     3.3E-05          Fuel, Segment 12
+   228     1     2.5E-05          Fuel, Segment 13
+   229     1     1.9E-05          Fuel, Segment 14
+   230     1     7.0E-05          Fuel, Segment 15
+   231     1     1.4E-05          Fuel, Segment 16
+   232     1     1.4E-05          Fuel, Segment 17
+   233     1     1.4E-05          Fuel, Segment 18
+   234     1     1.4E-05          Fuel, Segment 19
+   235     1     1.4E-05          Fuel, Segment 20
+   236     1     1.0E-05          Gas Plenum, Segment 1
+   237     1         0.0          Gas Plenum, Segment 2
+   238     1         0.0          Upper Reflector 1, Segment 1
+   239     1         0.0          Upper Reflector 1, Segment 2
+   240     1         0.0          Upper Reflector 1, Segment 3
+   241     1         0.0          Upper Reflector 1, Segment 4
+   242     1         0.0          Upper Reflector 1, Segment 5
+   243     1         0.0          Upper Reflector 1, Segment 6
+   244     1         0.0          Upper Reflector 1, Segment 7
+   245     1         0.0          Upper Reflector 1, Segment 8
+   246     1         0.0          Upper Reflector 1, Segment 9
+   247     1         0.0          Upper Reflector 1, Segment 10
+   248     1         0.0          Upper Reflector 1, Segment 11
+   249     1         0.0          Upper Reflector 1, Segment 12
+#
+#                      CLADRA: Doppler Axial Weighting Factor 
+#                      |  
+   160     1         0.0          Lower Reflector 1, Segment 1
+   161     1         0.0          Lower Reflector 1, Segment 2
+   168     1     9.0E-07          Fuel, Segment 1 
+   169     1     1.9E-06          Fuel, Segment 2
+   170     1     2.3E-06          Fuel, Segment 3
+   171     1     2.5E-06          Fuel, Segment 4
+   172     1     2.8E-06          Fuel, Segment 5
+   173     1     3.0E-06          Fuel, Segment 6
+   174     1     3.5E-06          Fuel, Segment 7
+   175     1     4.8E-06          Fuel, Segment 8
+   176     1     5.2E-06          Fuel, Segment 9
+   177     1     4.6E-06          Fuel, Segment 10
+   178     1     3.9E-06          Fuel, Segment 11
+   179     1     3.5E-06          Fuel, Segment 12
+   180     1     2.4E-06          Fuel, Segment 13
+   181     1     2.2E-06          Fuel, Segment 14
+   182     1     1.8E-06          Fuel, Segment 15
+   183     1     1.2E-06          Fuel, Segment 16
+   184     1     2.4E-06          Fuel, Segment 17
+   185     1     2.2E-06          Fuel, Segment 18
+   186     1     1.8E-06          Fuel, Segment 19
+   187     1     1.2E-06          Fuel, Segment 20
+   188     1     8.0E-07          Gas Plenum, Segment 1
+   189     1         0.0          Gas Plenum, Segment 2
+   190     1         0.0          Upper Reflector 1, Segment 1
+   191     1         0.0          Upper Reflector 1, Segment 2
+   192     1         0.0          Upper Reflector 1, Segment 3
+   193     1         0.0          Upper Reflector 1, Segment 4
+   194     1         0.0          Upper Reflector 1, Segment 5
+   195     1         0.0          Upper Reflector 1, Segment 6
+   196     1         0.0          Upper Reflector 1, Segment 7
+   197     1         0.0          Upper Reflector 1, Segment 8
+   198     1         0.0          Upper Reflector 1, Segment 9
+   199     1         0.0          Upper Reflector 1, Segment 10
+   200     1         0.0          Upper Reflector 1, Segment 11
+   201     1         0.0          Upper Reflector 1, Segment 12
+#
+    -1                                                                  
+
+
+

@@ -1,0 +1,429 @@
+
+{#-
+  Create variables
+#}
+{# set outlet_pressure = 200000.0 #}
+{#-
+  Render the parameters
+#}
+
+#---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8
+#
+#     ######   ######   #  #       #     #     ######        #    #
+#     #     #  #     #  #  ##     ##    # #    #     #       #    #
+#     #     #  #     #  #  # #   # #   #   #   #     #       #    #
+#     ######   ######   #  #  # #  #  #     #  ######   ###  #######
+#     #        #   #    #  #   #   #  #######  #   #              #
+#     #        #    #   #  #       #  #     #  #    #             #
+#     #        #     #  #  #       #  #     #  #     #            #
+#
+#              #       #   #####   #####    ######  #
+#              ##     ##  #     #  #    #   #       #
+#              # #   # #  #     #  #     #  #       #
+#              #  # #  #  #     #  #     #  #####   #
+#              #   #   #  #     #  #     #  #       #
+#              #       #  #     #  #    #   #       #
+#              #       #   #####   #####    ######  #######
+#
+#---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8
+#
+INPCOM     1     1     1
+#
+#                IPRION: 4 triggers PRIMAR-4 option
+#                |
+    27     1     4
+    -1
+#
+#---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8
+#
+INPMR4     3     0     0
+    -1
+#
+PMR4IN    18     0     0
+    -1
+#
+#---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8
+#
+INPMR4     3     1     0
+#
+#                NCVP: # Compressible Volumes, Primary Loop
+#                |     NCVS: # Compressible Volumes, Secondary Loop
+#                |     |     NCVD: # CV in DRACS Loop
+#                |     |     |     NSEGLP: # Liquid Segments, Primary Loop
+#                |     |     |     |     NSEGLP: # Liquid Segments, Secondary Loop
+#                |     |     |     |     |
+     1     5     4     0     0     4     0
+#
+#                NELEMT: Total # of Liquid Flow Elements
+#                |
+    10     1     7
+#
+#                ITYPCV: Compressible Volume Type
+#                1 = Inlet Plenum
+#                4 = Almost incompressible liquid, no gas
+#                7 = Outlet plenum with cover gas
+#                8 = Pool with Cover Gas
+#
+#                Lower end of the inlet Tee
+#                |     Between the reducer and the expansion joint
+#                |     |     Tee before flow meter
+#                |     |     |     Pressurizer tank
+#                |     |     |     |
+    11     4     1     4     4     8
+#
+#                ITYPEL: Liquid Flow Element Type
+#                1 = Core Subassemblies
+#                2 = Bypass Channel
+#                3 = Pipe
+#                5 = Pump Impeller
+#                6 = IHX, Shell Side
+#               11 = Valve
+#
+#                Core  Pipe  IHX   Pipe  Pump  Pipe  Pipe
+#                |     |     |     |     |     |     |
+    49     7     1     3     6     3     5     3     3
+#
+#                JCVL: Compressible Volumes at ends of Liquid Segments
+#                in    out
+#                |     |
+   189     2     1     2   # Segment 1: inlet tee (CV1) ~ reducer top (CV2)
+   191     2     2     3   # Segment 2: reducer top (CV2) ~ tee before FM (CV3)
+   193     2     3     1   # Segment 3: tee before FM (CV3) ~ inlet tee (CV1)
+   195     2     3     4   # Segment 4: tee before FM (CV3) ~ tank (CV4)
+#
+#                NELML: # of Elements in Liquid Segment
+#                |     |     |     |
+   325     4     1     3     3     1
+#
+#                JFSELL: First Element # in Segments
+#                |     |     |     |
+   365     4     1     2     5     7
+#
+#                NPUMP: # of Water Pumps
+#                |     IELPMP: Element # of Pump
+#                |     |
+   405     2     1     5
+#
+#                IEMPMP: Type of Pump (IEMPMP = 2 for Homologous Pump Model)
+#                |                    (IEMPMP = 0 for table of head vs time)
+   418     1     0
+#
+#                ILRPMP: Pump Operation Option
+#                |
+   430     1     0
+#
+#                NIHX: Number of Intermediate Heat Exchangers
+#                |
+   470     1     1
+#
+#                IELIHX: Element index of IHX in primary loop
+#                |
+   473     1     3
+#
+#                IHXCLC: IHX Detailed or Simple model option
+#                |       (0 = Use Detailed Model)
+#                |       (1 = Use Simple Model)
+   489     1    -1  # Negative for outlet temperature vs time
+#
+#                IPRADJ: Inlet/Outlet Plena Pressure Adjustment Option
+#                |
+   497     1     1
+#
+#                NTGPT: # of Temperature Groups
+#                |
+   512     1     5
+#
+#                NTNODE: # of Nodes in the Temperature Group.
+#                           2 nodes for tabular IHX.
+#                |     |     |     |     |
+   513     5    20     2    20    20    20
+#
+#                IFSTEL: First Element in Temperature Group
+#                |     |     |     |     |
+   613     5     2     3     4     5     7
+#
+#                ILSTEL: Last Element in Temperature Group
+#                |     |     |     |     |
+   713     5     2     3     4     6     7
+#
+#                ISSIHX: Steady-state IHX temperature drop, if 1, user specifies
+#                |
+  1155     1     0
+#
+#                ISSPMP: Steady-state pump head, if 1, user specifies
+#                |
+  1159     1     0
+#
+#                IPIPTM: Pipe Temp Convection Differencing Approx. (Recommended = 2)
+#                |     Multiple Inlet/Outlet Plenum Option
+#                |     |
+  1310     2     2     0
+#
+####################################
+# Binary output setting for PRIMAR-4
+####################################
+#
+#                IP4PRT: How many PRIMAR steps to print PRIMAR-4 results
+#                |     NBINOT: # of IBINOT entries for PRIMAR-4.dat
+#                |     |     IBINST: Output every IBINST steps to PRIMAR-4.dat
+#                |     |     |
+   890     3  2000    16   200
+#
+#                IBINOT: Identification of output entries
+#                |       see Manual Table A2.2-1
+#           ||||||
+   893     1240001              # Temperature of CV1 (inlet plenum)
+   894     1240002              # Temperature of CV2 (outlet plenum)
+   895     1240003              # Temperature of CV3 (tee to tank)
+   896     1240004              # Temperature of CV4 (tank)
+   897     1300003              # IHX Inlet Temperature (IELL=3)
+   898     1300403              # IHX Outlet Temperature (IELL=3)
+   899     1010001              # Flow Rate of S1 (core)
+   900     1010002              # Flow Rate of S2 (core to tee)
+   901     1010003              # Flow Rate of S3 (tee to core)
+   902     1010004              # Flow Rate of S4 (tee to tank)
+   903     1170004              # Gas Pressure of CV4 (tank)
+   904     1160001              # Liquid Pressure of CV1 (inlet plenum)
+   905     1160002              # Liquid Pressure of CV2 (outlet plenum)
+   906     1160003              # Liquid Pressure of CV3 (tee to tank)
+   907     1160004              # Liquid Pressure of CV4 (tank)
+   908     1180001              # Pump Head
+#
+    -1
+#
+#---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8
+#
+PMR4IN    18     1     0
+#
+####################################
+# Liquid Segment Setting
+####################################
+#
+#                      FLOSSL: Initial flow rate in liquid flow segments. Important for convergence.
+#                      |           |           |           |
+     2     4         0.8         0.8         0.8     1.0E-12
+#
+#                      ZINL: Height of inlet to the liquid segment
+#                      |           |           |           |
+    42     4      -0.500       5.000      -0.500      -0.500
+#
+#                      CVLMLT: Multiplicity Factors at Liquid Segment Ends
+#                      |           |           |           |
+    82     4         1.0         1.0         1.0         1.0
+    86     4         1.0         1.0         1.0         1.0
+#
+####################################
+# Liquid Element Setting
+####################################
+#
+#                      ZOUTEL: Height at Outlet of the liquid element
+#                      |           |           |           |           |
+   162     5       5.000       5.500       5.000      -0.500      -0.500
+   167     2      -0.500      0.5270
+#
+#                      XLENEL: Liquid element length (Pump:5)
+#                      |           |           |           |           |
+   302     5       5.500       2.500       0.500       5.500      0.0001
+   307     2       2.000      10.000
+#
+#                      AREAEL: Cross-sectional flow area of liquid elements
+#                      |           |           |           |           |
+   442     5  8.5507E-04  2.1649E-03  1.0459E-02  2.1649E-03  1.3134E-03
+   447     2  1.3134E-03  9.3691E-05
+#
+#                      DHELEM: Hydraulic Diameter of liquid elements
+#                      |           |           |           |           |
+   582     5  1.9050E-02  5.2501E-02  1.0255E-02  5.2501E-02  4.0894E-02
+   587     2  4.0894E-02  1.0922E-02
+#
+#                      ROUGHl: Pipe Surface Roughness
+#                      |           |           |           |           |
+   722     5     2.0E-05     2.0E-05     2.0E-05     2.0E-05     2.0E-05
+   727     2     2.0E-05     2.0E-05
+#
+#                      BENDNM: Number of Bends in Each Liquid Element
+#                      |           |           |           |           |
+   862     5         0.0         1.0         0.0         0.0         0.0
+   867     2         0.0         0.0
+#
+##################
+#
+#                      G2PRDR: Initial Orifice Coefficient, normally 0 as input
+#                      |           |           |           |           |
+  1002     5         0.0         0.0       100.0         0.0         0.0
+  1007     2         0.0         0.0
+#
+#                      BNDLOD: Effective L/D per bend
+#                      |
+  1142     1       11.52
+#
+#                      WALLMC: Pipe wall mass times heat capacity/length
+#                      |           |           |           |           |
+  1143     5         1.0         1.0         1.0         1.0         1.0
+  1148     2         1.0         1.0
+#
+#                      WALLH: Pipe wall heat transfer coefficient
+#                      |           |           |           |           |
+  1283     5         1.0         1.0         1.0         1.0         1.0
+  1288     2         1.0         1.0
+#
+####################################
+# Compressible Volume Setting
+####################################
+#
+#                      VOLLGC: Total Volume of Compressible Volumes
+#                      |           |           |           |
+  1423     4   2.981E-04   8.798E-04   1.021E-03       1.392
+
+#                      VOLSG0: Initial Gas Volume
+#                      |           |           |           |
+  3612     4         0.0         0.0         0.0       0.405
+#
+#                      PRESG0: Initial Gas Pressure in CV
+#                      |           |           |           |
+  1461     4         0.0         0.0         0.0    200000.0
+#
+#                      ALPHAP: CV volume pressure expansion coefficient
+#                      |           |           |           |
+  1499     4     1.0E-08     1.0E-08     1.0E-08           0
+
+#                      ALPHAT: CV volume thermal expansion coefficient
+#                      |           |           |           |
+  1537     4     2.0E-05     2.0E-05     2.0E-05     2.0E-05
+#
+#                      BTAPNA: Water isothermal compressibility for the CV
+#                      |           |           |           |
+  2464     4     2.0E-10     2.0E-10     2.0E-10     2.0E-10
+#
+#                      BTATNA: Water thermal expansion coefficient for the CV
+#                      |           |           |           |
+  2502     4     3.0E-04     3.0E-04     3.0E-04     3.0E-04
+#
+#                      ZCVL: CV reference height for liquid pressure
+#                      |           |           |           |
+  1575     4      -0.500       5.000      -0.500       0.527
+#
+#                      AREAIN: Liquid-Gas Interface Area in CV (1.0 if no gas)
+#                      |           |           |           |
+  1613     4         1.0         1.0         1.0       0.800
+#
+#                      TREFCV: Steady-state gas temperature in CV
+#                      |       Input as 0.0 to use liquid temperature
+#                      |           |           |           |
+  1651     4         0.0         0.0         0.0         0.0
+#
+#                      HWALL: Wall-coolant heat-transfer coefficient for CV at reference temperature
+#                      |           |           |           |
+  2578     4         1.0         1.0         1.0         1.0
+#
+#                      AWALL: Wall surface area
+#                      Modeled as a 8.938" long 1.5" Sch. 40 pipe
+#                      |           Modeled as a 16" long 2" Sch. 40 pipe
+#                      |           |           Modeled as a 13" long 2.5" Sch. 40 pipe
+#                      |           |           |           Modeled as a 37" I.D. 79" tall cylinder
+#                      |           |           |           |
+  2616     4      0.0292      0.0670      0.0651      4.1097
+#
+#                      CMWALL: CV Wall mass times specific heat
+#                      |           |           |           |
+  2654     4         1.0         1.0         1.0         1.0
+#
+####################################
+# Cover Gas Data
+####################################
+#
+# Values given are for nitrogen gas at 100C
+#
+#                      GAMGSC: Cp/Cv for cover gas
+#                      |
+  1689     1        1.40
+#
+#                      RGASC: Gas constant for cover gas.
+#                      |
+  1690     1      296.80
+#
+#                      U0CVGS: Cover gas viscosity
+#                      |
+  1691     1    2.12E-05
+#
+#                      TRFU: Gas viscosity reference temperature
+#                      |
+  1692     1      373.15
+#
+#                      TAUGAS: Cover-gas temperature time constant.
+#                      |           |           |           |
+  1861     4         1.0         1.0         1.0         2.0
+#
+####################################
+# Simple Pump Setting
+####################################
+#
+#                      APMPHD: Value Table of Relative Pump Head (-)
+#                      |           |           |           |
+ 1983     4         1.0         1.0         1.0         1.0
+ 1987     4         1.0         1.0         1.0         1.0
+#
+#                      AMOTTK: Time Table of Relative Pump Head (s)
+#                      |           |
+  2223     2         0.0         100
+#
+#                      GRAVTY: Acceleration due to gravity
+#                      |
+  2463     1     9.80665
+#
+####################################
+# Simple IHX Model Setting
+####################################
+#
+#                      DTMPTB: Table of exit temperature for IHX
+#                      |           |           |           |
+  2937     4      600.00      600.00      600.00      600.00
+#
+#                      ZCENTR: Height of thermal center for IHX
+#                      |           |           |           |
+  3105     4       5.250       5.250       5.250       5.250
+#
+#                      TMPMTB: Times for DTMPTB and ZCENTR
+#                      |           |           |           |
+  3273     4         0.0        10.0        20.0     10000.0
+#
+#                      C1PIPE, C2PIPE, C3PIPE: Conductance coefficient for pipe, recommended values
+#                      |           |           |
+  3650     3       0.025         0.8        4.80
+#
+#                      EPSF: Maximum fractional change in liquid segment flow rate per time step
+#                      |           EPSFC: Maximum fractional change in core inlet flow rate
+#                      |           |      per time step
+  4282     2         0.2         0.1
+#
+#                      DTIHX: Steady-state temperature drop across IHX
+#                      |      (Used only if ISSIHX > 0)
+# 4284     1         1.0
+#
+####################################
+#
+#                      TPLCV: Temperature of CV. Entered only for inlet plena
+#                      |
+  4685     1      600.00
+#
+#                      PPLCV: CV pressure for outlet plena only
+#                      |
+  4724     1    {{ outlet_pressure }}
+#
+#                      ZPLENC: CV reference elevation for plena only
+#                      |           |
+  4761     2      -0.500       5.000
+#
+    -1
+#---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8
+INPCOM     1     1     1
+#
+#                KPROPI: > 0 to input correlation coefficients in APROPI
+#                |       This is probably reset by ICLPRP
+   114     1     1
+#
+#                ICLPRP: 1 for Sodium (SAS4A version)
+#                |
+   118     1     1
+#
+    -1

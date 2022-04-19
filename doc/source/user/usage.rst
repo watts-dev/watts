@@ -251,6 +251,11 @@ Similar to the SAS executable, the utilities are also OS dependent. To execute
 SAS, the :meth:`~watts.PluginSAS` instance is called directly in the same way as
 other plugins.
 
+WATTS also supports the 'INCLUDE' directive of SAS that allows for multiple input
+files. Users simply need to add 'INCLUDE "extra_input_file_name"' to the template
+and specify the names of the extra input files as a string to the
+`extra_template_inputs` argument when calling :class:`~watts.PluginSAS` class.
+
 Results
 +++++++
 
