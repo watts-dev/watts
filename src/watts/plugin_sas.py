@@ -83,6 +83,8 @@ class PluginSAS(TemplatePlugin):
         Whether to display output from stderr when SAS is run
     extra_inputs
         List of extra (non-templated) input files that are needed
+    extra_template_inputs
+        Extra templated input files
 
     Attributes
     ----------
@@ -93,8 +95,9 @@ class PluginSAS(TemplatePlugin):
 
     def  __init__(self, template_file: str, show_stdout: bool = False,
                   show_stderr: bool = False,
-                  extra_inputs: Optional[List[str]] = None):
-        super().__init__(template_file, extra_inputs)
+                  extra_inputs: Optional[List[str]] = None,
+                  extra_template_inputs: Optional[List[PathLike]] = None):
+        super().__init__(template_file, extra_inputs, extra_template_inputs)
 
         # Check OS to make sure the extension of the executable is correct.
         # Linux and macOS have different executables but both are ".x".
