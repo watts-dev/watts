@@ -1,0 +1,199 @@
+
+{#-
+  Create variables
+#}
+{# set sas_version = 5.5 #}
+{# set tmax = 1000 s #}
+{# set total_reactor_power = 20 kW #}
+{#-
+  Render the parameters
+#}
+
+#---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8
+#                                                                       Version
+ Simple salt loop                                                       {{ sas_version }}
+#---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8
+#
+# STORAGE ALLOCATION RECORDS
+#
+#    NCH: Number of Channels
+#    |  NEUTSP: Neutronics Storage Allocation Flag
+#    |  |  IDBUGP: Data Management Print Flag
+#    |  |  |  IPDECK: Input Data Editing Flag
+#    |  |  |  |  NBYSSH: Number of Bypass Channels in SA-to-SA Heat Transfer
+#    |  |  |  |  |  IDATMO: Data Management Option Flag (0/1=Default/Extended)
+#    |  |  |  |  |  |  IADEFC: Data Pack DEFC Storage Allocation Flag
+#    |  |  |  |  |  |  |  IAPLUC: Data Pack PLUC Storage Allocation Flag
+#    |  |  |  |  |  |  |  |  IACNTL: Control System Module Storage Allocation Flag
+#    |  |  |  |  |  |  |  |  |  IALBOP: BOP Module Storage Allocation Flag
+#    |  |  |  |  |  |  |  |  |  |
+     1  0  0  0  0  1  1  1  1  1
+#
+#---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8
+#
+#  INPCOM: Channel Independent Variables (Integer)
+#
+INPCOM     1     0     0
+#
+#                ICLCMP: Flag to Save Plot Data for Transients to Unit 11
+#                |
+    24     1     1
+#
+    -1
+#---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8
+#
+#  OPCIN: Channel Independent Variables (Floating Point)
+#         Time Steps and Convergence Criteria Data
+#
+OPCIN     11     0     0
+#
+#                      EPSTEM: Steady-State Temperature Convergence
+#                      |
+     1     1     1.0E-03
+#
+#                      EPSPOW: Neutron Flux Amplitude Convergence
+#                      |
+     3     1     1.0D-05
+#
+#                      DT0: Initial and Max Main Time Step Size
+#                      |
+     5     1        0.05
+#
+#                      DTFUEL: Max Fuel Temp Change per Heat-Transfer Time Step
+#                      |           DTCLAD: Max Clad Temp Change per HT Time Step
+#                      |           |
+    10     2         5.0        30.0
+#
+    -1
+#---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8
+#===============================================================================
+#
+#                         #####  ####### ######  #######
+#                        #     # #     # #     # #
+#                        #       #     # #     # #
+#                        #       #     # ######  #####
+#                        #       #     # #   #   #
+#                        #     # #     # #    #  #
+#                         #####  ####### #     # #######
+#
+#                    ######  ####### #     # ####### ######
+#                    #     # #     # #  #  # #       #     #
+#                    #     # #     # #  #  # #       #     #
+#                    ######  #     # #  #  # #####   ######
+#                    #       #     # #  #  # #       #   #
+#                    #       #     # #  #  # #       #    #
+#                    #       #######  ## ##  ####### #     #
+#
+#---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8
+POWINA    12     1     1
+#
+#                      POWTOT: Total Reactor Power (Watts)
+#                      |
+     3     1     {{ total_reactor_power }}  # reactor power
+#
+#                      FRPR: Fraction of Total Power Represented by All Channels
+#                      |           FRFLOW: Fraction of Total Flow Represented
+#                      |           |       by All SAS4A Channels
+    69     2         1.0         1.0
+#
+    -1
+#---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8
+
+INCLUDE "FuelCladding"
+INCLUDE "Channel"
+INCLUDE "Primary"
+INCLUDE "PRIMAR4"
+INCLUDE "DecayPower"
+INCLUDE "PointKinetics"
+
+#---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8
+#===============================================================================
+#
+#    #######   ###   #     # #######          #####  ####### ####### ######
+#       #       #    ##   ## #               #     #    #    #       #     #
+#       #       #    # # # # #               #          #    #       #     #
+#       #       #    #  #  # #####            #####     #    #####   ######
+#       #       #    #     # #                     #    #    #       #
+#       #       #    #     # #               #     #    #    #       #
+#       #      ###   #     # #######          #####     #    ####### #
+#
+#===============================================================================
+INPCOM     1     1     1
+#
+#                IPOWER: 0/1 = Reactivity/Power vs Time from PREA
+#                |
+     8     1     1
+#
+#                MAXSTP: Maxiumum Number of Main (Power and Reactivity)
+#                |       Time Steps
+    11     1 99999
+#
+#                IPO: Number of Steps between Prints before IBLPRT or Boiling
+#                |     IPOBOI: Number of Steps between Prints after IBLPRT or Boiling
+#                |     |
+    12     2   200   200
+#
+#                NPREAT: Number of Entries in PREA vs. Time Table
+#                |       (Power or Reactivity vs Time)
+    18     1     4
+#
+#                NOREAC: Main Time Step Intevals between PSHORT Print
+#                |
+    41     1   200
+#
+#                IFIT(K): Input Table Lookup Options (K=1: Power/Reac vs. Time)
+#                |        (0=Linear Fit)
+    95     1     0
+#
+    -1
+#---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8
+POWINA    12     1     1
+#
+#                      PREATB: Transient power table used by PREA
+#                      |           |           |           |
+    29     4         1.0         1.0         1.0         1.0
+#
+#                      PREATM: Times for PREATB
+#                      |           |           |           |
+    49     4         0.0        10.0        20.0     10000.0
+#
+    -1
+#---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8
+OPCIN     11     1     1
+#
+#                      DTMXB: Max heat transfer time-step after coolant boiling inception
+#                      |
+     6     1        0.01
+#
+#                      TIMAX: Maximum Problem Time (s)
+#                      |
+     7     1        {{ tmax }}
+#
+#                      TCOSTP: # of CPU seconds reserved at end of run for writing restart files
+#                      |
+     9     1        15.0
+#
+#                      DTPBOI: Max PRIMAR step size after start of boiling
+#                      |
+    15     1        0.01
+#
+#                      DPINMX: Max change in inlet pressure per PRIMAR step
+#                      |           DTINMX: Max change in inlet temp per PRIMAR step
+#                      |           |           DTMMXB: Max main time step after onset of boiling
+#                      |           |           |
+    19     3     1.0E+04         0.5         0.5
+#
+#                      DTMIN: Time Step Sizes vs. Time
+#                      |           |
+    95     2        0.05        0.05
+#
+#                      TDTMIN: Time for Time Step Sizes
+#                      |           |
+   105     2         0.0     10000.0
+#
+    -1
+#---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8
+#
+######## ####### ####### ####### ####### ####### ####### ####### ####### #######
+ENDJOB    -1
+######## ####### ####### ####### ####### ####### ####### ####### ####### #######
