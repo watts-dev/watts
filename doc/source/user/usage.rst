@@ -258,7 +258,7 @@ and specify the names of the extra input files as a string to the
 
     sas_plugin = watts.PluginSAS('sas_template', show_stdout=True, extra_template_inputs=['extra_input_file_names'])
 
-An example has been provided to demonstrate this capbility.
+An example has been provided to demonstrate this capability.
 
 Results
 +++++++
