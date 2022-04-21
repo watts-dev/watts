@@ -219,7 +219,7 @@ SAS4A/SASSY-1 Plugin
 ~~~~~~~~~~~~~~~~~~~~
 
 The :class:`~watts.PluginSAS` class handles SAS4A/SASSY-1 execution in a similar
-manner to the :class:`~watts.PluginMOOSE` class for MOOSE. SAS4A/SASSY-1 use text-based
+manner to the :class:`~watts.PluginMOOSE` class for MOOSE. SAS4A/SASSY-1 uses text-based
 input files which can be templated as follows:
 
 .. code-block:: jinja
@@ -251,14 +251,57 @@ Similar to the SAS executable, the utilities are also OS dependent. To execute
 SAS, the :meth:`~watts.PluginSAS` instance is called directly in the same way as
 other plugins.
 
-WATTS also supports the "INCLUDE" directive of SAS that allows for multiple input
-files. Users simply need to add "INCLUDE extra_input_file_names" to the template
-and specify the names of the extra input files as a string to the
-"extra_template_inputs" argument when calling the :class:`~watts.PluginSAS` class::
+SAS4A/SASSY-1 Plugin
+~~~~~~~~~~~~~~~~~~~~
 
-    sas_plugin = watts.PluginSAS('sas_template', show_stdout=True, extra_template_inputs=['extra_input_file_names'])
+The :class:`~watts.PluginRELAP5` class handles execution of RELAP5-3D. Note that the 
+plugin is designed for the execution of RELAP5-3D v4.3.4 and thus may not be compatible
+with other version of RELAP5-3D. RELAP5-3D uses text-based input files that can be 
+templated as follows:
 
-An example has been provided to demonstrate this capability.
+.. code-block:: jinja
+
+*                 Time         Power
+20250001          -1.0         0.0
+20250002           0.0      {{ heater_power_1 }}
+20250003         1.0e3      {{ heater_power_2 }}
+
+If the templated input file is `relap5_template`, then the RELAP5-3D plugin can be
+instantiated with the following command line::
+
+    relap5_plugin = watts.PluginRELAP5('relap5_template', show_stdout=True)
+
+RELAP5-3D requires the executable, license key, and the input file to be in the same
+directory to run. Thus, before running the RELAP5-3D plugin, user needs to specify the
+directory that the executable and the license key are in (must be in the same directory).
+This can be done by adding the ``RELAP5_DIR`` variable to the environment or by 
+explicitly specifying the path in the Python script as::
+
+    relap5_plugin.relap5_dir = "\path\to\executable\and\license"
+
+The RELAP5 executable is OS-dependent. It defaults to ``relap5.x`` (assumed to be
+present on your :envvar:`PATH`) for Linux and macOS, and ``relap5.exe`` for
+Windows.
+
+The plugin also supports extra input options to RELAP5-3D. User simply needs to add the
+extra options as a string to the ``extra_option`` argument when instantiating the plugin as follows::
+
+    relap5_plugin = watts.PluginRELAP5('relap5_template', 
+                                        extra_options = ['-w', 'tpfh2o', '-e', 'tpfn2', '-tpfdir', 'location\of\fluid\property\files']) 
+
+Note that the fluid property files can be specified as extra input options, as shown above. Another
+approach is simply put them in the same directory as the executable and license key before running the plugin.
+
+For the postprocessing of RELAP5-3D results, the plugin converts the default "plotfl" plot file generated
+by RELAP5-3D into a ".CSV" file. Card-104 must be specified as "ascii" in the RELAP5-3D input file as::
+
+    104          ascii
+
+to ensure that the "plotfl" is in ASCII format instead of the default binary format. As the conversion 
+process could be computationally expensive, user can turn it off by omitting Card-104 in the RELAP5-3D input 
+file and adding ``plotfl_to_csv=False`` when instantiating the plugin as follows::
+
+    relap5_plugin = watts.PluginRELAP5('relap5_template', plotfl_to_csv=False)
 
 Results
 +++++++

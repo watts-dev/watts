@@ -153,3 +153,53 @@ prop1,prop2
     assert new_results.inputs == results.inputs
     assert new_results.outputs == results.outputs
     assert new_results.stdout == results.stdout
+
+
+def test_results_relap5(run_in_tmpdir):
+    params = watts.Parameters(city='Chicago', population=2.7e6)
+    now = datetime.now()
+
+    # Create some fake input files
+    relap5_inp = Path('relap5.i')
+    relap5_inp.touch()
+    inputs = [relap5_inp]
+
+    # Create fake output files
+    csv = Path('R5-out.csv')
+    csv.write_text("""\
+prop1,prop2
+3.5,1
+4.0,2
+5.0,3
+    """)
+    stdout = Path('RELAP5_log.txt')
+    stdout.write_text('RELAP5 standard out\n')
+    outputs = [csv, stdout]
+
+    results = watts.ResultsRELAP5(params, now, inputs, outputs)
+
+    # Sanity checks
+    assert results.plugin == 'RELAP5-3D'
+    assert results.parameters == params
+    assert results.time == now
+    assert results.inputs == inputs
+    assert results.outputs == outputs
+
+    # Other attributes
+    assert results.stdout == 'RELAP5 standard out\n'
+    np.testing.assert_equal(results.csv_data['prop1'], [3.5, 4.0, 5.0])
+    np.testing.assert_equal(results.csv_data['prop2'], [1, 2, 3])
+
+    # Saving
+    p = Path('myresults.pkl')
+    results.save(p)
+    assert p.is_file()
+
+    # Ensure results read from file match
+    new_results = watts.Results.from_pickle(p)
+    assert isinstance(new_results, watts.ResultsRELAP5)
+    assert new_results.parameters == results.parameters
+    assert new_results.time == results.time
+    assert new_results.inputs == results.inputs
+    assert new_results.outputs == results.outputs
+    assert new_results.stdout == results.stdout
