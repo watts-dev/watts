@@ -97,6 +97,8 @@ class PluginMOOSE(TemplatePlugin):
         Number of processors to be used to run MOOSE application
     extra_inputs
         List of extra (non-templated) input files that are needed
+    extra_template_inputs
+        Extra templated input files
 
     Attributes
     ----------
@@ -107,8 +109,9 @@ class PluginMOOSE(TemplatePlugin):
 
     def __init__(self, template_file: str, show_stdout: bool = False,
                  show_stderr: bool = False, n_cpu: int = 1,
-                 extra_inputs: Optional[List[str]] = None):
-        super().__init__(template_file, extra_inputs)
+                 extra_inputs: Optional[List[str]] = None,
+                 extra_template_inputs: Optional[List[PathLike]] = None):
+        super().__init__(template_file, extra_inputs, extra_template_inputs)
         self._moose_exec = Path('moose-opt')
         self.moose_inp_name = "MOOSE.i"
         self.show_stdout = show_stdout
