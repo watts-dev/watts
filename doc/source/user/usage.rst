@@ -132,6 +132,13 @@ Calling the :class:`~watts.PluginMOOSE` instance will render the templated input
 file (replace variables with values from the :class:`~watts.Parameters`
 instance), execute SAM, and collect the output files.
 
+If applicable, WATTS also allows users to use multiple input files for executing
+MOOSE codes. This can be done by simply specifying the names of the extra input
+files as a string to the "extra_template_inputs" argument when calling the
+:class:`~watts.PluginMOOSE` class::
+
+    moose_plugin = watts.PluginMOOSE('moose_template', show_stdout=True, extra_template_inputs=['extra_input_file_names'])
+
 Beyond simple variable substitution, Jinja has sophisticated capabilities for
 using logical control structures, filters, calling Python methods, and
 extensible templates; for advanced usage, please read through the Jinja
@@ -214,6 +221,13 @@ The path to PyARC directory must be specified explicitly with the
 
 To execute PyARC, the :meth:`~watts.PluginPyARC` instance is called directly the
 same way as other plugins.
+
+If applicable, WATTS also allows users to use multiple input files for executing
+PyARC. This can be done by simply specifying the names of the extra input
+files as a string to the "extra_template_inputs" argument when calling the
+:class:`~watts.PluginPyARC` class::
+
+    pyarc_plugin = watts.PluginPyARC('pyarc_template', show_stdout=True, extra_template_inputs=['extra_input_file_names'])
 
 SAS4A/SASSY-1 Plugin
 ~~~~~~~~~~~~~~~~~~~~

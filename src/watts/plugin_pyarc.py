@@ -57,6 +57,8 @@ class PluginPyARC(TemplatePlugin):
         Whether to display output from stderr when PyARC is run
     extra_inputs
         List of extra (non-templated) input files that are needed
+    extra_template_inputs
+        Extra templated input files
 
     Attributes
     ----------
@@ -67,8 +69,9 @@ class PluginPyARC(TemplatePlugin):
 
     def __init__(self, template_file: str, show_stdout: bool = False,
                  show_stderr: bool = False,
-                 extra_inputs: Optional[List[str]] = None):
-        super().__init__(template_file, extra_inputs)
+                 extra_inputs: Optional[List[str]] = None,
+                 extra_template_inputs: Optional[List[PathLike]] = None):
+        super().__init__(template_file, extra_inputs, extra_template_inputs)
         self._pyarc_exec = Path(os.environ.get('PyARC_DIR', 'PyARC.py'))
         self.pyarc_inp_name = "pyarc_input.son"
         self.show_stdout = show_stdout
