@@ -227,7 +227,7 @@ PyARC. This can be done by simply specifying the names of the extra input
 files as a string to the "extra_template_inputs" argument when calling the
 :class:`~watts.PluginPyARC` class::
 
-    pyarc_plugin = watts.PluginMOOSE('pyarc_template', show_stdout=True, extra_template_inputs=['extra_input_file_names'])
+    pyarc_plugin = watts.PluginPyARC('pyarc_template', show_stdout=True, extra_template_inputs=['extra_input_file_names'])
 
 SAS4A/SASSY-1 Plugin
 ~~~~~~~~~~~~~~~~~~~~
