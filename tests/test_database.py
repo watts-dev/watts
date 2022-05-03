@@ -18,6 +18,7 @@ def restore_database_path():
 def get_result():
     return watts.ResultsOpenMC(
         params=watts.Parameters(value=1, lab='Argonne'),
+        name='Workflow',
         time=datetime.now(),
         inputs=['geometry.xml'],
         outputs=['statepoint.50.h5'],

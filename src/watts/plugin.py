@@ -3,6 +3,7 @@
 
 from abc import ABC, abstractmethod
 from datetime import datetime
+import uuid
 from pathlib import Path
 import shutil
 from typing import Optional, List
@@ -40,19 +41,6 @@ class Plugin(ABC):
     def postrun(self, params) -> Results:
         ...
 
-    @staticmethod
-    def _get_unique_dir(path: Path, name: str) -> Path:
-        if not (path / name).exists():
-            return path / name
-
-        # Try adding number as suffix
-        i = 1
-        while True:
-            unique_name = f"{name}_{i}"
-            if not (path / unique_name).exists():
-                return path / unique_name
-            i += 1
-
     def __call__(self, params: Parameters, name: str = 'Workflow', **kwargs) -> Results:
         """Run the complete workflow for the plugin
 
@@ -61,7 +49,7 @@ class Plugin(ABC):
         params
             Parameters used in generating inputs
         name
-            Unique name for workflow
+            Name for workflow
         **kwargs
             Keyword arguments passed to the `run` method
 
@@ -80,10 +68,10 @@ class Plugin(ABC):
             # Run workflow in temporary directory
             self.prerun(params)
             self.run(**kwargs)
-            result = self.postrun(params)
+            result = self.postrun(params, name)
 
             # Create new directory for results and move files there
-            workflow_path = self._get_unique_dir(db.path, name)
+            workflow_path = db.path / uuid.uuid4().hex
             workflow_path.mkdir()
             try:
                 result.move_files(workflow_path)

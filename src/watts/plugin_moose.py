@@ -24,6 +24,8 @@ class ResultsMOOSE(Results):
     ----------
     params
         Parameters used to generate inputs
+    name
+        Name of workflow producing results
     time
         Time at which workflow was run
     inputs
@@ -38,9 +40,9 @@ class ResultsMOOSE(Results):
     csv_data
         Dictionary with data from .csv files
     """
-    def __init__(self, params: Parameters, time: datetime,
+    def __init__(self, params: Parameters, name: str, time: datetime,
                  inputs: List[PathLike], outputs: List[PathLike]):
-        super().__init__('MOOSE', params, time, inputs, outputs)
+        super().__init__('MOOSE', params, name, time, inputs, outputs)
         self.csv_data = self._save_MOOSE_csv()
 
     @property
@@ -171,13 +173,15 @@ class PluginMOOSE(TemplatePlugin):
                 run_proc(["mpiexec", "-n", str(self.n_cpu), self.moose_exec,
                           "-i", self.moose_inp_name])
 
-    def postrun(self, params: Parameters) -> ResultsMOOSE:
+    def postrun(self, params: Parameters, name: str) -> ResultsMOOSE:
         """Read MOOSE results and create results object
 
         Parameters
         ----------
         params
             Parameters used to create MOOSE model
+        name
+            Name of the workflow
 
         Returns
         -------
@@ -186,4 +190,4 @@ class PluginMOOSE(TemplatePlugin):
         print("Post-run for MOOSE Plugin")
 
         time, inputs, outputs = self._get_result_input(self.moose_inp_name)
-        return ResultsMOOSE(params, time, inputs, outputs)
+        return ResultsMOOSE(params, name, time, inputs, outputs)

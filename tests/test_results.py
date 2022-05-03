@@ -10,6 +10,7 @@ import numpy as np
 
 def test_results_openmc(run_in_tmpdir):
     params = watts.Parameters(city='Chicago', population=2.7e6)
+    name = "🎲"
     now = datetime.now()
 
     # Create some fake input files
@@ -27,11 +28,12 @@ def test_results_openmc(run_in_tmpdir):
     outputs = [sp, log_file]
 
 
-    results = watts.ResultsOpenMC(params, now, inputs, outputs)
+    results = watts.ResultsOpenMC(params, name, now, inputs, outputs)
 
     # Sanity checks
     assert results.plugin == 'OpenMC'
     assert results.parameters == params
+    assert results.name == name
     assert results.time == now
     assert results.inputs == inputs
     assert results.outputs == outputs
@@ -49,6 +51,7 @@ def test_results_openmc(run_in_tmpdir):
     new_results = watts.Results.from_pickle(p)
     assert isinstance(new_results, watts.ResultsOpenMC)
     assert new_results.parameters == results.parameters
+    assert new_results.name == results.name
     assert new_results.time == results.time
     assert new_results.inputs == results.inputs
     assert new_results.outputs == results.outputs
@@ -57,6 +60,7 @@ def test_results_openmc(run_in_tmpdir):
 
 def test_results_moose(run_in_tmpdir):
     params = watts.Parameters(city='Chicago', population=2.7e6)
+    name = "Elk"
     now = datetime.now()
 
     # Create some fake input files
@@ -76,11 +80,12 @@ prop1,prop2
     stdout.write_text('MOOSE standard out\n')
     outputs = [csv, stdout]
 
-    results = watts.ResultsMOOSE(params, now, inputs, outputs)
+    results = watts.ResultsMOOSE(params, name, now, inputs, outputs)
 
     # Sanity checks
     assert results.plugin == 'MOOSE'
     assert results.parameters == params
+    assert results.name == name
     assert results.time == now
     assert results.inputs == inputs
     assert results.outputs == outputs
@@ -99,6 +104,7 @@ prop1,prop2
     new_results = watts.Results.from_pickle(p)
     assert isinstance(new_results, watts.ResultsMOOSE)
     assert new_results.parameters == results.parameters
+    assert new_results.name == results.name
     assert new_results.time == results.time
     assert new_results.inputs == results.inputs
     assert new_results.outputs == results.outputs
@@ -107,6 +113,7 @@ prop1,prop2
 
 def test_results_sas(run_in_tmpdir):
     params = watts.Parameters(city='Chicago', population=2.7e6)
+    name = 'Sassy!'
     now = datetime.now()
 
     # Create some fake input files
@@ -126,11 +133,12 @@ prop1,prop2
     stdout.write_text('SAS standard out\n')
     outputs = [csv, stdout]
 
-    results = watts.ResultsSAS(params, now, inputs, outputs)
+    results = watts.ResultsSAS(params, name, now, inputs, outputs)
 
     # Sanity checks
     assert results.plugin == 'SAS'
     assert results.parameters == params
+    assert results.name == name
     assert results.time == now
     assert results.inputs == inputs
     assert results.outputs == outputs
@@ -149,6 +157,7 @@ prop1,prop2
     new_results = watts.Results.from_pickle(p)
     assert isinstance(new_results, watts.ResultsSAS)
     assert new_results.parameters == results.parameters
+    assert new_results.name == results.name
     assert new_results.time == results.time
     assert new_results.inputs == results.inputs
     assert new_results.outputs == results.outputs

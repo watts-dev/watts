@@ -28,6 +28,8 @@ class ResultsSAS(Results):
     ----------
     params
         Parameters used to generate inputs
+    name
+        Name of workflow producing results
     time
         Time at which workflow was run
     inputs
@@ -42,9 +44,9 @@ class ResultsSAS(Results):
     csv_data
         Dictionary with data from .csv files
     """
-    def __init__(self, params: Parameters, time: datetime,
+    def __init__(self, params: Parameters, name: str, time: datetime,
                  inputs: List[PathLike], outputs: List[PathLike]):
-        super().__init__('SAS', params, time, inputs, outputs)
+        super().__init__('SAS', params, name, time, inputs, outputs)
         self.csv_data = self._get_sas_csv_data()
 
     @property
@@ -172,13 +174,15 @@ class PluginSAS(TemplatePlugin):
             with func_stdout(outfile), func_stderr(outfile):
                 run_proc([self.sas_exec, "-i", self.sas_inp_name, "-o", "out.txt"])
 
-    def postrun(self, params: Parameters) -> ResultsSAS:
+    def postrun(self, params: Parameters, name: str) -> ResultsSAS:
         """Read SAS results and create results object
 
         Parameters
         ----------
         params
             Parameters used to create SAS model
+        name
+            Name of the workflow
 
         Returnss
         -------
@@ -198,4 +202,4 @@ class PluginSAS(TemplatePlugin):
                 subprocess.run(str(self.conv_primar4), stdin=file_in, stdout=file_out)
 
         time, inputs, outputs = self._get_result_input(self.sas_inp_name)
-        return ResultsSAS(params, time, inputs, outputs)
+        return ResultsSAS(params, name, time, inputs, outputs)

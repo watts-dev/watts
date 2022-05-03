@@ -37,11 +37,12 @@ def test_openmc_plugin():
     assert plugin.model_builder == build_openmc_model
 
     params = watts.Parameters(radius=6.38)
-    result = plugin(params)
+    result = plugin(params, name="OpenMC run")
 
     # Sanity checks
     assert isinstance(result, watts.ResultsOpenMC)
     assert result.parameters['radius'] == 6.38
+    assert result.name == "OpenMC run"
     assert len(result.statepoints) == 5
     input_names = {p.name for p in result.inputs}
     assert input_names == {'geometry.xml', 'materials.xml', 'settings.xml', 'tallies.xml'}
@@ -65,6 +66,7 @@ def test_openmc_plugin():
     db = watts.Database()
     last_result = db[-1]
     assert last_result.parameters['radius'] == result.parameters['radius']
+    assert last_result.name == result.name
     assert last_result.inputs == result.inputs
     assert last_result.outputs == result.outputs
     assert last_result.keff.n == result.keff.n
