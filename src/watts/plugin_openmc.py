@@ -113,13 +113,16 @@ class PluginOpenMC(Plugin):
         if self.model_builder is not None:
             self.model_builder(params_copy)
 
-    def run(self, **kwargs: Mapping):
+    def run(self, function: Optional[Callable] = None, **kwargs: Mapping):
         """Run OpenMC
 
         Parameters
         ----------
+        function
+            Function to execute. If not passed, defaults to only calling
+            :func:`openmc.run`.
         **kwargs
-            Keyword arguments passed on to :func:`openmc.run`
+            Keyword arguments passed on to ``function``
         """
         print("Run for OpenMC Plugin")
         import openmc
@@ -127,7 +130,10 @@ class PluginOpenMC(Plugin):
             func_stdout = tee_stdout if self.show_stdout else redirect_stdout
             func_stderr = tee_stderr if self.show_stderr else redirect_stderr
             with func_stdout(f), func_stderr(f):
-                openmc.run(**kwargs)
+                if function:
+                    function(**kwargs)
+                else:
+                    openmc.run(**kwargs)
 
     def postrun(self, params: Parameters, name: str) -> ResultsOpenMC:
         """Collect information from OpenMC simulation and create results object
@@ -168,8 +174,11 @@ class PluginOpenMC(Plugin):
         outputs = ['OpenMC_log.txt']
         outputs.extend(files_since('tallies.out', self._run_time))
         outputs.extend(files_since('source.*.h5', self._run_time))
-        outputs.extend(files_since('particle.*.h5', self._run_time))
+        outputs.extend(files_since('particle*.h5', self._run_time))
         outputs.extend(files_since('statepoint.*.h5', self._run_time))
+        outputs.extend(files_since('volume*.h5', self._run_time))
+        outputs.extend(files_since('*.png', self._run_time))
+        outputs.extend(files_since('*.ppm', self._run_time))
 
         time = datetime.fromtimestamp(self._run_time * 1e-9)
         return ResultsOpenMC(params, name, time, inputs, outputs)

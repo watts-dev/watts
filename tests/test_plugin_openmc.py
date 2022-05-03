@@ -1,6 +1,9 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
+from pathlib import Path
+
+import pytest
 import openmc
 import watts
 
@@ -73,8 +76,9 @@ def test_openmc_plugin():
     assert last_result.keff.s == result.keff.s
 
 
-def test_extra_inputs(run_in_tmpdir):
-    # Create inputs manually -- 10 cm sphere of pure Pu239
+@pytest.fixture
+def pu_model():
+    """Model of a 10 cm sphere of Pu239"""
     model = openmc.model.Model()
     mat = openmc.Material()
     mat.add_nuclide('Pu239', 1.0)
@@ -85,7 +89,12 @@ def test_extra_inputs(run_in_tmpdir):
     model.settings.batches = 10
     model.settings.inactive = 0
     model.settings.particles = 1000
-    model.export_to_xml()
+    return model
+
+
+def test_extra_inputs(run_in_tmpdir, pu_model):
+    # Export model to XML
+    pu_model.export_to_xml()
 
     # Use OpenMC plugin with extra inputs
     plugin = watts.PluginOpenMC(extra_inputs=['geometry.xml', 'materials.xml', 'settings.xml'])
@@ -94,3 +103,22 @@ def test_extra_inputs(run_in_tmpdir):
 
     input_names = {p.name for p in result.inputs}
     assert input_names == {'geometry.xml', 'materials.xml', 'settings.xml'}
+
+
+def test_arbitrary_function(run_in_tmpdir, pu_model):
+    # Add a plot to the model and export
+    plot = openmc.Plot()
+    plot.filename = 'watts_plot'
+    plot.pixels = (100, 100)
+    plot.width = (20.0, 20.0)
+    pu_model.plots.append(plot)
+    pu_model.export_to_xml()
+
+    # Use OpenMC plugin to run a geometry plot
+    plugin = watts.PluginOpenMC(extra_inputs=Path.cwd().glob('*.xml'))
+    params = watts.Parameters()
+    result = plugin(params, function=openmc.plot_geometry)
+
+    # Generated plot should be in outputs
+    output_names = {p.name for p in result.outputs}
+    assert 'watts_plot.png' in output_names

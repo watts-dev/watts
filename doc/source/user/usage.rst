@@ -194,6 +194,20 @@ the plugin are forwarded to the :func:`openmc.run` function. For example::
 
     results = openmc_plugin(params, mpi_args=["mpiexec", "-n", "16"])
 
+By default, the OpenMC plugin will only call the :func:`openmc.run` function,
+but you can customize the execution by passing an arbitrary function as the
+``function`` keyword argument. For example, if you wanted to additionally call
+:func:`openmc.plot_geometry` each time the plugin is called, this could be
+accomplished as follows::
+
+    import openmc
+
+    def run_function():
+        openmc.plot_geometry()
+        openmc.run()
+
+    results = openmc_plugin(params, function=run_function)
+
 PyARC Plugin
 ~~~~~~~~~~~~~
 
