@@ -121,7 +121,7 @@ class PluginRELAP5(TemplatePlugin):
     @relap5_dir.setter
     def relap5_dir(self, relap5_directory:PathLike):
         if shutil.which(Path(relap5_directory) / f"relap5.{self.ext}") is None:
-            raise RuntimeError(f"RELAP5-3D executable is missing.")
+            raise RuntimeError("RELAP5-3D executable is missing.")
         self._relap5_dir = Path(relap5_directory)
 
     def prerun(self, params: Parameters):
@@ -185,7 +185,7 @@ class PluginRELAP5(TemplatePlugin):
         params
             Parameters used to create RELAP5 model
 
-        Returnss
+        Returns
         -------
         RELAP5 results object
         """
@@ -193,7 +193,10 @@ class PluginRELAP5(TemplatePlugin):
 
         # Convert RELAP5's plotfl file to CSV file for processing
         if self.plotfl_to_csv:
-            self._plotfl_to_csv()
+            if os.path.exists('plotfl'):
+                self._plotfl_to_csv()
+            else:
+                raise RuntimeError("Output plot file 'plotfl' is missing. Please make sure you are running the correct version of RELAP5-3D or the plot file is named correctly.")
 
         time, inputs, outputs = self._get_result_input(self.relap5_inp_name)
         return ResultsRELAP5(params, time, inputs, outputs)
