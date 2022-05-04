@@ -23,6 +23,8 @@ class ResultsPyARC(Results):
     ----------
     params
         Parameters used to generate inputs
+    name
+        Name of workflow producing results
     time
         Time at which workflow was run
     inputs
@@ -34,9 +36,9 @@ class ResultsPyARC(Results):
 
     """
 
-    def __init__(self, params: Parameters, time: datetime,
+    def __init__(self, params: Parameters, name: str, time: datetime,
                  inputs: List[Path], outputs: List[Path], results_data: dict):
-        super().__init__('PyARC', params, time, inputs, outputs)
+        super().__init__('PyARC', params, name, time, inputs, outputs)
         self.results_data = results_data
 
     @property
@@ -130,13 +132,15 @@ class PluginPyARC(TemplatePlugin):
         sys.path.pop(0)  # Restore sys.path to original state
         os.chdir(od)  # TODO: I don't know why but I keep going to self._pyarc_exec after execution - this is very wierd!
 
-    def postrun(self, params: Parameters) -> ResultsPyARC:
+    def postrun(self, params: Parameters, name: str) -> ResultsPyARC:
         """Collect information from PyARC and create results object
 
         Parameters
         ----------
         params
             Parameters used to create PyARC model
+        name
+            Name of the workflow
 
         Returns
         -------
@@ -145,4 +149,4 @@ class PluginPyARC(TemplatePlugin):
         print("Post-run for PyARC Plugin")
 
         time, inputs, outputs = self._get_result_input(self.pyarc_inp_name)
-        return ResultsPyARC(params, time, inputs, outputs, self.pyarc.user_object.results)
+        return ResultsPyARC(params, name, time, inputs, outputs, self.pyarc.user_object.results)
