@@ -29,10 +29,11 @@ class Results:
         List of output files
     """
 
-    def __init__(self, plugin: str, params: Parameters, time: datetime,
+    def __init__(self, plugin: str, params: Parameters, name: str, time: datetime,
                  inputs: List[PathLike], outputs: List[PathLike]):
         self.base_path = Path.cwd()
         self.plugin = plugin
+        self.name = name
         self.parameters = Parameters(params)
         self.time = time
         self.inputs = [Path(p) for p in inputs]

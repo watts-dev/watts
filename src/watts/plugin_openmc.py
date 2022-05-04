@@ -21,6 +21,8 @@ class ResultsOpenMC(Results):
     ----------
     params
         Parameters used to generate inputs
+    name
+        Name of workflow producing results
     time
         Time at which workflow was run
     inputs
@@ -40,9 +42,9 @@ class ResultsOpenMC(Results):
         List of OpenMC tally objects
     """
 
-    def __init__(self, params: Parameters, time: datetime,
+    def __init__(self, params: Parameters, name: str, time: datetime,
                  inputs: List[Path], outputs: List[Path]):
-        super().__init__('OpenMC', params, time, inputs, outputs)
+        super().__init__('OpenMC', params, name, time, inputs, outputs)
 
     @property
     def statepoints(self) -> List[Path]:
@@ -127,13 +129,15 @@ class PluginOpenMC(Plugin):
             with func_stdout(f), func_stderr(f):
                 openmc.run(**kwargs)
 
-    def postrun(self, params: Parameters) -> ResultsOpenMC:
+    def postrun(self, params: Parameters, name: str) -> ResultsOpenMC:
         """Collect information from OpenMC simulation and create results object
 
         Parameters
         ----------
         params
             Parameters used to create OpenMC model
+        name
+            Name of the workflow
 
         Returns
         -------
@@ -168,4 +172,4 @@ class PluginOpenMC(Plugin):
         outputs.extend(files_since('statepoint.*.h5', self._run_time))
 
         time = datetime.fromtimestamp(self._run_time * 1e-9)
-        return ResultsOpenMC(params, time, inputs, outputs)
+        return ResultsOpenMC(params, name, time, inputs, outputs)
