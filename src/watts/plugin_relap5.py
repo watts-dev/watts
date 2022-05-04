@@ -28,6 +28,8 @@ class ResultsRELAP5(Results):
     ----------
     params
         Parameters used to generate inputs
+    name
+        Name of workflow producing results
     time
         Time at which workflow was run
     inputs
@@ -42,9 +44,9 @@ class ResultsRELAP5(Results):
     csv_data
         Dictionary with data from .csv files
     """
-    def __init__(self, params: Parameters, time: datetime,
+    def __init__(self, params: Parameters, name: str, time: datetime,
                  inputs: List[PathLike], outputs: List[PathLike]):
-        super().__init__('RELAP5-3D', params, time, inputs, outputs)
+        super().__init__('RELAP5-3D', params, name, time, inputs, outputs)
         self.csv_data = self._get_relap5_csv_data()
 
     @property
@@ -177,13 +179,15 @@ class PluginRELAP5(TemplatePlugin):
                 p = subprocess.Popen(self._relap5_input)
                 stdout, stderr = p.communicate()
 
-    def postrun(self, params: Parameters) -> ResultsRELAP5:
+    def postrun(self, params: Parameters, name: str) -> ResultsRELAP5:
         """Read RELAP5 results and create results object
 
         Parameters
         ----------
         params
             Parameters used to create RELAP5 model
+        name
+            Name of the workflow
 
         Returns
         -------
@@ -199,7 +203,7 @@ class PluginRELAP5(TemplatePlugin):
                 raise RuntimeError("Output plot file 'plotfl' is missing. Please make sure you are running the correct version of RELAP5-3D or the plot file is named correctly.")
 
         time, inputs, outputs = self._get_result_input(self.relap5_inp_name)
-        return ResultsRELAP5(params, time, inputs, outputs)
+        return ResultsRELAP5(params, name, time, inputs, outputs)
 
     # The RELAP5-3D version used here does not generate csv output files.
     # It generates a text file with a particular format that needs to

@@ -166,6 +166,7 @@ prop1,prop2
 
 def test_results_relap5(run_in_tmpdir):
     params = watts.Parameters(city='Chicago', population=2.7e6)
+    name = 'SinglePipe'
     now = datetime.now()
 
     # Create some fake input files
@@ -185,11 +186,12 @@ prop1,prop2
     stdout.write_text('RELAP5 standard out\n')
     outputs = [csv, stdout]
 
-    results = watts.ResultsRELAP5(params, now, inputs, outputs)
+    results = watts.ResultsRELAP5(params, name, now, inputs, outputs)
 
     # Sanity checks
     assert results.plugin == 'RELAP5-3D'
     assert results.parameters == params
+    assert results.name == name
     assert results.time == now
     assert results.inputs == inputs
     assert results.outputs == outputs
@@ -208,6 +210,7 @@ prop1,prop2
     new_results = watts.Results.from_pickle(p)
     assert isinstance(new_results, watts.ResultsRELAP5)
     assert new_results.parameters == results.parameters
+    assert new_results.name == results.name
     assert new_results.time == results.time
     assert new_results.inputs == results.inputs
     assert new_results.outputs == results.outputs
