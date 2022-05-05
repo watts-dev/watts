@@ -1,0 +1,280 @@
+=ANL Water SNGLCHN
+*
+*
+******************************
+*        Model Options       *
+******************************
+*            type         state
+100           new       transnt
+*          option
+101           run
+*          iunits        ounits
+102            si            si
+*
+104          ascii
+*              t1            t2         alloc
+105           1.0           2.0         5.0e5
+*    Noncondensable Gas Species
+110      air
+*            cell          elev         fluid       sysname
+120     910010000           0.0           h2o        SNGLCHN
+*                                                          
+*    tend minstep maxstep copt pfreq  majed rsrtf
+201 200.0 1.0e-10    0.01   19  200   1000  1000
+*
+*******************************
+*       General Tables        *
+*******************************
+*
+*n: HL
+*            type          trip       factor1       factor2
+20240000    htc-t             0           1.0           1.0
+*                 TimeHeat Transfer 
+20240001          -1.0          10.0
+20240001         1.4e5          10.0
+*
+*n: source
+*            type          trip       factor1       factor2
+20250000    power             0           1.0           1.0
+*                 Time         Power
+20250001          -1.0         0.0
+20250002           0.0      {{ heater_power }}
+20250003         1.4e5      {{ heater_power }}
+*
+**************************
+*       Materials        *
+**************************
+*
+*n: SS
+*                 type         tflag         vflag
+20100100      tbl/fctn             1             1
+*                 temp        thcond
+20100101        -100.0         12.97
+20100102         300.0         12.97
+20100103         800.0         21.06
+20100104        1600.0          34.0
+20100105        9999.0          34.0
+*        heat Capacity
+20100151        4.18e6
+*
+*n: KF
+*                 type         tflag         vflag
+20100300      tbl/fctn             1             1
+*                 temp        thcond
+20100301        -100.0        0.0339
+20100302        273.15        0.0339
+20100303        297.15        0.0353
+20100304        305.15        0.0372
+20100305        1000.0        0.0372
+20100306        9999.0        0.0372
+*        heat Capacity
+20100351        8.32e4
+*
+*
+*************************************
+*       Hydraulic Components        *
+*************************************
+*
+************** Pipe ***************
+*                name          type
+2000000       "chan-1"       annulus
+*              ncells
+2000001            10
+*              x-area         volid
+2000101      7.706e-3            10
+*            x-length         volid
+2000301           0.3            10
+*              volume         volid
+2000401           0.0            10
+*          azim-angle         volid
+2000501           0.0            10
+*          vert-angle         volid
+2000601          90.0            10
+*              x-wall           xhd         volid
+2000801           0.0     0.0384302            10
+*             x-flags         volid
+2001001             0            10
+*       ebt   press   temp none none none id
+2001201 003 1.013e5 292.65  0.0  0.0  0.0 10
+*            jefvcahs       jun num
+2001101      00001000             9
+*         jun control
+2001300             1
+*                 mfl           mfv        unused         junid
+2001301           0.0           0.0           0.0             9
+*
+*
+************ Inlet BC *************
+*                name          type
+9100000        "inlet"      tmdpvol
+*                area        length           vol
+9100101        1000.0           0.0        1000.0
+*            az-angle     inc-angle            dz
+9100102           0.0           0.0           0.0
+*             x-rough          x-hd         flags
+9100103           0.0           0.0            10
+*               cword
+9100200             3
+*                srch                  press          temp
+9100201           0.0   {{ inlet_pressure }}        292.65
+*
+*
+************ Outlet BC ************
+*                name          type
+9200000        "outlet"     tmdpvol
+*                area        length           vol
+9200101        1000.0           0.0        1000.0
+*            az-angle     inc-angle            dz
+9200102           0.0           0.0           0.0
+*             x-rough          x-hd         flags
+9200103           0.0           0.0            10
+*               cword
+9200200             2
+*                srch                   press         squal
+9200201           0.0   {{ outlet_pressure }}           1.0
+*
+*
+********** Inlet Junction **********
+*                name          type
+2090000      "inflow"       tmdpjun
+*                from            to          area       jefvcahs
+2090101     910010002     200010001      7.706e-3             0
+*             control          trip         alpha           num
+2090200             1                   
+*                srch           mfl           mfv        unused
+2090201           0.0           0.0           0.0           0.0
+2090202          50.0           0.5           0.0           0.0
+2090203         100.0           0.5           0.0           0.0
+2090204         150.0           0.8           0.0           0.0
+2090205         200.0           0.8           0.0           0.0
+*
+*
+********* Outlet Junction **********
+*                name          type
+2190000     "outflow"       sngljun
+*                from            to          area
+2190101     200100002     920010001      7.706e-3
+*           fwd. loss     rev. loss      jefvcahs
+2190102           1.5           1.5           110
+*           subcooled      twophase
+2190103           1.0           1.0
+*                flow           mfl           mfv        unused
+2190201             1           0.0           0.0           0.0
+*
+*
+********************************
+*       Heat Structures        *
+********************************
+*
+*
+********** Inner Annulus Heater **********
+*          nh   np      geom      ssif     leftcoord reflood
+12000000   10    2         2         1           0.0       0
+*                 mesh        format
+12000100             0             1
+*            intervals        radius
+12000101             1       0.01270
+*             material      interval
+12000201             1             1
+*                 rpkf      interval
+12000301           1.0             1
+*          temp source
+12000400             0
+*                 temp      interval
+12000401        292.65             2
+
+*   Left Boundary Condition Data 
+*            bound      incr      type      code        factor      node
+12000501        0          0         0         1           0.3         1
+12000502        0          0         0         1           0.3         2
+12000503        0          0         0         1           0.3         3
+12000504        0          0         0         1           0.3         4
+12000505        0          0         0         1           0.3         5
+12000506        0          0         0         1           0.3         6
+12000507        0          0         0         1           0.3         7
+12000508        0          0         0         1           0.3         8
+12000509        0          0         0         1           0.3         9
+12000510        0          0         0         1           0.3        10
+
+*   Right Boundary Condition Data 
+*            bound      incr      type      code        factor      node
+12000601 200010000         0       101         1           0.3         1
+12000602 200020000         0       101         1           0.3         2
+12000603 200030000         0       101         1           0.3         3
+12000604 200040000         0       101         1           0.3         4
+12000605 200050000         0       101         1           0.3         5
+12000606 200060000         0       101         1           0.3         6
+12000607 200070000         0       101         1           0.3         7
+12000608 200080000         0       101         1           0.3         8
+12000609 200090000         0       101         1           0.3         9
+12000610 200100000         0       101         1           0.3        10
+*               source          mult          dmhl          dmhr           num
+12000701           500           1.0           0.0           0.0            10
+*   Left Additional Boundary Condition Data 
+12000800             1
+*        hthd  hlf  hlr gslf gslr glcf glcr lbf ncl tpdr foul node
+12000801  0.0 10.0 10.0  0.0  0.0  0.0  0.0 1.0 0.0  1.1  1.0   10
+*   Right Additional Boundary Condition Data 
+12000900             0
+*           hthd  hlf  hlr gslf gslr glcf glcr lbf node
+12000901  0.0127 10.0 10.0  0.0  0.0  0.0  0.0 1.0   10
+*
+*
+********** Outer Channel Wall **********
+*          nh   np      geom      ssif     leftcoord reflood
+12010000   10    9         2         1     0.0511302       0
+*                 mesh        format
+12010100             0             1
+*            intervals        radius
+12010101             4       0.05715
+12010102             4       0.10795
+*             material      interval
+12010201             1             4
+12010202             3             8
+*                 rpkf      interval
+12010301           0.0             8
+*          temp source
+12010400             0
+*                 temp      interval
+12010401        292.65             9
+*
+*   Left Boundary Condition Data 
+*            bound      incr      type      code        factor      node
+12010501 200010000         0       101         1           0.3         1
+12010502 200020000         0       101         1           0.3         2
+12010503 200030000         0       101         1           0.3         3
+12010504 200040000         0       101         1           0.3         4
+12010505 200050000         0       101         1           0.3         5
+12010506 200060000         0       101         1           0.3         6
+12010507 200070000         0       101         1           0.3         7
+12010508 200080000         0       101         1           0.3         8
+12010509 200090000         0       101         1           0.3         9
+12010510 200100000         0       101         1           0.3        10
+*
+*   Right Boundary Condition Data 
+*            bound      incr      type      code        factor      node
+12010601 920010000         0      3400         1           0.3         1
+12010602 920010000         0      3400         1           0.3         2
+12010603 920010000         0      3400         1           0.3         3
+12010604 920010000         0      3400         1           0.3         4
+12010605 920010000         0      3400         1           0.3         5
+12010606 920010000         0      3400         1           0.3         6
+12010607 920010000         0      3400         1           0.3         7
+12010608 920010000         0      3400         1           0.3         8
+12010609 920010000         0      3400         1           0.3         9
+12010610 920010000         0      3400         1           0.3        10
+*               source          mult          dmhl          dmhr           num
+12010701             0           0.0           0.0           0.0            10
+*   Left Additional Boundary Condition Data 
+12010800             1
+*        hthd  hlf  hlr gslf gslr glcf glcr lbf ncl tpdr foul node
+12010801  0.0 10.0 10.0  0.0  0.0  0.0  0.0 1.0 0.0  1.1  1.0   10
+*   Right Additional Boundary Condition Data 
+12010900             0
+*        hthd  hlf  hlr gslf gslr glcf glcr lbf node
+12010901  0.0 10.0 10.0  0.0  0.0  0.0  0.0 1.0   10
+*
+*
+*
+*
+.
