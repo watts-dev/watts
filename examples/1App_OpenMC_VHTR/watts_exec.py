@@ -2,11 +2,11 @@
 # SPDX-License-Identifier: MIT
 
 """
-This example demonstrates how to use WATTS to perform 
+This example demonstrates how to use WATTS to perform
 OpenMC calculation. This example uses a simple VHTR unit-cell
 model with 1 coolant channel surrounded by graphite and fuel.
 The demonstration includes the application of unit-conversion
-approach in WATTS. OpenMC is executed and the main results are 
+approach in WATTS. OpenMC is executed and the main results are
 printed out and stored in the params database.
 """
 
@@ -15,6 +15,7 @@ import os
 import watts
 from statistics import mean
 from openmc_template import build_openmc_model
+import openmc
 from astropy.units import Quantity
 
 
@@ -53,14 +54,23 @@ for i in range(1, 6):
 
 params.show_summary(show_metadata=False, sort_by='time')
 
-# Run OpenMC plugin
+# Create OpenMC plugin
 openmc_plugin = watts.PluginOpenMC(build_openmc_model, show_stderr=True) # show only error
-openmc_result = openmc_plugin(params)
+
+# Run OpenMC plugin, instructing it to plot the geometry and run a simulation
+def run_func():
+    openmc.plot_geometry()
+    openmc.run()
+openmc_result = openmc_plugin(params, function=run_func)
 print("KEFF = ", openmc_result.keff)
 print(openmc_result.inputs)
 print(openmc_result.outputs)
 print(openmc_result.tallies[0].get_pandas_dataframe())
 
+# Open folder in order to view plot images that were produced
+openmc_result.open_folder()
+
+# Set power fractions in parameters
 power_fractions = openmc_result.tallies[0].get_values(scores=['nu-fission']).ravel()
 for i, power_frac in enumerate(power_fractions):
     params[f'Init_P_{i+1}'] = power_frac
