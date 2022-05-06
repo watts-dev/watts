@@ -57,7 +57,10 @@ class ResultsOpenMC(Results):
         # Get k-effective from last statepoint
         last_statepoint = self.statepoints[-1]
         with openmc.StatePoint(last_statepoint) as sp:
-            return sp.k_combined
+            if hasattr(sp, 'keff'):
+                return sp.keff
+            else:
+                return sp.k_combined
 
     @property
     @lru_cache()
