@@ -126,6 +126,11 @@ class PluginOpenMC(Plugin):
             :func:`openmc.run`.
         **kwargs
             Keyword arguments passed on to ``function``
+
+        See also
+        --------
+        openmc.run, openmc.plot_geometry, openmc.calculate_volumes
+
         """
         print("Run for OpenMC Plugin")
         import openmc
