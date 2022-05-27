@@ -42,10 +42,6 @@ class ResultsMOOSE(Results):
         super().__init__('MOOSE', params, name, time, inputs, outputs)
         self.csv_data = self._save_MOOSE_csv()
 
-    @property
-    def stdout(self) -> str:
-        return (self.base_path / "MOOSE_log.txt").read_text()
-
     def _save_MOOSE_csv(self) -> dict:
         """Read all MOOSE '.csv' files and return results in a dictionary
 

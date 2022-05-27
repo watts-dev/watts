@@ -39,6 +39,10 @@ class Results:
         self.inputs = [Path(p) for p in inputs]
         self.outputs = [Path(p) for p in outputs]
 
+    @property
+    def stdout(self) -> str:
+        return (self.base_path / f"{self.plugin}_log.txt").read_text()
+
     def move_files(self, dst: PathLike):
         """Move input/output files to different directory
 

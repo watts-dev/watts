@@ -69,10 +69,6 @@ class ResultsOpenMC(Results):
         with openmc.StatePoint(last_statepoint) as sp:
             return list(sp.tallies.values())
 
-    @property
-    def stdout(self) -> str:
-        return (self.base_path / "OpenMC_log.txt").read_text()
-
 
 class PluginOpenMC(Plugin):
     """Plugin for running OpenMC

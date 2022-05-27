@@ -189,7 +189,7 @@ prop1,prop2
     results = watts.ResultsRELAP5(params, name, now, inputs, outputs)
 
     # Sanity checks
-    assert results.plugin == 'RELAP5-3D'
+    assert results.plugin == 'RELAP5'
     assert results.parameters == params
     assert results.name == name
     assert results.time == now

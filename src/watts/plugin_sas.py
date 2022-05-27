@@ -47,10 +47,6 @@ class ResultsSAS(Results):
         super().__init__('SAS', params, name, time, inputs, outputs)
         self.csv_data = self._get_sas_csv_data()
 
-    @property
-    def stdout(self) -> str:
-        return (self.base_path / "SAS_log.txt").read_text()
-
     def _get_sas_csv_data(self) -> dict:
         """Read all sas '.csv' files and return results in a dictionary
 

@@ -43,12 +43,8 @@ class ResultsRELAP5(Results):
     """
     def __init__(self, params: Parameters, name: str, time: datetime,
                  inputs: List[PathLike], outputs: List[PathLike]):
-        super().__init__('RELAP5-3D', params, name, time, inputs, outputs)
+        super().__init__('RELAP5', params, name, time, inputs, outputs)
         self.csv_data = self._get_relap5_csv_data()
-
-    @property
-    def stdout(self) -> str:
-        return (self.base_path / "RELAP5_log.txt").read_text()
 
     def _get_relap5_csv_data(self) -> dict:
         """Read relap5 '.csv' file and return results in a dictionary
@@ -73,7 +69,7 @@ class PluginRELAP5(TemplatePlugin):
     template_file
         Templated RELAP5 input
     plotfl_to_csv
-        Whether to convert RELAP5-3D's plotfl file to CSV file
+        Whether to convert RELAP5's plotfl file to CSV file
     extra_inputs
         List of extra (non-templated) input files that are needed
     extra_template_inputs
@@ -115,7 +111,7 @@ class PluginRELAP5(TemplatePlugin):
     @relap5_dir.setter
     def relap5_dir(self, relap5_directory: PathLike):
         if shutil.which(Path(relap5_directory) / f"relap5.{self.ext}") is None:
-            raise RuntimeError("RELAP5-3D executable is missing.")
+            raise RuntimeError("RELAP5 executable is missing.")
         self._relap5_dir = Path(relap5_directory)
 
     @property

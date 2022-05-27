@@ -39,10 +39,6 @@ class ResultsPyARC(Results):
         super().__init__('PyARC', params, name, time, inputs, outputs)
         self.results_data = results_data
 
-    @property
-    def stdout(self) -> str:
-        return (self.base_path / "PyARC_log.txt").read_text()
-
 
 class PluginPyARC(TemplatePlugin):
     """Plugin for running PyARC
