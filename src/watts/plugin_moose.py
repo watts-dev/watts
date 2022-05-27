@@ -88,8 +88,6 @@ class PluginMOOSE(TemplatePlugin):
     ----------
     template_file
         Templated MOOSE input
-    n_cpu
-        Number of processors to be used to run MOOSE application
     extra_inputs
         List of extra (non-templated) input files that are needed
     extra_template_inputs
@@ -106,7 +104,7 @@ class PluginMOOSE(TemplatePlugin):
 
     """
 
-    def __init__(self, template_file: str, n_cpu: int = 1,
+    def __init__(self, template_file: str,
                  extra_inputs: Optional[List[str]] = None,
                  extra_template_inputs: Optional[List[PathLike]] = None,
                  show_stdout: bool = False, show_stderr: bool = False):
@@ -114,11 +112,17 @@ class PluginMOOSE(TemplatePlugin):
                          show_stdout, show_stderr)
         self._executable = Path('moose-opt')
         self.input_name = "MOOSE.i"
-        if n_cpu < 1:
-            raise RuntimeError("The CPU number used to run MOOSE app must be a natural number.")
-        self.n_cpu = n_cpu
 
-    def run(self):
-        """Run MOOSE"""
-        run_proc(["mpiexec", "-n", str(self.n_cpu), self.executable,
-                    "-i", self.input_name])
+    def run(self, mpi_args: Optional[List[str]] = None):
+        """Run MOOSE
+
+        Parameters
+        ----------
+        mpi_args
+            MPI execute command and any additional MPI arguments to pass,
+            e.g. ['mpiexec', '-n', '8'].
+
+        """
+        if mpi_args is None:
+            mpi_args = []
+        run_proc(mpi_args + [self.executable, "-i", self.input_name])
