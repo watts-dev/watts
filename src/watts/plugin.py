@@ -60,7 +60,7 @@ class Plugin(ABC):
     def plugin_name(self):
         return type(self).__name__[6:]
 
-    def __call__(self, params: Parameters, name: str = 'Workflow', **kwargs) -> Results:
+    def __call__(self, params: Parameters = None, name: str = 'Workflow', **kwargs) -> Results:
         """Run the complete workflow for the plugin
 
         Parameters
@@ -78,6 +78,10 @@ class Plugin(ABC):
         """
         db = Database()
         plugin_name = self.plugin_name
+
+        # Generate empty Parameters object if none provided
+        if params is None:
+            params = Parameters()
 
         with cd_tmpdir():
             # Copy extra inputs to temporary directory
