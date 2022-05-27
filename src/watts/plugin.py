@@ -33,6 +33,8 @@ class Plugin(ABC):
     ----------
     plugin_name : str
         Name of the plugin
+    unit_system : {'si', 'cgs'}
+        Desired system of units for rendering templates
 
     """
 
@@ -43,6 +45,7 @@ class Plugin(ABC):
             self.extra_inputs = [Path(f).resolve() for f in extra_inputs]
         self.show_stdout = show_stdout
         self.show_stderr = show_stderr
+        self.unit_system = 'si'
 
     @abstractmethod
     def prerun(self, params):
@@ -148,6 +151,7 @@ class TemplatePlugin(Plugin):
         super().__init__(extra_inputs, show_stdout, show_stderr)
         self.render_template = TemplateRenderer(template_file)
         self.extra_render_templates = []
+        self.input_name = None
         if extra_template_inputs is not None:
             self.extra_render_templates = [TemplateRenderer(f, '') for f in extra_template_inputs]
 
@@ -181,7 +185,16 @@ class TemplatePlugin(Plugin):
         filename
             Filename for rendered template
         """
+        # If the 'input_name' attribute is set, use that as default when
+        # filename is not explicitly passed
+        if filename is None and self.input_name is not None:
+            filename = self.input_name
+
+        # Make a copy of params and convert units if necessary -- the original
+        # params remains unchanged
+        params_copy = params.convert_units(system=self.unit_system)
+
         # Render the template
-        self.render_template(params, filename=filename)
+        self.render_template(params_copy, filename=filename)
         for render_template in self.extra_render_templates:
-            render_template(params)
+            render_template(params_copy)

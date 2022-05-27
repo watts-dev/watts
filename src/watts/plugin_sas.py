@@ -141,21 +141,6 @@ class PluginSAS(TemplatePlugin):
             raise RuntimeError(f"PRIMAR4toCSV utility executable '{exe}' is missing.")
         self._conv_primar4 = Path(exe)
 
-    def prerun(self, params: Parameters):
-        """Generate the SAS input based on the template
-
-        Parameters
-        ----------
-        params
-            Parameters used when rendering template
-        """
-        # Render the template
-        # Make a copy of params and convert units if necessary
-        # The original params remains unchanged
-
-        params_copy = params.convert_units()
-        super().prerun(params_copy, filename=self.input_name)
-
     def run(self):
         """Run SAS"""
         run_proc([self.sas_exec, "-i", self.input_name, "-o", "out.txt"])

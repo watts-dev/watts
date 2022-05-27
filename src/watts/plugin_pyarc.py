@@ -86,21 +86,6 @@ class PluginPyARC(TemplatePlugin):
             raise RuntimeError(f"PyARC executable '{exe}' is missing.")
         self._pyarc_exec = Path(exe)
 
-    def prerun(self, params: Parameters) -> None:
-        """Generate PyARC input files
-
-        Parameters
-        ----------
-        params
-            Parameters used by the PyARC template
-        """
-        # Render the template
-        # Make a copy of params and convert units if necessary
-        # The original params remains unchanged
-
-        params_copy = params.convert_units()
-        super().prerun(params_copy, filename=self.input_name)
-
     def run(self, **kwargs: Mapping):
         """Run PyARC
 

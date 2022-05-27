@@ -95,6 +95,7 @@ class PluginOpenMC(Plugin):
                  show_stdout: bool = False, show_stderr: bool = False):
         super().__init__(extra_inputs, show_stdout, show_stderr)
         self.model_builder = model_builder
+        self.unit_system = 'cgs'
 
     def prerun(self, params: Parameters) -> None:
         """Generate OpenMC input files
@@ -105,7 +106,7 @@ class PluginOpenMC(Plugin):
             Parameters used by the OpenMC template
         """
         # Convert quantities in parameters to CGS system
-        params_copy = params.convert_units(system='cgs')
+        params_copy = params.convert_units(system=self.unit_system)
 
         if self.model_builder is not None:
             self.model_builder(params_copy)

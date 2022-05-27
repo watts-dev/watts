@@ -139,21 +139,6 @@ class PluginMOOSE(TemplatePlugin):
         """
         self.moose_exec = moose_exec
 
-    def prerun(self, params: Parameters):
-        """Generate the MOOSE input based on the template
-
-        Parameters
-        ----------
-        params
-            Parameters used when rendering template
-        """
-        # Render the template
-        # Make a copy of params and convert units if necessary
-        # The original params remains unchanged
-
-        params_copy = params.convert_units()
-        super().prerun(params_copy, filename=self.input_name)
-
     def run(self):
         """Run MOOSE"""
         run_proc(["mpiexec", "-n", str(self.n_cpu), self.moose_exec,

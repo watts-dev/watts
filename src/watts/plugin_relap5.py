@@ -130,12 +130,7 @@ class PluginRELAP5(TemplatePlugin):
         params
             Parameters used when rendering template
         """
-        # Render the template
-        # Make a copy of params and convert units if necessary
-        # The original params remains unchanged
-
-        params_copy = params.convert_units()
-        super().prerun(params_copy, filename=self.input_name)
+        super().prerun(params)
 
         # Copy all necessary files to the temporary directory.
         # RELAP5 requires the executable file and the license key
