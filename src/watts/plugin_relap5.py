@@ -117,20 +117,13 @@ class PluginRELAP5(TemplatePlugin):
         return self._relap5_dir
 
     @relap5_dir.setter
-    def relap5_dir(self, relap5_directory:PathLike):
+    def relap5_dir(self, relap5_directory: PathLike):
         if shutil.which(Path(relap5_directory) / f"relap5.{self.ext}") is None:
             raise RuntimeError("RELAP5-3D executable is missing.")
         self._relap5_dir = Path(relap5_directory)
 
-    def prerun(self, params: Parameters):
-        """Generate the RELAP5 input based on the template
-
-        Parameters
-        ----------
-        params
-            Parameters used when rendering template
-        """
-        super().prerun(params)
+    def run(self):
+        """Run RELAP5"""
 
         # Copy all necessary files to the temporary directory. RELAP5 requires
         # the executable file and the license key to be in the same directory as
@@ -139,9 +132,6 @@ class PluginRELAP5(TemplatePlugin):
         cwd = Path.cwd()
         for fname in self._relap5_dir.iterdir():
             shutil.copy2(str(fname), str(cwd))
-
-    def run(self):
-        """Run RELAP5"""
 
         # Create a list for RELAP5 input command and append any extra
         # options to it.
@@ -173,7 +163,11 @@ class PluginRELAP5(TemplatePlugin):
             if Path('plotfl').exists():
                 self._plotfl_to_csv()
             else:
-                raise RuntimeError("Output plot file 'plotfl' is missing. Please make sure you are running the correct version of RELAP5-3D or the plot file is named correctly.")
+                raise RuntimeError(
+                    "Output plot file 'plotfl' is missing. Please make sure you "
+                    "are running the correct version of RELAP5-3D or the plot "
+                    "file is named correctly."
+                )
 
         time, inputs, outputs = self._get_result_input(self.input_name)
         return ResultsRELAP5(params, name, time, inputs, outputs)
@@ -245,11 +239,7 @@ class PluginRELAP5(TemplatePlugin):
         A list of line number of the keyword markers in the plotfl file
 
         """
-        n_line = []
-        for i in range(len(file)):
-            if keyword in file[i]:
-                n_line.append(i)
-        return n_line
+        return [i for i, file_i in enumerate(file) if keyword in file_i]
 
     def _extract_value(self, contents):
         """Extracts values from the plotfl file according to the keyword markers.
@@ -277,7 +267,7 @@ class PluginRELAP5(TemplatePlugin):
         value_list.append(s.strip())
 
         # Remove all spaces
-        while('' in value_list):
+        while '' in value_list:
             value_list.remove('')
 
         # Remove first element, i.e. markers
