@@ -8,7 +8,7 @@ from typing import List, Optional
 import numpy as np
 import pandas as pd
 
-from .fileutils import PathLike, run as run_proc
+from .fileutils import PathLike
 from .parameters import Parameters
 from .plugin import TemplatePlugin
 from .results import Results
@@ -113,16 +113,6 @@ class PluginMOOSE(TemplatePlugin):
         self._executable = Path('moose-opt')
         self.input_name = "MOOSE.i"
 
-    def run(self, mpi_args: Optional[List[str]] = None):
-        """Run MOOSE
-
-        Parameters
-        ----------
-        mpi_args
-            MPI execute command and any additional MPI arguments to pass,
-            e.g. ['mpiexec', '-n', '8'].
-
-        """
-        if mpi_args is None:
-            mpi_args = []
-        run_proc(mpi_args + [self.executable, "-i", self.input_name])
+    @property
+    def execute_command(self):
+        return [self.executable, "-i", self.input_name]

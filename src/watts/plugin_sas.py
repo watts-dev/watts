@@ -134,9 +134,9 @@ class PluginSAS(TemplatePlugin):
             raise RuntimeError(f"PRIMAR4toCSV utility executable '{exe}' is missing.")
         self._conv_primar4 = Path(exe)
 
-    def run(self):
-        """Run SAS"""
-        run_proc([self.executable, "-i", self.input_name, "-o", "out.txt"])
+    @property
+    def execute_command(self):
+        return [self.executable, "-i", self.input_name, "-o", "out.txt"]
 
     def postrun(self, params: Parameters, name: str) -> ResultsSAS:
         """Read SAS results and create results object

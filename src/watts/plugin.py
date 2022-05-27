@@ -11,7 +11,7 @@ import time
 from typing import Optional, List
 
 from .database import Database
-from .fileutils import cd_tmpdir, PathLike, tee_stdout, tee_stderr
+from .fileutils import cd_tmpdir, PathLike, tee_stdout, tee_stderr, run as run_proc
 from .parameters import Parameters
 from .results import Results
 from .template import TemplateRenderer
@@ -223,4 +223,21 @@ class TemplatePlugin(Plugin):
         results_cls = getattr(watts, f'Results{self.plugin_name}')
         return results_cls(self.plugin_name, params, name, time, inputs, outputs, **kwargs)
 
+    def run(self, mpi_args: Optional[List[str]] = None,
+            extra_args: Optional[List[str]] = None):
+        """Run plugin
 
+        Parameters
+        ----------
+        mpi_args
+            MPI execute command and any additional MPI arguments to pass,
+            e.g. ['mpiexec', '-n', '8'].
+        extra_args
+            Additional command-line arguments to append after the main command
+
+        """
+        if mpi_args is None:
+            mpi_args = []
+        if extra_args is None:
+            extra_args = []
+        run_proc(mpi_args + self.execute_command + extra_args)

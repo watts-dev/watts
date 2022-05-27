@@ -118,6 +118,10 @@ class PluginRELAP5(TemplatePlugin):
             raise RuntimeError("RELAP5-3D executable is missing.")
         self._relap5_dir = Path(relap5_directory)
 
+    @property
+    def execute_command(self):
+        return [self.executable, '-i', self.input_name]
+
     def run(self, extra_args: Optional[List[str]] = None):
         """Run RELAP5
 
@@ -139,7 +143,7 @@ class PluginRELAP5(TemplatePlugin):
         # options to it.
         if extra_args is None:
             extra_args = []
-        command = [self.executable, '-i', self.input_name] + extra_args
+        command = self.execute_command + extra_args
 
         # run_proc() does not work with RELAP5-3D.
         # The extra argument of 'stdout' to subprocess.Popen() in run_proc() somehow prevents RELAP5 from running.
