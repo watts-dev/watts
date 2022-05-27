@@ -76,11 +76,7 @@ class PluginPyARC(TemplatePlugin):
         self._executable = Path(os.environ.get('PyARC_DIR', 'PyARC.py'))
         self.input_name = "pyarc_input.son"
 
-    @property
-    def executable(self) -> Path:
-        return self._executable
-
-    @executable.setter
+    @TemplatePlugin.executable.setter
     def executable(self, exe: PathLike):
         if Path(exe).exists():
             raise RuntimeError(f"{self.plugin_name} executable '{exe}' is missing.")

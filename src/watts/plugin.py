@@ -142,6 +142,10 @@ class TemplatePlugin(Plugin):
     show_stderr
         Whether to display output from stderr when :meth:`run` is called
 
+    Attributes
+    ----------
+    executable
+        Path to plugin executable
 
     """
     def __init__(self, template_file: PathLike,
@@ -198,3 +202,13 @@ class TemplatePlugin(Plugin):
         self.render_template(params_copy, filename=filename)
         for render_template in self.extra_render_templates:
             render_template(params_copy)
+
+    @property
+    def executable(self) -> Path:
+        return self._executable
+
+    @executable.setter
+    def executable(self, exe: PathLike):
+        if shutil.which(exe) is None:
+            raise RuntimeError(f"{self.plugin_name} executable '{exe}' is missing.")
+        self._executable = Path(exe)

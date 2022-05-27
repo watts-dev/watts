@@ -3,7 +3,6 @@
 
 from datetime import datetime
 from pathlib import Path
-import shutil
 from typing import List, Optional
 
 import numpy as np
@@ -118,16 +117,6 @@ class PluginMOOSE(TemplatePlugin):
         if n_cpu < 1:
             raise RuntimeError("The CPU number used to run MOOSE app must be a natural number.")
         self.n_cpu = n_cpu
-
-    @property
-    def executable(self) -> Path:
-        return self._executable
-
-    @executable.setter
-    def executable(self, exe: PathLike):
-        if shutil.which(exe) is None:
-            raise RuntimeError(f"{self.plugin_name} executable '{exe}' is missing.")
-        self._executable = Path(exe)
 
     def run(self):
         """Run MOOSE"""

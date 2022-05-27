@@ -90,6 +90,10 @@ class PluginSAS(TemplatePlugin):
     ----------
     executable
         Path to SAS executable
+    conv_channel
+        Path to CHANNELtoCSV utility executable
+    conv_primar4
+        Path to PRIMAR4toCSV utility executable
 
     """
 
@@ -108,18 +112,7 @@ class PluginSAS(TemplatePlugin):
         self._executable = sas_dir / f"sas.{ext}"
         self._conv_channel = sas_dir / f"CHANNELtoCSV.{ext}"
         self._conv_primar4 = sas_dir / f"PRIMAR4toCSV.{ext}"
-
         self.input_name = "SAS.inp"
-
-    @property
-    def executable(self) -> Path:
-        return self._executable
-
-    @executable.setter
-    def executable(self, exe: PathLike):
-        if shutil.which(exe) is None:
-            raise RuntimeError(f"{self.plugin_name} executable '{exe}' is missing.")
-        self._executable = Path(exe)
 
     @property
     def conv_channel(self) -> Path:
