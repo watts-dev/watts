@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
-from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime
 from pathlib import Path
 import shutil
@@ -11,7 +10,7 @@ from typing import List, Optional
 import numpy as np
 import pandas as pd
 
-from .fileutils import PathLike, run as run_proc, tee_stdout, tee_stderr
+from .fileutils import PathLike, run as run_proc
 from .parameters import Parameters
 from .plugin import TemplatePlugin
 from .results import Results
@@ -91,16 +90,16 @@ class PluginMOOSE(TemplatePlugin):
     ----------
     template_file
         Templated MOOSE input
-    show_stdout
-        Whether to display output from stdout when MOOSE is run
-    show_stderr
-        Whether to display output from stderr when MOOSE is run
     n_cpu
         Number of processors to be used to run MOOSE application
     extra_inputs
         List of extra (non-templated) input files that are needed
     extra_template_inputs
         Extra templated input files
+    show_stdout
+        Whether to display output from stdout when MOOSE is run
+    show_stderr
+        Whether to display output from stderr when MOOSE is run
 
     Attributes
     ----------
@@ -109,15 +108,14 @@ class PluginMOOSE(TemplatePlugin):
 
     """
 
-    def __init__(self, template_file: str, show_stdout: bool = False,
-                 show_stderr: bool = False, n_cpu: int = 1,
+    def __init__(self, template_file: str, n_cpu: int = 1,
                  extra_inputs: Optional[List[str]] = None,
-                 extra_template_inputs: Optional[List[PathLike]] = None):
-        super().__init__(template_file, extra_inputs, extra_template_inputs)
+                 extra_template_inputs: Optional[List[PathLike]] = None,
+                 show_stdout: bool = False, show_stderr: bool = False):
+        super().__init__(template_file, extra_inputs, extra_template_inputs,
+                         show_stdout, show_stderr)
         self._moose_exec = Path('moose-opt')
         self.moose_inp_name = "MOOSE.i"
-        self.show_stdout = show_stdout
-        self.show_stderr = show_stderr
         if n_cpu < 1:
             raise RuntimeError("The CPU number used to run MOOSE app must be a natural number.")
         self.n_cpu = n_cpu
@@ -163,15 +161,8 @@ class PluginMOOSE(TemplatePlugin):
     def run(self):
         """Run MOOSE"""
         print("Run for MOOSE Plugin")
-
-        log_file = Path("MOOSE_log.txt")
-
-        with log_file.open("w") as outfile:
-            func_stdout = tee_stdout if self.show_stdout else redirect_stdout
-            func_stderr = tee_stderr if self.show_stderr else redirect_stderr
-            with func_stdout(outfile), func_stderr(outfile):
-                run_proc(["mpiexec", "-n", str(self.n_cpu), self.moose_exec,
-                          "-i", self.moose_inp_name])
+        run_proc(["mpiexec", "-n", str(self.n_cpu), self.moose_exec,
+                    "-i", self.moose_inp_name])
 
     def postrun(self, params: Parameters, name: str) -> ResultsMOOSE:
         """Read MOOSE results and create results object

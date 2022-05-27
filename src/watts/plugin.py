@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 from abc import ABC, abstractmethod
+from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime
 import uuid
 from pathlib import Path
@@ -9,7 +10,7 @@ import shutil
 from typing import Optional, List
 
 from .database import Database
-from .fileutils import cd_tmpdir, PathLike
+from .fileutils import cd_tmpdir, PathLike, tee_stdout, tee_stderr
 from .parameters import Parameters
 from .results import Results
 from .template import TemplateRenderer
@@ -22,12 +23,25 @@ class Plugin(ABC):
     ----------
     extra_inputs
         Extra (non-templated) input files
+    show_stdout
+        Whether to display output from stdout when :math:`run` is called
+    show_stderr
+        Whether to display output from stderr when :meth:`run` is called
+
+    Attributes
+    ----------
+    plugin_name : str
+        Name of the plugin
+
     """
 
-    def __init__(self, extra_inputs: Optional[List[PathLike]] = None):
+    def __init__(self, extra_inputs: Optional[List[PathLike]] = None,
+                 show_stdout: bool = False, show_stderr: bool = False):
         self.extra_inputs = []
         if extra_inputs is not None:
             self.extra_inputs = [Path(f).resolve() for f in extra_inputs]
+        self.show_stdout = show_stdout
+        self.show_stderr = show_stderr
 
     @abstractmethod
     def prerun(self, params):
@@ -40,6 +54,10 @@ class Plugin(ABC):
     @abstractmethod
     def postrun(self, params) -> Results:
         ...
+
+    @property
+    def plugin_name(self):
+        return type(self).__name__[6:]
 
     def __call__(self, params: Parameters, name: str = 'Workflow', **kwargs) -> Results:
         """Run the complete workflow for the plugin
@@ -65,9 +83,17 @@ class Plugin(ABC):
             for path in self.extra_inputs:
                 shutil.copy(str(path), str(cwd))  # Remove str() for Python 3.8+
 
-            # Run workflow in temporary directory
+            # Generate input files and perform any other prerun actions
             self.prerun(params)
-            self.run(**kwargs)
+
+            # Execute the code, redirecting stdout/stderr if requested
+            with open(f'{self.plugin_name}_log.txt', 'w') as outfile:
+                func_stdout = tee_stdout if self.show_stdout else redirect_stdout
+                func_stderr = tee_stderr if self.show_stderr else redirect_stderr
+                with func_stdout(outfile), func_stderr(outfile):
+                    self.run(**kwargs)
+
+            # Collect results and perform any postrun actions
             result = self.postrun(params, name)
 
             # Create new directory for results and move files there
@@ -98,11 +124,18 @@ class TemplatePlugin(Plugin):
         Extra (non-templated) input files
     extra_template_inputs
         Extra templated input files
+    show_stdout
+        Whether to display output from stdout when :math:`run` is called
+    show_stderr
+        Whether to display output from stderr when :meth:`run` is called
+
 
     """
-    def __init__(self, template_file: PathLike, extra_inputs: Optional[List[PathLike]] = None,
-                 extra_template_inputs: Optional[List[PathLike]] = None):
-        super().__init__(extra_inputs)
+    def __init__(self, template_file: PathLike,
+                 extra_inputs: Optional[List[PathLike]] = None,
+                 extra_template_inputs: Optional[List[PathLike]] = None,
+                 show_stdout: bool = False, show_stderr: bool = False):
+        super().__init__(extra_inputs, show_stdout, show_stderr)
         self.render_template = TemplateRenderer(template_file)
         self.extra_render_templates = []
         if extra_template_inputs is not None:

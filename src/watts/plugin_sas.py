@@ -5,7 +5,6 @@ import os
 import glob
 import subprocess
 import platform
-from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime
 from pathlib import Path
 import shutil
@@ -15,7 +14,7 @@ from typing import List, Optional
 import numpy as np
 import pandas as pd
 
-from .fileutils import PathLike, run as run_proc, tee_stdout, tee_stderr
+from .fileutils import PathLike, run as run_proc
 from .parameters import Parameters
 from .plugin import TemplatePlugin
 from .results import Results
@@ -79,14 +78,14 @@ class PluginSAS(TemplatePlugin):
     ----------
     template_file
         Templated SAS input
-    show_stdout
-        Whether to display output from stdout when SAS is run
-    show_stderr
-        Whether to display output from stderr when SAS is run
     extra_inputs
         List of extra (non-templated) input files that are needed
     extra_template_inputs
         Extra templated input files
+    show_stdout
+        Whether to display output from stdout when SAS is run
+    show_stderr
+        Whether to display output from stderr when SAS is run
 
     Attributes
     ----------
@@ -95,11 +94,12 @@ class PluginSAS(TemplatePlugin):
 
     """
 
-    def  __init__(self, template_file: str, show_stdout: bool = False,
-                  show_stderr: bool = False,
+    def  __init__(self, template_file: str,
                   extra_inputs: Optional[List[str]] = None,
-                  extra_template_inputs: Optional[List[PathLike]] = None):
-        super().__init__(template_file, extra_inputs, extra_template_inputs)
+                  extra_template_inputs: Optional[List[PathLike]] = None,
+                  show_stdout: bool = False, show_stderr: bool = False):
+        super().__init__(template_file, extra_inputs, extra_template_inputs,
+                         show_stdout, show_stderr)
 
         # Check OS to make sure the extension of the executable is correct.
         # Linux and macOS have different executables but both are ".x".
@@ -111,8 +111,6 @@ class PluginSAS(TemplatePlugin):
         self._conv_primar4 = sas_dir / f"PRIMAR4toCSV.{ext}"
 
         self.sas_inp_name = "SAS.inp"
-        self.show_stdout = show_stdout
-        self.show_stderr = show_stderr
 
     @property
     def sas_exec(self) -> Path:
@@ -165,14 +163,7 @@ class PluginSAS(TemplatePlugin):
     def run(self):
         """Run SAS"""
         print("Run for SAS Plugin")
-
-        log_file = Path("SAS_log.txt")
-
-        with log_file.open("w") as outfile:
-            func_stdout = tee_stdout if self.show_stdout else redirect_stdout
-            func_stderr = tee_stderr if self.show_stderr else redirect_stderr
-            with func_stdout(outfile), func_stderr(outfile):
-                run_proc([self.sas_exec, "-i", self.sas_inp_name, "-o", "out.txt"])
+        run_proc([self.sas_exec, "-i", self.sas_inp_name, "-o", "out.txt"])
 
     def postrun(self, params: Parameters, name: str) -> ResultsSAS:
         """Read SAS results and create results object
