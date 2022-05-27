@@ -164,5 +164,4 @@ class PluginSAS(TemplatePlugin):
             with open("PRIMAR4.dat", "r") as file_in, open("PRIMAR4.csv", "w") as file_out:
                 subprocess.run(str(self.conv_primar4), stdin=file_in, stdout=file_out)
 
-        time, inputs, outputs = self._get_result_input(self.input_name)
-        return ResultsSAS(params, name, time, inputs, outputs)
+        return super().postrun(params, name)

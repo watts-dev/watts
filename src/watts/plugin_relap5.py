@@ -169,8 +169,7 @@ class PluginRELAP5(TemplatePlugin):
                     "file is named correctly."
                 )
 
-        time, inputs, outputs = self._get_result_input(self.input_name)
-        return ResultsRELAP5(params, name, time, inputs, outputs)
+        return super().postrun(params, name)
 
     # The RELAP5-3D version used here does not generate csv output files.
     # It generates a text file with a particular format that needs to

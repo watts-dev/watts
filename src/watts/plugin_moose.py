@@ -122,21 +122,3 @@ class PluginMOOSE(TemplatePlugin):
         """Run MOOSE"""
         run_proc(["mpiexec", "-n", str(self.n_cpu), self.executable,
                     "-i", self.input_name])
-
-    def postrun(self, params: Parameters, name: str) -> ResultsMOOSE:
-        """Read MOOSE results and create results object
-
-        Parameters
-        ----------
-        params
-            Parameters used to create MOOSE model
-        name
-            Name of the workflow
-
-        Returns
-        -------
-        MOOSE results object
-        """
-
-        time, inputs, outputs = self._get_result_input(self.input_name)
-        return ResultsMOOSE(params, name, time, inputs, outputs)

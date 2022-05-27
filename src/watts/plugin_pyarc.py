@@ -116,6 +116,4 @@ class PluginPyARC(TemplatePlugin):
         -------
         PyARC results object
         """
-
-        time, inputs, outputs = self._get_result_input(self.input_name)
-        return ResultsPyARC(params, name, time, inputs, outputs, self.pyarc.user_object.results)
+        return super().postrun(params, name, results_data=self.pyarc.user_object.results)
