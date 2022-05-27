@@ -108,7 +108,6 @@ class PluginOpenMC(Plugin):
         # Convert quantities in parameters to CGS system
         params_copy = params.convert_units(system='cgs')
 
-        print("Pre-run for OpenMC Plugin")
         self._run_time = time.time_ns()
         if self.model_builder is not None:
             self.model_builder(params_copy)
@@ -129,7 +128,6 @@ class PluginOpenMC(Plugin):
         openmc.run, openmc.plot_geometry, openmc.calculate_volumes
 
         """
-        print("Run for OpenMC Plugin")
         import openmc
         if function:
             function(**kwargs)
@@ -150,7 +148,6 @@ class PluginOpenMC(Plugin):
         -------
         OpenMC results object
         """
-        print("Post-run for OpenMC Plugin")
 
         def files_since(pattern, time):
             matches = []

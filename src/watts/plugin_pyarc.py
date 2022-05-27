@@ -101,7 +101,6 @@ class PluginPyARC(TemplatePlugin):
 
         params_copy = params.convert_units()
 
-        print("Pre-run for PyARC Plugin")
         self._run_time = time.time_ns()
         super().prerun(params_copy, filename=self.pyarc_inp_name)
 
@@ -113,7 +112,6 @@ class PluginPyARC(TemplatePlugin):
         **kwargs
             Keyword arguments passed on to :func:`pyarc.execute`
         """
-        print("Run for PyARC Plugin")
         sys.path.insert(0, f'{self._pyarc_exec}')
         import PyARC
         self.pyarc = PyARC.PyARC()
@@ -140,7 +138,6 @@ class PluginPyARC(TemplatePlugin):
         -------
         PyARC results object
         """
-        print("Post-run for PyARC Plugin")
 
         time, inputs, outputs = self._get_result_input(self.pyarc_inp_name)
         return ResultsPyARC(params, name, time, inputs, outputs, self.pyarc.user_object.results)

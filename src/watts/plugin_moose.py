@@ -154,13 +154,11 @@ class PluginMOOSE(TemplatePlugin):
 
         params_copy = params.convert_units()
 
-        print("Pre-run for MOOSE Plugin")
         self._run_time = time.time_ns()
         super().prerun(params_copy, filename=self.moose_inp_name)
 
     def run(self):
         """Run MOOSE"""
-        print("Run for MOOSE Plugin")
         run_proc(["mpiexec", "-n", str(self.n_cpu), self.moose_exec,
                     "-i", self.moose_inp_name])
 
@@ -178,7 +176,6 @@ class PluginMOOSE(TemplatePlugin):
         -------
         MOOSE results object
         """
-        print("Post-run for MOOSE Plugin")
 
         time, inputs, outputs = self._get_result_input(self.moose_inp_name)
         return ResultsMOOSE(params, name, time, inputs, outputs)

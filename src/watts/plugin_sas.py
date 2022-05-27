@@ -156,13 +156,11 @@ class PluginSAS(TemplatePlugin):
 
         params_copy = params.convert_units()
 
-        print("Pre-run for SAS Plugin")
         self._run_time = time.time_ns()
         super().prerun(params_copy, filename=self.sas_inp_name)
 
     def run(self):
         """Run SAS"""
-        print("Run for SAS Plugin")
         run_proc([self.sas_exec, "-i", self.sas_inp_name, "-o", "out.txt"])
 
     def postrun(self, params: Parameters, name: str) -> ResultsSAS:
@@ -179,7 +177,6 @@ class PluginSAS(TemplatePlugin):
         -------
         SAS results object
         """
-        print("Post-run for SAS Plugin")
 
         # Convert CHANNEl.dat and PRIMER4.dat to csv files
         # using SAS utilities. Check if files exist because

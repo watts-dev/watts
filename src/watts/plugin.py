@@ -76,6 +76,7 @@ class Plugin(ABC):
         Results from running workflow
         """
         db = Database()
+        plugin_name = self.plugin_name
 
         with cd_tmpdir():
             # Copy extra inputs to temporary directory
@@ -84,16 +85,19 @@ class Plugin(ABC):
                 shutil.copy(str(path), str(cwd))  # Remove str() for Python 3.8+
 
             # Generate input files and perform any other prerun actions
+            print(f"[watts] Calling prerun() for {plugin_name} Plugin")
             self.prerun(params)
 
             # Execute the code, redirecting stdout/stderr if requested
-            with open(f'{self.plugin_name}_log.txt', 'w') as outfile:
+            print(f"[watts] Calling run() for {plugin_name} Plugin")
+            with open(f'{plugin_name}_log.txt', 'w') as outfile:
                 func_stdout = tee_stdout if self.show_stdout else redirect_stdout
                 func_stderr = tee_stderr if self.show_stderr else redirect_stderr
                 with func_stdout(outfile), func_stderr(outfile):
                     self.run(**kwargs)
 
             # Collect results and perform any postrun actions
+            print(f"[watts] Calling postrun() for {plugin_name} Plugin")
             result = self.postrun(params, name)
 
             # Create new directory for results and move files there

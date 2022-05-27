@@ -137,7 +137,6 @@ class PluginRELAP5(TemplatePlugin):
 
         params_copy = params.convert_units()
 
-        print("Pre-run for RELAP5 Plugin")
         self._run_time = time.time_ns()
         super().prerun(params_copy, filename=self.relap5_inp_name)
 
@@ -161,8 +160,6 @@ class PluginRELAP5(TemplatePlugin):
     def run(self):
         """Run RELAP5"""
 
-        print("Run for RELAP5 Plugin")
-
         # run_proc() does not work with RELAP5-3D.
         # The extra argument of 'stdout' to subprocess.Popen() in run_proc() somehow prevents RELAP5 from running.
         # As a work-around, we explicitly use subprocess.Popen() here without specifying 'stdout=subprocess.PIPE')
@@ -183,7 +180,6 @@ class PluginRELAP5(TemplatePlugin):
         -------
         RELAP5 results object
         """
-        print("Post-run for RELAP5 Plugin")
 
         # Convert RELAP5's plotfl file to CSV file for processing
         if self.plotfl_to_csv:
