@@ -88,7 +88,7 @@ class PluginSAS(TemplatePlugin):
 
     Attributes
     ----------
-    sas_exec
+    executable
         Path to SAS executable
 
     """
@@ -105,15 +105,21 @@ class PluginSAS(TemplatePlugin):
         # The Windows executable is ".exe".
         sas_dir = Path(os.environ.get("SAS_DIR", ""))
         ext = "exe" if platform.system() == "Windows" else "x"
-        self._sas_exec = sas_dir / f"sas.{ext}"
+        self._executable = sas_dir / f"sas.{ext}"
         self._conv_channel = sas_dir / f"CHANNELtoCSV.{ext}"
         self._conv_primar4 = sas_dir / f"PRIMAR4toCSV.{ext}"
 
         self.input_name = "SAS.inp"
 
     @property
-    def sas_exec(self) -> Path:
-        return self._sas_exec
+    def executable(self) -> Path:
+        return self._executable
+
+    @executable.setter
+    def executable(self, exe: PathLike):
+        if shutil.which(exe) is None:
+            raise RuntimeError(f"{self.plugin_name} executable '{exe}' is missing.")
+        self._executable = Path(exe)
 
     @property
     def conv_channel(self) -> Path:
@@ -122,12 +128,6 @@ class PluginSAS(TemplatePlugin):
     @property
     def conv_primar4(self) -> Path:
         return self._conv_primar4
-
-    @sas_exec.setter
-    def sas_exec(self, exe: PathLike):
-        if shutil.which(exe) is None:
-            raise RuntimeError(f"SAS executable '{exe}' is missing.")
-        self._sas_exec = Path(exe)
 
     @conv_channel.setter
     def conv_channel(self, exe: PathLike):
@@ -143,7 +143,7 @@ class PluginSAS(TemplatePlugin):
 
     def run(self):
         """Run SAS"""
-        run_proc([self.sas_exec, "-i", self.input_name, "-o", "out.txt"])
+        run_proc([self.executable, "-i", self.input_name, "-o", "out.txt"])
 
     def postrun(self, params: Parameters, name: str) -> ResultsSAS:
         """Read SAS results and create results object

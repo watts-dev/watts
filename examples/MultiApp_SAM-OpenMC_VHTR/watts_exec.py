@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: MIT
 
 """
-This example demonstrates how to use WATTS to perform 
-SAM calculations followed by OpenMC calculation. 
+This example demonstrates how to use WATTS to perform
+SAM calculations followed by OpenMC calculation.
 This example uses a simple VHTR unit-cell
 model with 1 coolant channel surrounded by graphite and fuel.
 The demonstration includes the application of unit-conversion
@@ -75,7 +75,7 @@ params.show_summary(show_metadata=True, sort_by='time')
 moose_app_type = "SAM"
 app_dir = os.environ[moose_app_type.upper() + "_DIR"]
 moose_plugin = watts.PluginMOOSE('../1App_SAM_VHTR/sam_template', show_stderr=True) # show only error
-moose_plugin.moose_exec = app_dir + "/" + moose_app_type.lower() + "-opt"
+moose_plugin.executable = app_dir + "/" + moose_app_type.lower() + "-opt"
 moose_result = moose_plugin(params)
 for key in moose_result.csv_data:
     print(key, moose_result.csv_data[key])

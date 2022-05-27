@@ -102,7 +102,7 @@ class PluginMOOSE(TemplatePlugin):
 
     Attributes
     ----------
-    moose_exec
+    executable
         Path to MOOSE executable
 
     """
@@ -113,35 +113,25 @@ class PluginMOOSE(TemplatePlugin):
                  show_stdout: bool = False, show_stderr: bool = False):
         super().__init__(template_file, extra_inputs, extra_template_inputs,
                          show_stdout, show_stderr)
-        self._moose_exec = Path('moose-opt')
+        self._executable = Path('moose-opt')
         self.input_name = "MOOSE.i"
         if n_cpu < 1:
             raise RuntimeError("The CPU number used to run MOOSE app must be a natural number.")
         self.n_cpu = n_cpu
 
     @property
-    def moose_exec(self) -> Path:
-        return self._moose_exec
+    def executable(self) -> Path:
+        return self._executable
 
-    @moose_exec.setter
-    def moose_exec(self, exe: PathLike):
+    @executable.setter
+    def executable(self, exe: PathLike):
         if shutil.which(exe) is None:
-            raise RuntimeError(f"MOOSE executable '{exe}' is missing.")
-        self._moose_exec = Path(exe)
-
-    def options(self, moose_exec):
-        """Input MOOSE user-specified options
-
-        Parameters
-        ----------
-        MOOSE_exec
-            Path to MOOSE executable
-        """
-        self.moose_exec = moose_exec
+            raise RuntimeError(f"{self.plugin_name} executable '{exe}' is missing.")
+        self._executable = Path(exe)
 
     def run(self):
         """Run MOOSE"""
-        run_proc(["mpiexec", "-n", str(self.n_cpu), self.moose_exec,
+        run_proc(["mpiexec", "-n", str(self.n_cpu), self.executable,
                     "-i", self.input_name])
 
     def postrun(self, params: Parameters, name: str) -> ResultsMOOSE:

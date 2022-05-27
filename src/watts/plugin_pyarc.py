@@ -62,7 +62,7 @@ class PluginPyARC(TemplatePlugin):
 
     Attributes
     ----------
-    pyarc_exec
+    executable
         Path to PyARC executable
 
     """
@@ -73,18 +73,18 @@ class PluginPyARC(TemplatePlugin):
                  show_stdout: bool = False, show_stderr: bool = False):
         super().__init__(template_file, extra_inputs, extra_template_inputs,
                          show_stdout, show_stderr)
-        self._pyarc_exec = Path(os.environ.get('PyARC_DIR', 'PyARC.py'))
+        self._executable = Path(os.environ.get('PyARC_DIR', 'PyARC.py'))
         self.input_name = "pyarc_input.son"
 
     @property
-    def pyarc_exec(self) -> Path:
-        return self._pyarc_exec
+    def executable(self) -> Path:
+        return self._executable
 
-    @pyarc_exec.setter
-    def pyarc_exec(self, exe: PathLike):
-        if os.path.exists(exe) is False:
-            raise RuntimeError(f"PyARC executable '{exe}' is missing.")
-        self._pyarc_exec = Path(exe)
+    @executable.setter
+    def executable(self, exe: PathLike):
+        if Path(exe).exists():
+            raise RuntimeError(f"{self.plugin_name} executable '{exe}' is missing.")
+        self._executable = Path(exe)
 
     def run(self, **kwargs: Mapping):
         """Run PyARC
@@ -94,7 +94,7 @@ class PluginPyARC(TemplatePlugin):
         **kwargs
             Keyword arguments passed on to :func:`pyarc.execute`
         """
-        sys.path.insert(0, f'{self._pyarc_exec}')
+        sys.path.insert(0, f'{self.executable}')
         import PyARC
         self.pyarc = PyARC.PyARC()
         self.pyarc.user_object.do_run = True
@@ -104,7 +104,7 @@ class PluginPyARC(TemplatePlugin):
         with tempfile.TemporaryDirectory() as tmpdir:
             self.pyarc.execute(["-i", self.input_name, "-w", tmpdir, "-o", str(od)], **kwargs)
         sys.path.pop(0)  # Restore sys.path to original state
-        os.chdir(od)  # TODO: I don't know why but I keep going to self._pyarc_exec after execution - this is very wierd!
+        os.chdir(od)  # TODO: I don't know why but I keep going to self.executable after execution - this is very wierd!
 
     def postrun(self, params: Parameters, name: str) -> ResultsPyARC:
         """Collect information from PyARC and create results object

@@ -111,9 +111,9 @@ file (mesh or cross-section files).
 
 The SAM executable defaults to ``sam-opt`` (assumed to be present on your
 :envvar:`PATH`) but can also be specified explicitly with the
-:attr:`~watts.PluginMOOSE.moose_exec` attribute::
+:attr:`~watts.PluginMOOSE.executable` attribute::
 
-    moose_plugin.moose_exec = "/path/to/sam-opt"
+    moose_plugin.executable = "/path/to/sam-opt"
 
 To execute SAM, the :class:`~watts.PluginMOOSE` instance is called as a function
 and expects to receive an instance of :class:`~watts.Parameters`. For the above
@@ -229,9 +229,9 @@ instantiated with following command line::
     pyarc_plugin = watts.PluginPyARC('pyarc_template', show_stdout=True, extra_inputs=['lumped_test5.son'])
 
 The path to PyARC directory must be specified explicitly with the
-:attr:`~watts.PluginPyARC.pyarc_exec` attribute::
+:attr:`~watts.PluginPyARC.executable` attribute::
 
-    pyarc_plugin.pyarc_exec  = "/path/to/PyARC"
+    pyarc_plugin.executable  = "/path/to/PyARC"
 
 To execute PyARC, the :meth:`~watts.PluginPyARC` instance is called directly the
 same way as other plugins.
@@ -264,9 +264,9 @@ instantiated with the following command line::
 The SAS executable is OS-dependent. It defaults to ``sas.x`` (assumed to be
 present on your :envvar:`PATH`) for Linux and macOS, and ``sas.exe`` for
 Windows. However, the executable can also be specified explicitly with the
-:attr:`~watts.PluginSAS.sas_exec` attribute::
+:attr:`~watts.PluginSAS.executable` attribute::
 
-    sas_plugin.sas_exec = "/path/to/sas-exec"
+    sas_plugin.executable = "/path/to/sas-exec"
 
 Furthermore, the paths to the SAS utilities that convert the ".dat" files to
 ".csv" files must be specified with the :attr:`~watts.PluginSAS.conv_channel`
