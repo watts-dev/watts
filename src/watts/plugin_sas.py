@@ -109,7 +109,7 @@ class PluginSAS(TemplatePlugin):
         self._conv_channel = sas_dir / f"CHANNELtoCSV.{ext}"
         self._conv_primar4 = sas_dir / f"PRIMAR4toCSV.{ext}"
 
-        self.sas_inp_name = "SAS.inp"
+        self.input_name = "SAS.inp"
 
     @property
     def sas_exec(self) -> Path:
@@ -154,11 +154,11 @@ class PluginSAS(TemplatePlugin):
         # The original params remains unchanged
 
         params_copy = params.convert_units()
-        super().prerun(params_copy, filename=self.sas_inp_name)
+        super().prerun(params_copy, filename=self.input_name)
 
     def run(self):
         """Run SAS"""
-        run_proc([self.sas_exec, "-i", self.sas_inp_name, "-o", "out.txt"])
+        run_proc([self.sas_exec, "-i", self.input_name, "-o", "out.txt"])
 
     def postrun(self, params: Parameters, name: str) -> ResultsSAS:
         """Read SAS results and create results object
@@ -186,5 +186,5 @@ class PluginSAS(TemplatePlugin):
             with open("PRIMAR4.dat", "r") as file_in, open("PRIMAR4.csv", "w") as file_out:
                 subprocess.run(str(self.conv_primar4), stdin=file_in, stdout=file_out)
 
-        time, inputs, outputs = self._get_result_input(self.sas_inp_name)
+        time, inputs, outputs = self._get_result_input(self.input_name)
         return ResultsSAS(params, name, time, inputs, outputs)

@@ -114,7 +114,7 @@ class PluginMOOSE(TemplatePlugin):
         super().__init__(template_file, extra_inputs, extra_template_inputs,
                          show_stdout, show_stderr)
         self._moose_exec = Path('moose-opt')
-        self.moose_inp_name = "MOOSE.i"
+        self.input_name = "MOOSE.i"
         if n_cpu < 1:
             raise RuntimeError("The CPU number used to run MOOSE app must be a natural number.")
         self.n_cpu = n_cpu
@@ -152,12 +152,12 @@ class PluginMOOSE(TemplatePlugin):
         # The original params remains unchanged
 
         params_copy = params.convert_units()
-        super().prerun(params_copy, filename=self.moose_inp_name)
+        super().prerun(params_copy, filename=self.input_name)
 
     def run(self):
         """Run MOOSE"""
         run_proc(["mpiexec", "-n", str(self.n_cpu), self.moose_exec,
-                    "-i", self.moose_inp_name])
+                    "-i", self.input_name])
 
     def postrun(self, params: Parameters, name: str) -> ResultsMOOSE:
         """Read MOOSE results and create results object
@@ -174,5 +174,5 @@ class PluginMOOSE(TemplatePlugin):
         MOOSE results object
         """
 
-        time, inputs, outputs = self._get_result_input(self.moose_inp_name)
+        time, inputs, outputs = self._get_result_input(self.input_name)
         return ResultsMOOSE(params, name, time, inputs, outputs)

@@ -74,7 +74,7 @@ class PluginPyARC(TemplatePlugin):
         super().__init__(template_file, extra_inputs, extra_template_inputs,
                          show_stdout, show_stderr)
         self._pyarc_exec = Path(os.environ.get('PyARC_DIR', 'PyARC.py'))
-        self.pyarc_inp_name = "pyarc_input.son"
+        self.input_name = "pyarc_input.son"
 
     @property
     def pyarc_exec(self) -> Path:
@@ -99,7 +99,7 @@ class PluginPyARC(TemplatePlugin):
         # The original params remains unchanged
 
         params_copy = params.convert_units()
-        super().prerun(params_copy, filename=self.pyarc_inp_name)
+        super().prerun(params_copy, filename=self.input_name)
 
     def run(self, **kwargs: Mapping):
         """Run PyARC
@@ -117,7 +117,7 @@ class PluginPyARC(TemplatePlugin):
         od = Path.cwd()
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            self.pyarc.execute(["-i", self.pyarc_inp_name, "-w", tmpdir, "-o", str(od)], **kwargs)
+            self.pyarc.execute(["-i", self.input_name, "-w", tmpdir, "-o", str(od)], **kwargs)
         sys.path.pop(0)  # Restore sys.path to original state
         os.chdir(od)  # TODO: I don't know why but I keep going to self._pyarc_exec after execution - this is very wierd!
 
@@ -136,5 +136,5 @@ class PluginPyARC(TemplatePlugin):
         PyARC results object
         """
 
-        time, inputs, outputs = self._get_result_input(self.pyarc_inp_name)
+        time, inputs, outputs = self._get_result_input(self.input_name)
         return ResultsPyARC(params, name, time, inputs, outputs, self.pyarc.user_object.results)

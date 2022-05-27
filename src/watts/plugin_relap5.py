@@ -108,7 +108,7 @@ class PluginRELAP5(TemplatePlugin):
         self.ext = "exe" if platform.system() == "Windows" else "x"
         self._relap5_exec = f"relap5.{self.ext}"
 
-        self.relap5_inp_name = "RELAP5.i"
+        self.input_name = "RELAP5.i"
         self.plotfl_to_csv = plotfl_to_csv
         self.extra_options = extra_options
 
@@ -135,7 +135,7 @@ class PluginRELAP5(TemplatePlugin):
         # The original params remains unchanged
 
         params_copy = params.convert_units()
-        super().prerun(params_copy, filename=self.relap5_inp_name)
+        super().prerun(params_copy, filename=self.input_name)
 
         # Copy all necessary files to the temporary directory.
         # RELAP5 requires the executable file and the license key
@@ -149,7 +149,7 @@ class PluginRELAP5(TemplatePlugin):
         # Create a list for RELAP5 input command and append any extra
         # options to it.
 
-        self._relap5_input = [self._relap5_exec, '-i', self.relap5_inp_name]
+        self._relap5_input = [self._relap5_exec, '-i', self.input_name]
         if isinstance(self.extra_options, list):
             for options in self.extra_options:
                 self._relap5_input.append(options)
@@ -185,7 +185,7 @@ class PluginRELAP5(TemplatePlugin):
             else:
                 raise RuntimeError("Output plot file 'plotfl' is missing. Please make sure you are running the correct version of RELAP5-3D or the plot file is named correctly.")
 
-        time, inputs, outputs = self._get_result_input(self.relap5_inp_name)
+        time, inputs, outputs = self._get_result_input(self.input_name)
         return ResultsRELAP5(params, name, time, inputs, outputs)
 
     # The RELAP5-3D version used here does not generate csv output files.
