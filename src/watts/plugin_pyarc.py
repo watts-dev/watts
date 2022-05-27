@@ -6,7 +6,6 @@ from pathlib import Path
 import os
 import sys
 import tempfile
-import time
 from typing import Mapping, List, Optional
 
 from .fileutils import PathLike
@@ -100,8 +99,6 @@ class PluginPyARC(TemplatePlugin):
         # The original params remains unchanged
 
         params_copy = params.convert_units()
-
-        self._run_time = time.time_ns()
         super().prerun(params_copy, filename=self.pyarc_inp_name)
 
     def run(self, **kwargs: Mapping):

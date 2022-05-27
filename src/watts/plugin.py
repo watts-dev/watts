@@ -7,6 +7,7 @@ from datetime import datetime
 import uuid
 from pathlib import Path
 import shutil
+import time
 from typing import Optional, List
 
 from .database import Database
@@ -85,6 +86,7 @@ class Plugin(ABC):
                 shutil.copy(str(path), str(cwd))  # Remove str() for Python 3.8+
 
             # Generate input files and perform any other prerun actions
+            self._run_time = time.time_ns()
             print(f"[watts] Calling prerun() for {plugin_name} Plugin")
             self.prerun(params)
 

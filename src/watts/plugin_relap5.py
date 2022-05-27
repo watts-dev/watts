@@ -7,7 +7,6 @@ import platform
 from datetime import datetime
 from pathlib import Path
 import shutil
-import time
 from typing import List, Optional
 
 import numpy as np
@@ -136,8 +135,6 @@ class PluginRELAP5(TemplatePlugin):
         # The original params remains unchanged
 
         params_copy = params.convert_units()
-
-        self._run_time = time.time_ns()
         super().prerun(params_copy, filename=self.relap5_inp_name)
 
         # Copy all necessary files to the temporary directory.

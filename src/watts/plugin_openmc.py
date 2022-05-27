@@ -4,7 +4,6 @@
 from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
-import time
 from typing import Callable, Mapping, List, Optional
 
 from .fileutils import PathLike
@@ -108,7 +107,6 @@ class PluginOpenMC(Plugin):
         # Convert quantities in parameters to CGS system
         params_copy = params.convert_units(system='cgs')
 
-        self._run_time = time.time_ns()
         if self.model_builder is not None:
             self.model_builder(params_copy)
 

@@ -8,7 +8,6 @@ import platform
 from datetime import datetime
 from pathlib import Path
 import shutil
-import time
 from typing import List, Optional
 
 import numpy as np
@@ -155,8 +154,6 @@ class PluginSAS(TemplatePlugin):
         # The original params remains unchanged
 
         params_copy = params.convert_units()
-
-        self._run_time = time.time_ns()
         super().prerun(params_copy, filename=self.sas_inp_name)
 
     def run(self):
