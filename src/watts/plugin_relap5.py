@@ -106,11 +106,11 @@ class PluginRELAP5(TemplatePlugin):
 
         self._relap5_dir = Path(os.environ.get("RELAP5_DIR", ""))
         self.ext = "exe" if platform.system() == "Windows" else "x"
-        self._relap5_exec = f"relap5.{self.ext}"
+        self._executable = f"relap5.{self.ext}"
 
         self.input_name = "RELAP5.i"
         self.plotfl_to_csv = plotfl_to_csv
-        self.extra_options = extra_options
+        self.extra_options = extra_options if extra_options is not None else []
 
     @property
     def relap5_dir(self) -> Path:
@@ -141,21 +141,17 @@ class PluginRELAP5(TemplatePlugin):
         for fname in files:
             shutil.copy2(os.path.join(self._relap5_dir, fname), os.getcwd())
 
-        # Create a list for RELAP5 input command and append any extra
-        # options to it.
-
-        self._relap5_input = [self._relap5_exec, '-i', self.input_name]
-        if isinstance(self.extra_options, list):
-            for options in self.extra_options:
-                self._relap5_input.append(options)
-
     def run(self):
         """Run RELAP5"""
+
+        # Create a list for RELAP5 input command and append any extra
+        # options to it.
+        command = [self.executable, '-i', self.input_name] + self.extra_options
 
         # run_proc() does not work with RELAP5-3D.
         # The extra argument of 'stdout' to subprocess.Popen() in run_proc() somehow prevents RELAP5 from running.
         # As a work-around, we explicitly use subprocess.Popen() here without specifying 'stdout=subprocess.PIPE')
-        p = subprocess.Popen(self._relap5_input)
+        p = subprocess.Popen(command)
         stdout, stderr = p.communicate()
 
     def postrun(self, params: Parameters, name: str) -> ResultsRELAP5:
