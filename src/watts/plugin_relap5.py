@@ -78,8 +78,6 @@ class PluginRELAP5(TemplatePlugin):
         List of extra (non-templated) input files that are needed
     extra_template_inputs
         Extra templated input files
-    extra_options
-        Extra options for running RELAP5
     show_stdout
         Whether to display output from stdout when RELAP5 is run
     show_stderr
@@ -95,7 +93,6 @@ class PluginRELAP5(TemplatePlugin):
     def  __init__(self, template_file: str, plotfl_to_csv: bool = True,
                   extra_inputs: Optional[List[str]] = None,
                   extra_template_inputs: Optional[List[PathLike]] = None,
-                  extra_options: Optional[List[str]] = None,
                   show_stdout: bool = False, show_stderr: bool = False):
         super().__init__(template_file, extra_inputs, extra_template_inputs,
                          show_stdout, show_stderr)
@@ -110,7 +107,6 @@ class PluginRELAP5(TemplatePlugin):
 
         self.input_name = "RELAP5.i"
         self.plotfl_to_csv = plotfl_to_csv
-        self.extra_options = extra_options if extra_options is not None else []
 
     @property
     def relap5_dir(self) -> Path:
@@ -122,8 +118,14 @@ class PluginRELAP5(TemplatePlugin):
             raise RuntimeError("RELAP5-3D executable is missing.")
         self._relap5_dir = Path(relap5_directory)
 
-    def run(self):
-        """Run RELAP5"""
+    def run(self, extra_args: Optional[List[str]] = None):
+        """Run RELAP5
+
+        Parameters
+        ----------
+        extra_args
+            Extra arguments to be appended when running the RELAP5 executable
+        """
 
         # Copy all necessary files to the temporary directory. RELAP5 requires
         # the executable file and the license key to be in the same directory as
@@ -135,7 +137,9 @@ class PluginRELAP5(TemplatePlugin):
 
         # Create a list for RELAP5 input command and append any extra
         # options to it.
-        command = [self.executable, '-i', self.input_name] + self.extra_options
+        if extra_args is None:
+            extra_args = []
+        command = [self.executable, '-i', self.input_name] + extra_args
 
         # run_proc() does not work with RELAP5-3D.
         # The extra argument of 'stdout' to subprocess.Popen() in run_proc() somehow prevents RELAP5 from running.

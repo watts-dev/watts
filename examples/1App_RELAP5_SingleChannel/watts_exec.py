@@ -21,7 +21,7 @@ params = watts.Parameters()
 
 # Channel params
 params['inlet_pressure'] = 3.0e5
-params['outlet_pressure'] = 1.013e5 
+params['outlet_pressure'] = 1.013e5
 params['heater_power'] = Quantity(20, "kW")
 
 
@@ -32,8 +32,8 @@ relap5_plugin = watts.PluginRELAP5('relap5_template')
 
 # Example of input with extra options, including explicitly specifying the
 # locations of fluid files.
-# relap5_plugin = watts.PluginRELAP5('relap5_template', 
-#                                     extra_options = ['-w', 'tpfh2o', '-e', 'tpfn2', '-tpfdir', 'location\of\fluid\property\files'])
+# relap5_plugin = watts.PluginRELAP5('relap5_template')
+# relap5_plugin(params, extra_args=['-w', 'tpfh2o', '-e', 'tpfn2', '-tpfdir', 'location\of\fluid\property\files'])
 
 # If RELAP5_DIR is not added to the environment, the directory where the
 # executable and license key are stored can be specified explicitly.
