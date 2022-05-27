@@ -59,7 +59,7 @@ class ResultsRELAP5(Results):
 
         """
         csv_data = {}
-        if os.path.exists('R5-out.csv'):
+        if Path('R5-out.csv').exists():
             csv_file_df = pd.read_csv('R5-out.csv')
             for column_name in csv_file_df.columns:
                 csv_data[column_name] =  np.array(csv_file_df[column_name])
@@ -88,7 +88,7 @@ class PluginRELAP5(TemplatePlugin):
     Attributes
     ----------
     relap5_dir
-        Path to RELAP5 executable
+        Path to directory containing RELAP5 executable
 
     """
 
@@ -132,14 +132,13 @@ class PluginRELAP5(TemplatePlugin):
         """
         super().prerun(params)
 
-        # Copy all necessary files to the temporary directory.
-        # RELAP5 requires the executable file and the license key
-        # to be in the same directory as the input file to run.
-        # Users can also add all fluid property files here.
-
-        files = os.listdir(self._relap5_dir)
-        for fname in files:
-            shutil.copy2(os.path.join(self._relap5_dir, fname), os.getcwd())
+        # Copy all necessary files to the temporary directory. RELAP5 requires
+        # the executable file and the license key to be in the same directory as
+        # the input file to run. Users can also add all fluid property files
+        # here.
+        cwd = Path.cwd()
+        for fname in self._relap5_dir.iterdir():
+            shutil.copy2(str(fname), str(cwd))
 
     def run(self):
         """Run RELAP5"""
@@ -171,7 +170,7 @@ class PluginRELAP5(TemplatePlugin):
 
         # Convert RELAP5's plotfl file to CSV file for processing
         if self.plotfl_to_csv:
-            if os.path.exists('plotfl'):
+            if Path('plotfl').exists():
                 self._plotfl_to_csv()
             else:
                 raise RuntimeError("Output plot file 'plotfl' is missing. Please make sure you are running the correct version of RELAP5-3D or the plot file is named correctly.")
