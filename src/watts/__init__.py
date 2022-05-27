@@ -7,6 +7,7 @@ from .plugin_moose import *
 from .plugin_pyarc import *
 from .plugin_sas import *
 from .plugin_relap5 import *
+from .plugin_mcnp import *
 from .template import *
 from .parameters import *
 from .database import *
