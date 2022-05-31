@@ -39,7 +39,7 @@ class ResultsMOOSE(Results):
     """
     def __init__(self, params: Parameters, name: str, time: datetime,
                  inputs: List[PathLike], outputs: List[PathLike]):
-        super().__init__('MOOSE', params, name, time, inputs, outputs)
+        super().__init__(params, name, time, inputs, outputs)
         self.csv_data = self._save_MOOSE_csv()
 
     def _save_MOOSE_csv(self) -> dict:

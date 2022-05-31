@@ -42,7 +42,7 @@ class ResultsOpenMC(Results):
 
     def __init__(self, params: Parameters, name: str, time: datetime,
                  inputs: List[Path], outputs: List[Path]):
-        super().__init__('OpenMC', params, name, time, inputs, outputs)
+        super().__init__(params, name, time, inputs, outputs)
 
     @property
     def statepoints(self) -> List[Path]:

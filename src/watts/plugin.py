@@ -221,7 +221,7 @@ class TemplatePlugin(Plugin):
 
         # Get correct Results subclass and return instance
         results_cls = getattr(watts, f'Results{self.plugin_name}')
-        return results_cls(self.plugin_name, params, name, time, inputs, outputs, **kwargs)
+        return results_cls(params, name, time, inputs, outputs, **kwargs)
 
     def run(self, mpi_args: Optional[List[str]] = None,
             extra_args: Optional[List[str]] = None):

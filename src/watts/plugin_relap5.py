@@ -43,7 +43,7 @@ class ResultsRELAP5(Results):
     """
     def __init__(self, params: Parameters, name: str, time: datetime,
                  inputs: List[PathLike], outputs: List[PathLike]):
-        super().__init__('RELAP5', params, name, time, inputs, outputs)
+        super().__init__(params, name, time, inputs, outputs)
         self.csv_data = self._get_relap5_csv_data()
 
     def _get_relap5_csv_data(self) -> dict:

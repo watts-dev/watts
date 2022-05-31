@@ -36,7 +36,7 @@ class ResultsPyARC(Results):
 
     def __init__(self, params: Parameters, name: str, time: datetime,
                  inputs: List[Path], outputs: List[Path], results_data: dict):
-        super().__init__('PyARC', params, name, time, inputs, outputs)
+        super().__init__(params, name, time, inputs, outputs)
         self.results_data = results_data
 
 
