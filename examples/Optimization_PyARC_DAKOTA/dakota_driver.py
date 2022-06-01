@@ -5,8 +5,8 @@
 
 import watts
 import sys
-import os
 
+# Path to dakota.interfacing
 sys.path.insert(0, "/software/Workbench/dakota/share/dakota/Python/dakota")
 
 print("Running Dakota driver")

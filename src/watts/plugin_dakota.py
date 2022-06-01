@@ -175,13 +175,8 @@ class PluginDakota(TemplatePlugin):
             if not os.path.isdir(os.path.join(self._initial_dir, fname)):
                 if not os.path.exists(os.path.join(_current_dir, fname)):
                     shutil.copy2(os.path.join(self._initial_dir, fname), _current_dir)
-                    print("Copied " + os.path.join(self._initial_dir, fname), _current_dir)
                 else:
-                    print(os.path.join(self._initial_dir, fname), _current_dir + " already exists")
-
-        # for fname in files:
-        #     shutil.copy2(os.path.join(self._initial_dir, fname), _current_dir)
-   
+                    print(os.path.join(self._initial_dir, fname), _current_dir + " already exists")   
 
     def run(self):
         """Run Dakota"""
@@ -251,8 +246,6 @@ class PluginDakotaDriver():
         
         f = open("params.json")
         data = json.load(f)
-        for key in data:
-            print(key)
         f.close()
 
         f = open("input.txt", "w+")
@@ -307,7 +300,7 @@ class PluginDakotaDriver():
               i+=1
         self.results.write()
 
-        #dump to external results.json file
+        # Dump to external results.json file
         with open('results.json', 'w') as outfile:
             rst = json.dump(self.results,  outfile, default=lambda o: o.__dict__)
 
