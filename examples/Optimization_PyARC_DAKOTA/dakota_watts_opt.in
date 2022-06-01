@@ -47,7 +47,7 @@ method
 variables   
 
     discrete_design_set
-        real = 2
+        real = {{ real }}
 
             elements_per_variable =     5   5   
             initial_point         =     13  20
@@ -60,14 +60,14 @@ interface
 #  direct
     asynchronous  evaluation_concurrency = 1
 #    local_evaluation_scheduling static
-    analysis_drivers = 'python2 dakota_driver.py'
+    analysis_drivers = 'dakota_driver.py'
         fork 
             parameters_file = 'params.in'
             results_file    = 'results.out'
             work_directory named = "workdir"
             directory_tag 
             directory_save
-            link_files = "watts.drive" "dakota_driver.py" "input.tmpl" "pyarc_template" "watts_exec.py" "*.son" "pyarc_input.isotxs"
+            link_files = "watts.drive" "dakota_driver.py" "input.tmpl" "pyarc_template" "watts_pyarc_exec.py" "*.son" "pyarc_input.isotxs"
             file_save
     failure_capture continuation
 
