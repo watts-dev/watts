@@ -1,14 +1,12 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
-from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
-import time
 from typing import Callable, Mapping, List, Optional
 
-from .fileutils import PathLike, tee_stdout, tee_stderr
+from .fileutils import PathLike
 from .parameters import Parameters
 from .plugin import Plugin
 from .results import Results
@@ -95,10 +93,9 @@ class PluginOpenMC(Plugin):
     def __init__(self, model_builder: Optional[Callable[[Parameters], None]] = None,
                  extra_inputs: Optional[List[PathLike]] = None,
                  show_stdout: bool = False, show_stderr: bool = False):
-        super().__init__(extra_inputs)
+        super().__init__(extra_inputs, show_stdout, show_stderr)
         self.model_builder = model_builder
-        self.show_stdout = show_stdout
-        self.show_stderr = show_stderr
+        self.unit_system = 'cgs'
 
     def prerun(self, params: Parameters) -> None:
         """Generate OpenMC input files
@@ -109,10 +106,8 @@ class PluginOpenMC(Plugin):
             Parameters used by the OpenMC template
         """
         # Convert quantities in parameters to CGS system
-        params_copy = params.convert_units(system='cgs')
+        params_copy = params.convert_units(system=self.unit_system)
 
-        print("Pre-run for OpenMC Plugin")
-        self._run_time = time.time_ns()
         if self.model_builder is not None:
             self.model_builder(params_copy)
 
@@ -132,16 +127,11 @@ class PluginOpenMC(Plugin):
         openmc.run, openmc.plot_geometry, openmc.calculate_volumes
 
         """
-        print("Run for OpenMC Plugin")
         import openmc
-        with open('OpenMC_log.txt', 'w') as f:
-            func_stdout = tee_stdout if self.show_stdout else redirect_stdout
-            func_stderr = tee_stderr if self.show_stderr else redirect_stderr
-            with func_stdout(f), func_stderr(f):
-                if function:
-                    function(**kwargs)
-                else:
-                    openmc.run(**kwargs)
+        if function:
+            function(**kwargs)
+        else:
+            openmc.run(**kwargs)
 
     def postrun(self, params: Parameters, name: str) -> ResultsOpenMC:
         """Collect information from OpenMC simulation and create results object
@@ -157,7 +147,6 @@ class PluginOpenMC(Plugin):
         -------
         OpenMC results object
         """
-        print("Post-run for OpenMC Plugin")
 
         def files_since(pattern, time):
             matches = []
