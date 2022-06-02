@@ -84,4 +84,4 @@ class PluginMCNP(TemplatePlugin):
 
     @property
     def execute_command(self):
-        return [self.executable, f"i={self.input_name}"]
+        return [str(self.executable), f"i={self.input_name}"]

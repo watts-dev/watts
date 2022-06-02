@@ -116,7 +116,7 @@ class PluginRELAP5(TemplatePlugin):
 
     @property
     def execute_command(self):
-        return [self.executable, '-i', self.input_name]
+        return [str(self.executable), '-i', self.input_name]
 
     def run(self, extra_args: Optional[List[str]] = None):
         """Run RELAP5

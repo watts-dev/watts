@@ -111,4 +111,4 @@ class PluginMOOSE(TemplatePlugin):
 
     @property
     def execute_command(self):
-        return [self.executable, "-i", self.input_name]
+        return [str(self.executable), "-i", self.input_name]

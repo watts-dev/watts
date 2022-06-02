@@ -71,4 +71,4 @@ class PluginSerpent(TemplatePlugin):
 
     @property
     def execute_command(self):
-        return [self.executable, str(self.input_name)]
+        return [str(self.executable), str(self.input_name)]
