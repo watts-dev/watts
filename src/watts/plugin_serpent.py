@@ -67,6 +67,7 @@ class PluginSerpent(TemplatePlugin):
                          show_stdout, show_stderr)
         self._executable = Path('sss2')
         self.input_name = "serpent_input"
+        self.unit_system = 'cgs'
 
     @property
     def execute_command(self):

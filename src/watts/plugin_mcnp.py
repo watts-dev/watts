@@ -80,6 +80,7 @@ class PluginMCNP(TemplatePlugin):
                          show_stdout, show_stderr)
         self._executable = Path('mcnp6')
         self.input_name = "mcnp_input"
+        self.unit_system = 'cgs'
 
     @property
     def execute_command(self):
