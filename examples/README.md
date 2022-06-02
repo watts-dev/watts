@@ -18,6 +18,7 @@ Training on WATTS is enabled with a suite of simple examples:
 ## Examples with Optimization
 * [__Optimization_SAM-OpenMC_VHTR-scipy__](Optimization_SAM-OpenMC_VHTR-scipy/README.md) - 1-criteria optimization of SAM/OpenMC workflow using scipy
 * [__Optimization_SAM-OpenMC_VHTR-pymoo__](Optimization_SAM-OpenMC_VHTR-pymoo/README.md) - Multi-criteria optimization of SAM/OpenMC workflow using pymoo
+* [__Optimization_PyARC_DAKOTA__](Optimization_PyARC_DAKOTA/README.md) - Multi-criteria optimization of PyArc workflow using Dakota
 ## Examples with Sensitivity studies
 * [__Sensitivity_SAM-OpenMC_VHTR-scipy-LHS__](Sensitivity_SAM-OpenMC_VHTR-scipy-LHS/README.md) - Sampling with LHS of SAM/OpenMC workflow using scipy
 ## Examples with Parameteric studies
