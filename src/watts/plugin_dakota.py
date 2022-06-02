@@ -3,12 +3,10 @@
 
 import os
 import glob
-import sys
-from contextlib import redirect_stdout, redirect_stderr
+# import sys
 from datetime import datetime
 from pathlib import Path
 import shutil
-import time
 from typing import List, Optional
 
 import json
@@ -17,7 +15,7 @@ import numpy as np
 import pandas as pd
 import subprocess
 
-from .fileutils import PathLike, run as run_proc, tee_stdout, tee_stderr
+from .fileutils import PathLike, run as run_proc
 from .parameters import Parameters
 from .plugin import TemplatePlugin
 from .results import Results
@@ -97,15 +95,14 @@ class PluginDakota(TemplatePlugin):
     ----------
     template_file
         Templated Dakota input
-    show_stdout
-        Whether to display output from stdout when Dakota is run
-    show_stderr
-        Whether to display output from stderr when Dakota is run
     extra_inputs
         List of extra (non-templated) input files that are needed
     extra_template_inputs
         Extra templated input files
-
+    show_stdout
+        Whether to display output from stdout when Dakota is run
+    show_stderr
+        Whether to display output from stderr when Dakota is run
     Attributes
     ----------
     dakota_exec
@@ -113,19 +110,16 @@ class PluginDakota(TemplatePlugin):
 
     """
 
-    def __init__(self, template_file: str, show_stdout: bool = False,
-                 show_stderr: bool = False, 
+    def __init__(self, template_file: str,  
                  extra_inputs: Optional[List[str]] = None,
-                 extra_template_inputs: Optional[List[PathLike]] = None):
-        super().__init__(template_file, extra_inputs, extra_template_inputs)
+                 extra_template_inputs: Optional[List[PathLike]] = None,
+                 show_stdout: bool = False, show_stderr: bool = False):
+        super().__init__(template_file, extra_inputs, extra_template_inputs,
+                         show_stdout, show_stderr)
 
         dakota_dir = Path(os.environ.get("DAKOTA_DIR", ""))
         self._dakota_exec = dakota_dir / f"dakota.sh"
-
-        self.dakota_inp_name = "dakota_watts_opt.in"
-        self.show_stdout = show_stdout
-        self.show_stderr = show_stderr
-
+        self.input_name = "dakota_watts_opt.in"
         self._initial_dir = os.getcwd()
 
     @property
@@ -156,15 +150,7 @@ class PluginDakota(TemplatePlugin):
         params
             Parameters used when rendering template
         """
-        # Render the template
-        # Make a copy of params and convert units if necessary
-        # The original params remains unchanged
-
-        params_copy = params.convert_units()
-
-        print("Pre-run for Dakota Plugin")
-        self._run_time = time.time_ns()
-        super().prerun(params_copy, filename=self.dakota_inp_name)
+        super().prerun(params)
 
         # Copy all files to the temporary directory.
         # Avoid duplicate files.
@@ -180,15 +166,8 @@ class PluginDakota(TemplatePlugin):
 
     def run(self):
         """Run Dakota"""
-        print("Run for Dakota Plugin")
 
-        log_file = Path("Dakota.txt")
-
-        with log_file.open("w") as outfile:
-            func_stdout = tee_stdout if self.show_stdout else redirect_stdout
-            func_stderr = tee_stderr if self.show_stderr else redirect_stderr
-            with func_stdout(outfile), func_stderr(outfile):
-                run_proc([self.dakota_exec, "-i", self.dakota_inp_name])
+        run_proc([self.dakota_exec, "-i", self.input_name])
 
     def postrun(self, params: Parameters, name: str) -> ResultsDakota:
         """Read Dakota results and create results object
@@ -204,9 +183,8 @@ class PluginDakota(TemplatePlugin):
         -------
         Dakota results object
         """
-        print("Post-run for Dakota Plugin")
 
-        time, inputs, outputs = self._get_result_input(self.dakota_inp_name)
+        time, inputs, outputs = self._get_result_input(self.input_name)
         return ResultsDakota(params, name, time, inputs, outputs)
 
 class PluginDakotaDriver():
