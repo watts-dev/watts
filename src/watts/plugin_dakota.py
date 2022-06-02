@@ -41,18 +41,18 @@ class ResultsDakota(Results):
     stdout
         Standard output from Dakota run
     output_data
-        Dictionary with data from .csv files
+        Dictionary with data from .dat files
     """
     def __init__(self, params: Parameters, name: str, time: datetime,
                  inputs: List[PathLike], outputs: List[PathLike]):
         super().__init__('Dakota', params, name, time, inputs, outputs)
-        self.output_data = self._get_Dakota_csv()
+        self.output_data = self._get_Dakota_output()
 
     @property
     def stdout(self) -> str:
         return (self.base_path / "Dakota_log.txt").read_text()
 
-    def _get_Dakota_csv(self) -> dict:
+    def _get_Dakota_output(self) -> dict:
         """Read all Dakota '.dat' files and return results in a dictionary
 
         Returns
@@ -66,8 +66,8 @@ class ResultsDakota(Results):
         
         if (glob.glob('dakota_opt.dat')):
             with open('dakota_opt.dat') as f:
-                reader=csv.reader(f)
-                rows=[row for idx, row in enumerate(reader) if idx == 0]
+                reader = csv.reader(f)
+                rows = [row for idx, row in enumerate(reader) if idx == 0]
       
             col_names = str(rows[0][0]).split()
             df = pd.read_csv("dakota_opt.dat", sep="\s+", skiprows=1, names=col_names)
@@ -78,8 +78,8 @@ class ResultsDakota(Results):
         # Save Dakota's final output '.dat' files
         if (glob.glob('finaldata1.dat')):
             with open('finaldata1.dat') as fd:
-                reader=csv.reader(fd)
-                rows=[row for idx, row in enumerate(reader) if idx == 0]
+                reader = csv.reader(fd)
+                rows = [row for idx, row in enumerate(reader) if idx == 0]
 
             new_rows = str(rows[0][0]).split()
             output_data['finaldata1'] = np.array([float(i) for i in new_rows])
