@@ -6,9 +6,7 @@
 import watts
 import sys
 
-# Path to dakota.interfacing
+# Provide path to dakota.interfacing (if necessary)
 sys.path.insert(0, "/software/Workbench/dakota/share/dakota/Python/dakota")
-
-print("Running Dakota driver")
 
 DakotaDriver = watts.PluginDakotaDriver(coupled_code_exec="watts_pyarc_exec.py")

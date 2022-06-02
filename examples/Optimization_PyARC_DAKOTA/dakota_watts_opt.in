@@ -67,7 +67,7 @@ interface
             work_directory named = "workdir"
             directory_tag 
             directory_save
-            link_files = "watts.drive" "dakota_driver.py" "input.tmpl" "pyarc_template" "watts_pyarc_exec.py" "*.son" "pyarc_input.isotxs"
+            link_files = "watts.drive" "{{ dakota_driver_name }}" "input.tmpl" "pyarc_template" "{{ coupled_code_exec }}" "*.son" "pyarc_input.isotxs"
             file_save
     failure_capture continuation
 
