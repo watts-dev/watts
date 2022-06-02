@@ -9,3 +9,4 @@ User's Guide
    install
    getting_started
    usage
+   plugins
