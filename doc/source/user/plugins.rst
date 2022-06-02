@@ -212,3 +212,22 @@ turn it off by omitting Card-104 in the RELAP5-3D input file and adding
 ``plotfl_to_csv=False`` when instantiating the plugin as follows::
 
     relap5_plugin = watts.PluginRELAP5('relap5_template', plotfl_to_csv=False)
+
+MCNP Plugin
++++++++++++
+
+The :class:`~watts.PluginMCNP` class handles execution of MCNP. As with other
+plugins, MCNP input files can be templated as described in
+:ref:`usage_templates`. By default, this plugin will try to call ``mcnp6`` but
+this can be changed with the :attr:`~watts.PluginMCNP.executable` attribute if
+needed::
+
+    mcnp_plugin = watts.PluginMCNP('mcnp_input')
+    mcnp_plugin.executable = "mcnp5"
+
+Serpent Plugin
+++++++++++++++
+
+The :class:`~watts.PluginSerpent` class handles execution of Serpent 2. As with
+other plugins, Serpent input files can be templated as described in
+:ref:`usage_templates`.

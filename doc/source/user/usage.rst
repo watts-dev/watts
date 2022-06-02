@@ -116,6 +116,8 @@ Calling the plugin class then executes the code::
 When you call a plugin, it will return an instance of a subclass of
 :class:`~watts.Results` (see :ref:`results` for further details).
 
+.. _usage_templates:
+
 Templated Inputs
 ~~~~~~~~~~~~~~~~
 
