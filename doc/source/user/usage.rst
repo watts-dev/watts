@@ -280,7 +280,7 @@ SAS, the :meth:`~watts.PluginSAS` instance is called directly in the same way as
 other plugins.
 
 RELAP5-3D Plugin
-~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
 The :class:`~watts.PluginRELAP5` class handles execution of RELAP5-3D. Note that
 the plugin is designed for the execution of RELAP5-3D v4.3.4 and thus may not be
@@ -289,10 +289,10 @@ files that can be templated as follows:
 
 .. code-block:: jinja
 
-*                 Time         Power
-20250001          -1.0         0.0
-20250002           0.0      {{ heater_power_1 }}
-20250003         1.0e3      {{ heater_power_2 }}
+    *                 Time         Power
+    20250001          -1.0         0.0
+    20250002           0.0      {{ heater_power_1 }}
+    20250003         1.0e3      {{ heater_power_2 }}
 
 If the templated input file is `relap5_template`, then the RELAP5-3D plugin can be
 instantiated with the following command line::
