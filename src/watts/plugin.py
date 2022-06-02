@@ -213,8 +213,7 @@ class TemplatePlugin(Plugin):
 
         # Determine time, inputs and outputs
         time = datetime.fromtimestamp(self._run_time * 1e-9)
-        inputs = [p.name for p in self.extra_inputs]
-        inputs.append(self.input_name)
+        inputs = [self.input_name] + [p.name for p in self.extra_inputs]
         for renderer in self.extra_render_templates:
             inputs.append(renderer.template_file.name)
         outputs = [p for p in Path.cwd().iterdir() if p.name not in inputs]
