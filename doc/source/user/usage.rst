@@ -3,10 +3,17 @@
 Basic Usage
 -----------
 
-WATTS consists of a set of Python classes that can manage simulation
-workflows for multiple codes where information is exchanged at a coarse level.
-For each code, input files rely on placeholder values that are filled in
-based on a set of user-defined parameters.
+WATTS consists of a set of Python classes that can manage simulation workflows
+for one or multiple codes. It provides the following capabilities:
+
+- An isolated execution environment when running a code;
+- The ability to use placeholder values in input files that are filled in
+  programmatically;
+- Seamless :ref:`unit conversions <units>` when working with multiple codes;
+- A managed database that simulation inputs and outputs are automatically saved
+  to; and
+- Python classes that provide extra post-processing and analysis capabilities
+  for each code.
 
 Parameters
 ++++++++++
@@ -44,6 +51,8 @@ and later re-created using the :meth:`~watts.Parameters.from_pickle` method::
 By themselves, :class:`~watts.Parameters` are not very useful, but when
 combined with plugin classes, they become building blocks for sophisticated
 workflows.
+
+.. _units:
 
 Units
 ~~~~~

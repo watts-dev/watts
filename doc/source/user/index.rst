@@ -4,7 +4,8 @@ User's Guide
 ============
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    install
+   getting_started
    usage
