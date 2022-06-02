@@ -8,6 +8,7 @@ from .plugin_pyarc import *
 from .plugin_sas import *
 from .plugin_relap5 import *
 from .plugin_mcnp import *
+from .plugin_serpent import *
 from .template import *
 from .parameters import *
 from .database import *
