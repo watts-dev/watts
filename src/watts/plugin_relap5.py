@@ -2,20 +2,17 @@
 # SPDX-License-Identifier: MIT
 
 import os
-import glob
 import subprocess
 import platform
-from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime
 from pathlib import Path
 import shutil
-import time
 from typing import List, Optional
 
 import numpy as np
 import pandas as pd
 
-from .fileutils import PathLike, run as run_proc, tee_stdout, tee_stderr
+from .fileutils import PathLike
 from .parameters import Parameters
 from .plugin import TemplatePlugin
 from .results import Results
@@ -75,10 +72,6 @@ class PluginRELAP5(TemplatePlugin):
     ----------
     template_file
         Templated RELAP5 input
-    show_stdout
-        Whether to display output from stdout when RELAP5 is run
-    show_stderr
-        Whether to display output from stderr when RELAP5 is run
     plotfl_to_csv
         Whether to convert RELAP5-3D's plotfl file to CSV file
     extra_inputs
@@ -87,6 +80,10 @@ class PluginRELAP5(TemplatePlugin):
         Extra templated input files
     extra_options
         Extra options for running RELAP5
+    show_stdout
+        Whether to display output from stdout when RELAP5 is run
+    show_stderr
+        Whether to display output from stderr when RELAP5 is run
 
     Attributes
     ----------
@@ -95,12 +92,13 @@ class PluginRELAP5(TemplatePlugin):
 
     """
 
-    def  __init__(self, template_file: str, show_stdout: bool = False,
-                  show_stderr: bool = False, plotfl_to_csv: bool = True,
+    def  __init__(self, template_file: str, plotfl_to_csv: bool = True,
                   extra_inputs: Optional[List[str]] = None,
                   extra_template_inputs: Optional[List[PathLike]] = None,
-                  extra_options: Optional[List[str]] = None):
-        super().__init__(template_file, extra_inputs, extra_template_inputs)
+                  extra_options: Optional[List[str]] = None,
+                  show_stdout: bool = False, show_stderr: bool = False):
+        super().__init__(template_file, extra_inputs, extra_template_inputs,
+                         show_stdout, show_stderr)
 
         # Check OS to make sure the extension of the executable is correct.
         # Linux and macOS have different executables but both are ".x".
@@ -110,9 +108,7 @@ class PluginRELAP5(TemplatePlugin):
         self.ext = "exe" if platform.system() == "Windows" else "x"
         self._relap5_exec = f"relap5.{self.ext}"
 
-        self.relap5_inp_name = "RELAP5.i"
-        self.show_stdout = show_stdout
-        self.show_stderr = show_stderr
+        self.input_name = "RELAP5.i"
         self.plotfl_to_csv = plotfl_to_csv
         self.extra_options = extra_options
 
@@ -134,20 +130,12 @@ class PluginRELAP5(TemplatePlugin):
         params
             Parameters used when rendering template
         """
-        # Render the template
-        # Make a copy of params and convert units if necessary
-        # The original params remains unchanged
-
-        params_copy = params.convert_units()
-
-        print("Pre-run for RELAP5 Plugin")
-        self._run_time = time.time_ns()
-        super().prerun(params_copy, filename=self.relap5_inp_name)
+        super().prerun(params)
 
         # Copy all necessary files to the temporary directory.
-        # RELAP5 requires the executable file and the license key 
+        # RELAP5 requires the executable file and the license key
         # to be in the same directory as the input file to run.
-        # Users can also add all fluid property files here. 
+        # Users can also add all fluid property files here.
 
         files = os.listdir(self._relap5_dir)
         for fname in files:
@@ -156,28 +144,19 @@ class PluginRELAP5(TemplatePlugin):
         # Create a list for RELAP5 input command and append any extra
         # options to it.
 
-        self._relap5_input = [self._relap5_exec, '-i', self.relap5_inp_name]
+        self._relap5_input = [self._relap5_exec, '-i', self.input_name]
         if isinstance(self.extra_options, list):
             for options in self.extra_options:
-                self._relap5_input.append(options) 
+                self._relap5_input.append(options)
 
     def run(self):
         """Run RELAP5"""
 
-        print("Run for RELAP5 Plugin")
-
-        log_file = Path("RELAP5_log.txt")
-
         # run_proc() does not work with RELAP5-3D.
         # The extra argument of 'stdout' to subprocess.Popen() in run_proc() somehow prevents RELAP5 from running.
         # As a work-around, we explicitly use subprocess.Popen() here without specifying 'stdout=subprocess.PIPE')
-
-        with log_file.open("w") as outfile:
-            func_stdout = tee_stdout if self.show_stdout else redirect_stdout
-            func_stderr = tee_stderr if self.show_stderr else redirect_stderr
-            with func_stdout(outfile), func_stderr(outfile):
-                p = subprocess.Popen(self._relap5_input)
-                stdout, stderr = p.communicate()
+        p = subprocess.Popen(self._relap5_input)
+        stdout, stderr = p.communicate()
 
     def postrun(self, params: Parameters, name: str) -> ResultsRELAP5:
         """Read RELAP5 results and create results object
@@ -193,7 +172,6 @@ class PluginRELAP5(TemplatePlugin):
         -------
         RELAP5 results object
         """
-        print("Post-run for RELAP5 Plugin")
 
         # Convert RELAP5's plotfl file to CSV file for processing
         if self.plotfl_to_csv:
@@ -202,7 +180,7 @@ class PluginRELAP5(TemplatePlugin):
             else:
                 raise RuntimeError("Output plot file 'plotfl' is missing. Please make sure you are running the correct version of RELAP5-3D or the plot file is named correctly.")
 
-        time, inputs, outputs = self._get_result_input(self.relap5_inp_name)
+        time, inputs, outputs = self._get_result_input(self.input_name)
         return ResultsRELAP5(params, name, time, inputs, outputs)
 
     # The RELAP5-3D version used here does not generate csv output files.
@@ -215,15 +193,15 @@ class PluginRELAP5(TemplatePlugin):
         """
 
         with open('plotfl') as f:
-            contents = f.readlines() 
-            
+            contents = f.readlines()
+
         # Get markers for 'contents'
         n_plotinf = self._check_string(contents, 'plotinf')
         n_plotalf = self._check_string(contents, 'plotalf')
         n_plotnum = self._check_string(contents, 'plotnum')
         n_plotrec = self._check_string(contents, 'plotrec')
 
-        # Break 'contents' into 3 sections: channel, ID, values 
+        # Break 'contents' into 3 sections: channel, ID, values
         channels = contents[n_plotalf[0] : n_plotnum[0]]
         ids = contents[n_plotnum[0] : n_plotrec[0]]
         values = contents[n_plotrec[0] : ]
@@ -241,7 +219,7 @@ class PluginRELAP5(TemplatePlugin):
             i_end = n_plotrec[i] - n_plotrec[0] + (n_plotrec[1] - n_plotrec[0]) # Add "n_plotrec[1] - n_plotrec[0]" to reach the last line of 'values'
             value_list = np.double(self._extract_value(values[i_start : i_end]))
             data_dict[f"value_t_{i}"] = value_list
-            
+
         # Convert the dictionary into DataFrame
         df = pd.DataFrame(data_dict)
         df.set_index('channel', inplace=True)
@@ -251,8 +229,8 @@ class PluginRELAP5(TemplatePlugin):
         new_col = []
         for i in range(len(df.columns)):
             new_col.append(f"{df.columns[i]}-{df.iloc[0][i]}")
-            
-        df.columns = new_col 
+
+        df.columns = new_col
         df = df[1:] # Remove the volume ID row
 
         # Save DataFrame as csv
@@ -273,7 +251,7 @@ class PluginRELAP5(TemplatePlugin):
 
         """
         n_line = []
-        for i in range(len(file)): 
+        for i in range(len(file)):
             if keyword in file[i]:
                 n_line.append(i)
         return n_line
@@ -301,13 +279,13 @@ class PluginRELAP5(TemplatePlugin):
                 else:
                     value_list.append(s.strip())
                     s = ''
-        value_list.append(s.strip())           
-        
+        value_list.append(s.strip())
+
         # Remove all spaces
         while('' in value_list):
             value_list.remove('')
-        
+
         # Remove first element, i.e. markers
-        del value_list[0] 
-        
+        del value_list[0]
+
         return value_list

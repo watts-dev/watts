@@ -2,14 +2,16 @@
 # SPDX-License-Identifier: MIT
 
 from abc import ABC, abstractmethod
+from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime
 import uuid
 from pathlib import Path
 import shutil
+import time
 from typing import Optional, List
 
 from .database import Database
-from .fileutils import cd_tmpdir, PathLike
+from .fileutils import cd_tmpdir, PathLike, tee_stdout, tee_stderr
 from .parameters import Parameters
 from .results import Results
 from .template import TemplateRenderer
@@ -22,12 +24,28 @@ class Plugin(ABC):
     ----------
     extra_inputs
         Extra (non-templated) input files
+    show_stdout
+        Whether to display output from stdout when :math:`run` is called
+    show_stderr
+        Whether to display output from stderr when :meth:`run` is called
+
+    Attributes
+    ----------
+    plugin_name : str
+        Name of the plugin
+    unit_system : {'si', 'cgs'}
+        Desired system of units for rendering templates
+
     """
 
-    def __init__(self, extra_inputs: Optional[List[PathLike]] = None):
+    def __init__(self, extra_inputs: Optional[List[PathLike]] = None,
+                 show_stdout: bool = False, show_stderr: bool = False):
         self.extra_inputs = []
         if extra_inputs is not None:
             self.extra_inputs = [Path(f).resolve() for f in extra_inputs]
+        self.show_stdout = show_stdout
+        self.show_stderr = show_stderr
+        self.unit_system = 'si'
 
     @abstractmethod
     def prerun(self, params):
@@ -41,7 +59,11 @@ class Plugin(ABC):
     def postrun(self, params) -> Results:
         ...
 
-    def __call__(self, params: Parameters, name: str = 'Workflow', **kwargs) -> Results:
+    @property
+    def plugin_name(self):
+        return type(self).__name__[6:]
+
+    def __call__(self, params: Parameters = None, name: str = 'Workflow', **kwargs) -> Results:
         """Run the complete workflow for the plugin
 
         Parameters
@@ -58,6 +80,11 @@ class Plugin(ABC):
         Results from running workflow
         """
         db = Database()
+        plugin_name = self.plugin_name
+
+        # Generate empty Parameters object if none provided
+        if params is None:
+            params = Parameters()
 
         with cd_tmpdir():
             # Copy extra inputs to temporary directory
@@ -65,9 +92,21 @@ class Plugin(ABC):
             for path in self.extra_inputs:
                 shutil.copy(str(path), str(cwd))  # Remove str() for Python 3.8+
 
-            # Run workflow in temporary directory
+            # Generate input files and perform any other prerun actions
+            self._run_time = time.time_ns()
+            print(f"[watts] Calling prerun() for {plugin_name} Plugin")
             self.prerun(params)
-            self.run(**kwargs)
+
+            # Execute the code, redirecting stdout/stderr if requested
+            print(f"[watts] Calling run() for {plugin_name} Plugin")
+            with open(f'{plugin_name}_log.txt', 'w') as outfile:
+                func_stdout = tee_stdout if self.show_stdout else redirect_stdout
+                func_stderr = tee_stderr if self.show_stderr else redirect_stderr
+                with func_stdout(outfile), func_stderr(outfile):
+                    self.run(**kwargs)
+
+            # Collect results and perform any postrun actions
+            print(f"[watts] Calling postrun() for {plugin_name} Plugin")
             result = self.postrun(params, name)
 
             # Create new directory for results and move files there
@@ -98,13 +137,21 @@ class TemplatePlugin(Plugin):
         Extra (non-templated) input files
     extra_template_inputs
         Extra templated input files
+    show_stdout
+        Whether to display output from stdout when :math:`run` is called
+    show_stderr
+        Whether to display output from stderr when :meth:`run` is called
+
 
     """
-    def __init__(self, template_file: PathLike, extra_inputs: Optional[List[PathLike]] = None,
-                 extra_template_inputs: Optional[List[PathLike]] = None):
-        super().__init__(extra_inputs)
+    def __init__(self, template_file: PathLike,
+                 extra_inputs: Optional[List[PathLike]] = None,
+                 extra_template_inputs: Optional[List[PathLike]] = None,
+                 show_stdout: bool = False, show_stderr: bool = False):
+        super().__init__(extra_inputs, show_stdout, show_stderr)
         self.render_template = TemplateRenderer(template_file)
         self.extra_render_templates = []
+        self.input_name = None
         if extra_template_inputs is not None:
             self.extra_render_templates = [TemplateRenderer(f, '') for f in extra_template_inputs]
 
@@ -138,7 +185,16 @@ class TemplatePlugin(Plugin):
         filename
             Filename for rendered template
         """
+        # If the 'input_name' attribute is set, use that as default when
+        # filename is not explicitly passed
+        if filename is None and self.input_name is not None:
+            filename = self.input_name
+
+        # Make a copy of params and convert units if necessary -- the original
+        # params remains unchanged
+        params_copy = params.convert_units(system=self.unit_system)
+
         # Render the template
-        self.render_template(params, filename=filename)
+        self.render_template(params_copy, filename=filename)
         for render_template in self.extra_render_templates:
-            render_template(params)
+            render_template(params_copy)
