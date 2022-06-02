@@ -41,7 +41,7 @@ WATTS
         :text-align: center
         :link: https://github.com/watts-dev/watts/tree/development/examples
 
-        Once you're acquianted with the basics of watts, check out our examples
+        Once you're acquainted with the basics of watts, check out our examples
         that illustrate a variety of use cases.
 
 
