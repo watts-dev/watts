@@ -173,6 +173,11 @@ You can both view and/or change the executable using the
     PosixPath('mcnp6')
     >>> plugin_mcnp.executable = 'mcnp5'
 
+If the ``executable`` you specify is not an absolute path, the directory
+containing it must be present on your :envvar:`PATH` environment variable.
+
+.. _input_files:
+
 Specifying Input Files
 ~~~~~~~~~~~~~~~~~~~~~~
 

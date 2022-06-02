@@ -7,15 +7,9 @@ MOOSE Plugin
 ++++++++++++
 
 The :class:`~watts.PluginMOOSE` class enables MOOSE simulations using a
-templated input file. This is demonstrated here for a SAM application, but other
-examples based on BISON are also available. For MOOSE codes such as SAM or BISON
-that use text-based input files, WATTS relies on the `Jinja
-<https://jinja.palletsprojects.com>`_ templating engine for handling templated
-variables and expressions. The templated input file looks like a normal MOOSE
-input file where some values have been replaced with **variables**, which are
-denoted by ``{{`` and ``}}`` pairs and get replaced with actual values when the
-template is *rendered*. For example, a templated input file might look as
-follows:
+templated input file. This is demonstrated here for a SAM application, but the
+plugin would apply equally well to other MOOSE applications such as BISON. For a
+MOOSE-based application, a templated input file might look as follows:
 
 .. code-block:: jinja
 
@@ -33,61 +27,28 @@ the general MOOSE plugin that can be created as::
 
     moose_plugin = watts.PluginMOOSE('sam_template.inp')
 
-The MOOSE plugin provides the option to specify non-templated input files (in
-`extra_inputs` option) that will be copied together with the templated input
-file (mesh or cross-section files).
+If you need to specify additional input files / templates, see
+:ref:`input_files`.
 
-The SAM executable defaults to ``sam-opt`` (assumed to be present on your
-:envvar:`PATH`) but can also be specified explicitly with the
-:attr:`~watts.PluginMOOSE.executable` attribute::
+The MOOSE plugin defaults to using the executable ``moose-opt`` but can also be
+specified explicitly with the :attr:`~watts.PluginMOOSE.executable` attribute::
 
     moose_plugin.executable = "/path/to/sam-opt"
-
-To execute SAM, the :class:`~watts.PluginMOOSE` instance is called as a function
-and expects to receive an instance of :class:`~watts.Parameters`. For the above
-template, the :class:`~watts.Parameters` instance should have ``He_Pressure``,
-``He_velocity``, and ``He_inlet_temp`` parameters present. Thus, executing SAM
-with this templated input file along with corresponding parameters might look as
-follows::
-
-    params = watts.Parameters()
-    params['He_Pressure'] = 2.0
-    params['He_velocity'] = 1.0
-    params['He_inlet_temp'] = 600.0
-    results = moose_plugin(params)
-
-Calling the :class:`~watts.PluginMOOSE` instance will render the templated input
-file (replace variables with values from the :class:`~watts.Parameters`
-instance), execute SAM, and collect the output files.
-
-If applicable, WATTS also allows users to use multiple input files for executing
-MOOSE codes. This can be done by simply specifying the names of the extra input
-files as a string to the "extra_template_inputs" argument when calling the
-:class:`~watts.PluginMOOSE` class::
-
-    moose_plugin = watts.PluginMOOSE('moose_template', show_stdout=True, extra_template_inputs=['extra_input_file_names'])
-
-Beyond simple variable substitution, Jinja has sophisticated capabilities for
-using logical control structures, filters, calling Python methods, and
-extensible templates; for advanced usage, please read through the Jinja
-`template designer documentation
-<https://jinja.palletsprojects.com/en/3.0.x/templates/>`_.
 
 OpenMC Plugin
 +++++++++++++
 
-The :class:`~watts.PluginOpenMC` class handles OpenMC execution in a similar
-manner to the :class:`~watts.PluginMOOSE` class for MOOSE. However, for OpenMC,
+The :class:`~watts.PluginOpenMC` class operates slightly differently than other
+plugins since OpenMC doesn't primarily rely on text-based inputs. For OpenMC,
 inputs are generated programmatically through the OpenMC Python API. Instead of
-writing a text template, for the OpenMC plugin you need to write a function that
+writing a text template, for this plugin you need to write a function that
 accepts an instance of :class:`~watts.Parameters` and generates the necessary
 XML files. For example::
 
-    def godiva_model(params):
+    def jezebel_model(params):
         model = openmc.Model()
 
         pu_metal = openmc.Material()
-        pu_metal.set_density('sum')
         pu_metal.add_nuclide('Pu239', 3.7047e-02)
         pu_metal.add_nuclide('Pu240', 1.7512e-03)
         pu_metal.add_nuclide('Pu241', 1.1674e-04)
@@ -154,22 +115,16 @@ input files which can be templated as follows:
 If the templated input file is `pyarc_template`, then the PyARC plugin can be
 instantiated with following command line::
 
-    pyarc_plugin = watts.PluginPyARC('pyarc_template', show_stdout=True, extra_inputs=['lumped_test5.son'])
+    pyarc_plugin = watts.PluginPyARC('pyarc_template')
 
 The path to PyARC directory must be specified explicitly with the
 :attr:`~watts.PluginPyARC.executable` attribute::
 
-    pyarc_plugin.executable  = "/path/to/PyARC"
+    pyarc_plugin.executable = "/path/to/PyARC"
 
 To execute PyARC, the :meth:`~watts.PluginPyARC` instance is called directly the
-same way as other plugins.
-
-If applicable, WATTS also allows users to use multiple input files for executing
-PyARC. This can be done by simply specifying the names of the extra input
-files as a string to the "extra_template_inputs" argument when calling the
-:class:`~watts.PluginPyARC` class::
-
-    pyarc_plugin = watts.PluginPyARC('pyarc_template', show_stdout=True, extra_template_inputs=['extra_input_file_names'])
+same way as other plugins. Extra input files and templates can be specified as
+described in :ref:`input_files`.
 
 SAS4A/SASSY-1 Plugin
 ++++++++++++++++++++
@@ -187,12 +142,12 @@ text-based input files which can be templated as follows:
 If the templated input file is `sas_template`, then the SAS4A/SASSY-1 plugin can
 be instantiated with the following command line::
 
-    sas_plugin = watts.PluginSAS('sas_template', show_stdout=True)
+    sas_plugin = watts.PluginSAS('sas_template')
 
 The SAS executable is OS-dependent. It defaults to ``sas.x`` (assumed to be
 present on your :envvar:`PATH`) for Linux and macOS, and ``sas.exe`` for
-Windows. However, the executable can also be specified explicitly with the
-:attr:`~watts.PluginSAS.executable` attribute::
+Windows. You can also explicitly specify the
+:attr:`~watts.PluginSAS.executable`::
 
     sas_plugin.executable = "/path/to/sas-exec"
 
@@ -203,7 +158,7 @@ and :attr:`~watts.PluginSAS.conv_primar4` attributes::
     sas_plugin.conv_channel  = "/path/to/CHANNELtoCSV.x"
     sas_plugin.conv_primar4  = "/path/to/PRIMAR4toCSV.x"
 
-Similar to the SAS executable, the utilities are also OS dependent. To execute
+Similar to the SAS executable, the utilities are also OS-dependent. To execute
 SAS, the :meth:`~watts.PluginSAS` instance is called directly in the same way as
 other plugins.
 
@@ -225,30 +180,25 @@ files that can be templated as follows:
 If the templated input file is `relap5_template`, then the RELAP5-3D plugin can be
 instantiated with the following command line::
 
-    relap5_plugin = watts.PluginRELAP5('relap5_template', show_stdout=True)
+    relap5_plugin = watts.PluginRELAP5('relap5_template')
 
 RELAP5-3D requires the executable, license key, and the input file to be in the
-same directory to run. Thus, before running the RELAP5-3D plugin, user needs to
-specify the directory that the executable and the license key are in (must be in
-the same directory). This can be done by adding the ``RELAP5_DIR`` variable to
-the environment or by explicitly specifying the path in the Python script as::
+same directory to run. Thus, before running the RELAP5-3D plugin, you need to
+specify the directory that the executable and the license key are in (they must
+be in the same directory). This can be done by adding the ``RELAP5_DIR``
+variable to the environment or by explicitly specifying the path in the Python
+script as::
 
-    relap5_plugin.relap5_dir = "\path\to\executable\and\license"
+    relap5_plugin.relap5_dir = "/path/to/relap5_dir/"
 
-The RELAP5 executable is OS-dependent. It defaults to ``relap5.x`` (assumed to be
-present on your :envvar:`PATH`) for Linux and macOS, and ``relap5.exe`` for
+The RELAP5 executable is OS-dependent. It defaults to ``relap5.x`` (assumed to
+be present on your :envvar:`PATH`) for Linux and macOS, and ``relap5.exe`` for
 Windows.
 
-The plugin also supports extra input options to RELAP5-3D. You simply need to
-add the extra options as a list of strings to the ``extra_args`` argument when
-calling the plugin as follows::
-
-    relap5_plugin = watts.PluginRELAP5('relap5_template')
-    relap5_plugin(params, extra_args=['-w', 'tpfh2o', '-e', 'tpfn2', '-tpfdir', 'location\of\fluid\property\files'])
-
-Note that the fluid property files can be specified via ``extra_args``, as shown
-above. Another approach is to simply put them in the same directory as the
-executable and license key before running the plugin.
+As with other plugins, extra input files and templates can be specified as
+described in :ref:`input_files`. Note that the fluid property files can be
+specified via ``extra_args``. Another approach is to simply put them in the same
+directory as the executable and license key before running the plugin.
 
 For the postprocessing of RELAP5-3D results, the plugin converts the default
 "plotfl" plot file generated by RELAP5-3D into a ".CSV" file. Card-104 must be
