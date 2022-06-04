@@ -2,16 +2,16 @@
 # SPDX-License-Identifier: MIT
 
 """
-This example demonstrates how to use WATTS to perform 
-multiple runs and extract selected results from the runs. 
-The demonstration includes an approach to save selected 
-results from different runs into a single CSV file for 
+This example demonstrates how to use WATTS to perform
+multiple runs and extract selected results from the runs.
+The demonstration includes an approach to save selected
+results from different runs into a single CSV file for
 ease of comparison, visualization, and post-processing.
 This demonstration uses SAM with a single PbCoreChannel
-with inlet and outlet boundary conditions. The input 
-power of the channel is varied. The simulation is run 
+with inlet and outlet boundary conditions. The input
+power of the channel is varied. The simulation is run
 as transient where the end time is varied to artificially
-create results of different lengths to show that the 
+create results of different lengths to show that the
 output CSV file can accept columns of different lengths.
 """
 
@@ -57,7 +57,7 @@ for i in range(len(power)):
 
     # Execute WATTS
     moose_plugin = watts.PluginMOOSE(moose_app_type.lower() + '_template') # show all the output
-    moose_plugin.moose_exec = app_dir + "/" + moose_app_type.lower() + "-opt"
+    moose_plugin.executable = app_dir + "/" + moose_app_type.lower() + "-opt"
     moose_result = moose_plugin(params)
 
     # Add items to dictionary.
@@ -69,4 +69,4 @@ for i in range(len(power)):
 df = pd.DataFrame({k: pd.Series(v) for k, v in results_dict.items()})
 
 # Sort column names alphabetically and save as CSV file
-df.sort_index(axis=1).to_csv('results.csv') 
+df.sort_index(axis=1).to_csv('results.csv')

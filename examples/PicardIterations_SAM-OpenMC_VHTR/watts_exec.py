@@ -3,7 +3,7 @@
 
 """
 This example demonstrates how to use WATTS to perform several
-iterations where SAM calculations are followed by OpenMC 
+iterations where SAM calculations are followed by OpenMC
 calculation and temperature/power information are exchanged
 until convergence. This example uses a simple VHTR unit-cell
 model with 1 coolant channel surrounded by graphite and fuel.
@@ -70,7 +70,7 @@ while conv_it:
     moose_app_type = "SAM"
     app_dir = os.environ[moose_app_type.upper() + "_DIR"]
     sam_plugin = watts.PluginMOOSE('../1App_SAM_VHTR/sam_template', show_stderr=True) # show only error
-    sam_plugin.moose_exec = app_dir + "/" + moose_app_type.lower() + "-opt"
+    sam_plugin.executable = app_dir + "/" + moose_app_type.lower() + "-opt"
     sam_result = sam_plugin(params)
 
     # get temperature from SAM results

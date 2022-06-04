@@ -43,12 +43,8 @@ class ResultsRELAP5(Results):
     """
     def __init__(self, params: Parameters, name: str, time: datetime,
                  inputs: List[PathLike], outputs: List[PathLike]):
-        super().__init__('RELAP5-3D', params, name, time, inputs, outputs)
+        super().__init__(params, name, time, inputs, outputs)
         self.csv_data = self._get_relap5_csv_data()
-
-    @property
-    def stdout(self) -> str:
-        return (self.base_path / "RELAP5_log.txt").read_text()
 
     def _get_relap5_csv_data(self) -> dict:
         """Read relap5 '.csv' file and return results in a dictionary
@@ -59,7 +55,7 @@ class ResultsRELAP5(Results):
 
         """
         csv_data = {}
-        if os.path.exists('R5-out.csv'):
+        if Path('R5-out.csv').exists():
             csv_file_df = pd.read_csv('R5-out.csv')
             for column_name in csv_file_df.columns:
                 csv_data[column_name] =  np.array(csv_file_df[column_name])
@@ -73,13 +69,11 @@ class PluginRELAP5(TemplatePlugin):
     template_file
         Templated RELAP5 input
     plotfl_to_csv
-        Whether to convert RELAP5-3D's plotfl file to CSV file
+        Whether to convert RELAP5's plotfl file to CSV file
     extra_inputs
         List of extra (non-templated) input files that are needed
     extra_template_inputs
         Extra templated input files
-    extra_options
-        Extra options for running RELAP5
     show_stdout
         Whether to display output from stdout when RELAP5 is run
     show_stderr
@@ -88,14 +82,13 @@ class PluginRELAP5(TemplatePlugin):
     Attributes
     ----------
     relap5_dir
-        Path to RELAP5 executable
+        Path to directory containing RELAP5 executable
 
     """
 
     def  __init__(self, template_file: str, plotfl_to_csv: bool = True,
                   extra_inputs: Optional[List[str]] = None,
                   extra_template_inputs: Optional[List[PathLike]] = None,
-                  extra_options: Optional[List[str]] = None,
                   show_stdout: bool = False, show_stderr: bool = False):
         super().__init__(template_file, extra_inputs, extra_template_inputs,
                          show_stdout, show_stderr)
@@ -106,56 +99,52 @@ class PluginRELAP5(TemplatePlugin):
 
         self._relap5_dir = Path(os.environ.get("RELAP5_DIR", ""))
         self.ext = "exe" if platform.system() == "Windows" else "x"
-        self._relap5_exec = f"relap5.{self.ext}"
+        self._executable = f"relap5.{self.ext}"
 
         self.input_name = "RELAP5.i"
         self.plotfl_to_csv = plotfl_to_csv
-        self.extra_options = extra_options
 
     @property
     def relap5_dir(self) -> Path:
         return self._relap5_dir
 
     @relap5_dir.setter
-    def relap5_dir(self, relap5_directory:PathLike):
+    def relap5_dir(self, relap5_directory: PathLike):
         if shutil.which(Path(relap5_directory) / f"relap5.{self.ext}") is None:
-            raise RuntimeError("RELAP5-3D executable is missing.")
+            raise RuntimeError("RELAP5 executable is missing.")
         self._relap5_dir = Path(relap5_directory)
 
-    def prerun(self, params: Parameters):
-        """Generate the RELAP5 input based on the template
+    @property
+    def execute_command(self):
+        return [self.executable, '-i', self.input_name]
+
+    def run(self, extra_args: Optional[List[str]] = None):
+        """Run RELAP5
 
         Parameters
         ----------
-        params
-            Parameters used when rendering template
+        extra_args
+            Extra arguments to be appended when running the RELAP5 executable
         """
-        super().prerun(params)
 
-        # Copy all necessary files to the temporary directory.
-        # RELAP5 requires the executable file and the license key
-        # to be in the same directory as the input file to run.
-        # Users can also add all fluid property files here.
-
-        files = os.listdir(self._relap5_dir)
-        for fname in files:
-            shutil.copy2(os.path.join(self._relap5_dir, fname), os.getcwd())
+        # Copy all necessary files to the temporary directory. RELAP5 requires
+        # the executable file and the license key to be in the same directory as
+        # the input file to run. Users can also add all fluid property files
+        # here.
+        cwd = Path.cwd()
+        for fname in self._relap5_dir.iterdir():
+            shutil.copy2(str(fname), str(cwd))
 
         # Create a list for RELAP5 input command and append any extra
         # options to it.
-
-        self._relap5_input = [self._relap5_exec, '-i', self.input_name]
-        if isinstance(self.extra_options, list):
-            for options in self.extra_options:
-                self._relap5_input.append(options)
-
-    def run(self):
-        """Run RELAP5"""
+        if extra_args is None:
+            extra_args = []
+        command = self.execute_command + extra_args
 
         # run_proc() does not work with RELAP5-3D.
         # The extra argument of 'stdout' to subprocess.Popen() in run_proc() somehow prevents RELAP5 from running.
         # As a work-around, we explicitly use subprocess.Popen() here without specifying 'stdout=subprocess.PIPE')
-        p = subprocess.Popen(self._relap5_input)
+        p = subprocess.Popen(command)
         stdout, stderr = p.communicate()
 
     def postrun(self, params: Parameters, name: str) -> ResultsRELAP5:
@@ -175,13 +164,16 @@ class PluginRELAP5(TemplatePlugin):
 
         # Convert RELAP5's plotfl file to CSV file for processing
         if self.plotfl_to_csv:
-            if os.path.exists('plotfl'):
+            if Path('plotfl').exists():
                 self._plotfl_to_csv()
             else:
-                raise RuntimeError("Output plot file 'plotfl' is missing. Please make sure you are running the correct version of RELAP5-3D or the plot file is named correctly.")
+                raise RuntimeError(
+                    "Output plot file 'plotfl' is missing. Please make sure you "
+                    "are running the correct version of RELAP5-3D or the plot "
+                    "file is named correctly."
+                )
 
-        time, inputs, outputs = self._get_result_input(self.input_name)
-        return ResultsRELAP5(params, name, time, inputs, outputs)
+        return super().postrun(params, name)
 
     # The RELAP5-3D version used here does not generate csv output files.
     # It generates a text file with a particular format that needs to
@@ -250,11 +242,7 @@ class PluginRELAP5(TemplatePlugin):
         A list of line number of the keyword markers in the plotfl file
 
         """
-        n_line = []
-        for i in range(len(file)):
-            if keyword in file[i]:
-                n_line.append(i)
-        return n_line
+        return [i for i, file_i in enumerate(file) if keyword in file_i]
 
     def _extract_value(self, contents):
         """Extracts values from the plotfl file according to the keyword markers.
@@ -282,7 +270,7 @@ class PluginRELAP5(TemplatePlugin):
         value_list.append(s.strip())
 
         # Remove all spaces
-        while('' in value_list):
+        while '' in value_list:
             value_list.remove('')
 
         # Remove first element, i.e. markers
