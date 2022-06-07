@@ -29,8 +29,6 @@ class ResultsSerpent(Results):
 
     Attributes
     ----------
-    keff
-        K-effective value
     stdout
         Standard output from Serpent run
     """

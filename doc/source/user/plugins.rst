@@ -230,4 +230,26 @@ Serpent Plugin
 
 The :class:`~watts.PluginSerpent` class handles execution of Serpent 2. As with
 other plugins, Serpent input files can be templated as described in
-:ref:`usage_templates`.
+:ref:`usage_templates`. By default, this plugin will try to call ``sss2``. After
+running Serpent::
+
+    serpent_plugin = watts.PluginSerpent('serpent_input')
+    result = serpent_plugin()
+
+the Serpent output files will be available to you through the
+:attr:`~watts.Results.outputs` attribute:
+
+.. code-block:: pycon
+
+    >>> result.outputs
+    [PosixPath('serpent_input_det0.m'),
+     PosixPath('serpent_log.txt'),
+     PosixPath('serpent_input.seed'),
+     PosixPath('serpent_input.out'),
+     PosixPath('serpent_input_res.m')]
+
+At this point, we recommend using the `serpentTools
+<https://serpent-tools.readthedocs.io>`_ package for interacting with the output
+files. For example::
+
+    results_reader = serpentTools.ResultsReader(str(result.outputs[-1]))
