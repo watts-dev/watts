@@ -132,7 +132,7 @@ class PluginSAS(TemplatePlugin):
 
     @property
     def execute_command(self):
-        return [self.executable, "-i", self.input_name, "-o", "out.txt"]
+        return [str(self.executable), "-i", self.input_name, "-o", "out.txt"]
 
     def postrun(self, params: Parameters, name: str) -> ResultsSAS:
         """Read SAS results and create results object
