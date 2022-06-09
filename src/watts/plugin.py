@@ -11,10 +11,11 @@ import time
 from typing import Optional, List
 
 from .database import Database
-from .fileutils import cd_tmpdir, PathLike, tee_stdout, tee_stderr
+from .fileutils import cd_tmpdir, PathLike, tee_stdout, tee_stderr, run as run_proc
 from .parameters import Parameters
 from .results import Results
 from .template import TemplateRenderer
+import watts
 
 
 class Plugin(ABC):
@@ -142,6 +143,10 @@ class TemplatePlugin(Plugin):
     show_stderr
         Whether to display output from stderr when :meth:`run` is called
 
+    Attributes
+    ----------
+    executable
+        Path to plugin executable
 
     """
     def __init__(self, template_file: PathLike,
@@ -155,25 +160,15 @@ class TemplatePlugin(Plugin):
         if extra_template_inputs is not None:
             self.extra_render_templates = [TemplateRenderer(f, '') for f in extra_template_inputs]
 
-    def _get_result_input(self, input_filename: str):
-        """Get the data needed to create the postrun results object
+    @property
+    def executable(self) -> Path:
+        return self._executable
 
-        Parameters
-        ----------
-        input_filename
-            Name of the input file for the plugin code
-
-        Returns
-        -------
-        tuple of data used to create the results object
-        """
-        time = datetime.fromtimestamp(self._run_time * 1e-9)
-        inputs = [p.name for p in self.extra_inputs]
-        inputs.append(input_filename)
-        for renderer in self.extra_render_templates:
-            inputs.append(renderer.template_file.name)
-        outputs = [p for p in Path.cwd().iterdir() if p.name not in inputs]
-        return time, inputs, outputs
+    @executable.setter
+    def executable(self, exe: PathLike):
+        if shutil.which(exe) is None:
+            raise RuntimeError(f"{self.plugin_name} executable '{exe}' is missing.")
+        self._executable = Path(exe)
 
     def prerun(self, params: Parameters, filename: Optional[str] = None):
         """Render the template based on model parameters
@@ -198,3 +193,50 @@ class TemplatePlugin(Plugin):
         self.render_template(params_copy, filename=filename)
         for render_template in self.extra_render_templates:
             render_template(params_copy)
+
+    def postrun(self, params: Parameters, name: str, **kwargs) -> Results:
+        """Read simulation results and create results object
+
+        Parameters
+        ----------
+        params
+            Parameters used to generate input files
+        name
+            Name of the plugin
+        **kwargs
+            Keyword arguments for Results subclasses
+
+        Returns
+        -------
+        Results object
+        """
+
+        # Determine time, inputs and outputs
+        time = datetime.fromtimestamp(self._run_time * 1e-9)
+        inputs = [self.input_name] + [p.name for p in self.extra_inputs]
+        for renderer in self.extra_render_templates:
+            inputs.append(renderer.template_file.name)
+        outputs = [p for p in Path.cwd().iterdir() if p.name not in inputs]
+
+        # Get correct Results subclass and return instance
+        results_cls = getattr(watts, f'Results{self.plugin_name}')
+        return results_cls(params, name, time, inputs, outputs, **kwargs)
+
+    def run(self, mpi_args: Optional[List[str]] = None,
+            extra_args: Optional[List[str]] = None):
+        """Run plugin
+
+        Parameters
+        ----------
+        mpi_args
+            MPI execute command and any additional MPI arguments to pass,
+            e.g. ['mpiexec', '-n', '8'].
+        extra_args
+            Additional command-line arguments to append after the main command
+
+        """
+        if mpi_args is None:
+            mpi_args = []
+        if extra_args is None:
+            extra_args = []
+        run_proc(mpi_args + self.execute_command + extra_args)

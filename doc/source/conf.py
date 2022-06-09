@@ -33,7 +33,8 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.napoleon',
     'sphinx.ext.viewcode',
-    'sphinx_autodoc_typehints'
+    'sphinx_autodoc_typehints',
+    'sphinx_design'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -94,5 +95,6 @@ html_theme_options = {
         "url_template": "https://watts.readthedocs.io/en/{version}/",
         "version_match": version if '-dev' not in version else 'dev',
     },
-    "navbar_end": ["version-switcher", "navbar-icon-links"]
+    "navbar_end": ["version-switcher", "navbar-icon-links"],
+    "show_toc_level": 3,
 }

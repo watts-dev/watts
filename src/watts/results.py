@@ -17,8 +17,6 @@ class Results:
 
     Parameters
     ----------
-    plugin
-        Name of the plugin that created the results
     params
         Parameters used to generate inputs
     time
@@ -29,15 +27,22 @@ class Results:
         List of output files
     """
 
-    def __init__(self, plugin: str, params: Parameters, name: str, time: datetime,
+    def __init__(self, params: Parameters, name: str, time: datetime,
                  inputs: List[PathLike], outputs: List[PathLike]):
         self.base_path = Path.cwd()
-        self.plugin = plugin
         self.name = name
         self.parameters = Parameters(params)
         self.time = time
         self.inputs = [Path(p) for p in inputs]
         self.outputs = [Path(p) for p in outputs]
+
+    @property
+    def plugin(self):
+        return type(self).__name__[7:]
+
+    @property
+    def stdout(self) -> str:
+        return (self.base_path / f"{self.plugin}_log.txt").read_text()
 
     def move_files(self, dst: PathLike):
         """Move input/output files to different directory

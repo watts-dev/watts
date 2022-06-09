@@ -44,12 +44,8 @@ class ResultsSAS(Results):
     """
     def __init__(self, params: Parameters, name: str, time: datetime,
                  inputs: List[PathLike], outputs: List[PathLike]):
-        super().__init__('SAS', params, name, time, inputs, outputs)
+        super().__init__(params, name, time, inputs, outputs)
         self.csv_data = self._get_sas_csv_data()
-
-    @property
-    def stdout(self) -> str:
-        return (self.base_path / "SAS_log.txt").read_text()
 
     def _get_sas_csv_data(self) -> dict:
         """Read all sas '.csv' files and return results in a dictionary
@@ -88,8 +84,12 @@ class PluginSAS(TemplatePlugin):
 
     Attributes
     ----------
-    sas_exec
+    executable
         Path to SAS executable
+    conv_channel
+        Path to CHANNELtoCSV utility executable
+    conv_primar4
+        Path to PRIMAR4toCSV utility executable
 
     """
 
@@ -105,15 +105,10 @@ class PluginSAS(TemplatePlugin):
         # The Windows executable is ".exe".
         sas_dir = Path(os.environ.get("SAS_DIR", ""))
         ext = "exe" if platform.system() == "Windows" else "x"
-        self._sas_exec = sas_dir / f"sas.{ext}"
+        self._executable = sas_dir / f"sas.{ext}"
         self._conv_channel = sas_dir / f"CHANNELtoCSV.{ext}"
         self._conv_primar4 = sas_dir / f"PRIMAR4toCSV.{ext}"
-
         self.input_name = "SAS.inp"
-
-    @property
-    def sas_exec(self) -> Path:
-        return self._sas_exec
 
     @property
     def conv_channel(self) -> Path:
@@ -122,12 +117,6 @@ class PluginSAS(TemplatePlugin):
     @property
     def conv_primar4(self) -> Path:
         return self._conv_primar4
-
-    @sas_exec.setter
-    def sas_exec(self, exe: PathLike):
-        if shutil.which(exe) is None:
-            raise RuntimeError(f"SAS executable '{exe}' is missing.")
-        self._sas_exec = Path(exe)
 
     @conv_channel.setter
     def conv_channel(self, exe: PathLike):
@@ -141,9 +130,9 @@ class PluginSAS(TemplatePlugin):
             raise RuntimeError(f"PRIMAR4toCSV utility executable '{exe}' is missing.")
         self._conv_primar4 = Path(exe)
 
-    def run(self):
-        """Run SAS"""
-        run_proc([self.sas_exec, "-i", self.input_name, "-o", "out.txt"])
+    @property
+    def execute_command(self):
+        return [str(self.executable), "-i", self.input_name, "-o", "out.txt"]
 
     def postrun(self, params: Parameters, name: str) -> ResultsSAS:
         """Read SAS results and create results object
@@ -171,5 +160,4 @@ class PluginSAS(TemplatePlugin):
             with open("PRIMAR4.dat", "r") as file_in, open("PRIMAR4.csv", "w") as file_out:
                 subprocess.run(str(self.conv_primar4), stdin=file_in, stdout=file_out)
 
-        time, inputs, outputs = self._get_result_input(self.input_name)
-        return ResultsSAS(params, name, time, inputs, outputs)
+        return super().postrun(params, name)

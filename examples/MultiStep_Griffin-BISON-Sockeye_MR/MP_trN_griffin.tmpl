@@ -9,11 +9,12 @@ bison_subapp_cli_args ='bison_initial_temperature={{ BISON_Initial_Temperature }
     use_for_exodus_restart = true
   []
   [id]
-    type = SubdomainElementIDs
+    type = SubdomainExtraElementIDGenerator
     input = loader
     subdomains = 'fuel moderator heat_pipes monolith SS_envelop_HP SS_envelop_Mod axial_reflector'
-    material_ids = '1 2 3 4 5 6 7'
-    equivalence_ids = '1 2 3 4 5 6 7'
+    extra_element_id_names = 'material_id equivalence_id'
+    extra_element_ids = '1 2 3 4 5 6 7;
+                         1 2 3 4 5 6 7'
   []
   uniform_refine = 0
 []

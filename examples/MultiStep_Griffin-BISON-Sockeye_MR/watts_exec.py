@@ -41,9 +41,10 @@ params_ss.show_summary(show_metadata=False, sort_by='key')
 
 # MOOSE Workflow for steady state
 print("Steady-state calculation")
-moose_plugin_ss = watts.PluginMOOSE('MP_ss_griffin.tmpl', n_cpu=40, extra_inputs=['MP_ss_moose.i', 'MP_ss_sockeye.i', '3D_unit_cell_FY21_level-1_bison.e', '3D_unit_cell_FY21_supersimple.e', 'unitcell_nogap_hom_xml_G11_df_MP.xml'])
-moose_plugin_ss.moose_exec = app_dir + "/" + moose_app_type.lower() + "-opt"
-moose_result_ss = moose_plugin_ss(params_ss)
+mpi_args = ['mpiexec', '-n', '40']
+moose_plugin_ss = watts.PluginMOOSE('MP_ss_griffin.tmpl', extra_inputs=['MP_ss_moose.i', 'MP_ss_sockeye.i', '3D_unit_cell_FY21_level-1_bison.e', '3D_unit_cell_FY21_supersimple.e', 'unitcell_nogap_hom_xml_G11_df_MP.xml'])
+moose_plugin_ss.executable = app_dir + "/" + moose_app_type.lower() + "-opt"
+moose_result_ss = moose_plugin_ss(params_ss, mpi_args=mpi_args)
 for key in moose_result_ss.csv_data:
     print(key, moose_result_ss.csv_data[key])
 print(moose_result_ss.inputs)
@@ -57,9 +58,9 @@ params_trN = params_ss
 
 # MOOSE Workflow for Null transient
 print("Null transient calculation")
-moose_plugin_trN = watts.PluginMOOSE('MP_trN_griffin.tmpl', n_cpu=40, show_stdout=False, extra_inputs=['MP_trN_moose.i', 'MP_trN_sockeye.i', 'unitcell_nogap_hom_xml_G11_df_MP.xml'])
-moose_plugin_trN.moose_exec = app_dir + "/" + moose_app_type.lower() + "-opt"
-moose_result_trN = moose_plugin_trN(params_trN)
+moose_plugin_trN = watts.PluginMOOSE('MP_trN_griffin.tmpl', show_stdout=False, extra_inputs=['MP_trN_moose.i', 'MP_trN_sockeye.i', 'unitcell_nogap_hom_xml_G11_df_MP.xml'])
+moose_plugin_trN.executable = app_dir + "/" + moose_app_type.lower() + "-opt"
+moose_result_trN = moose_plugin_trN(params_trN, mpi_args=mpi_args)
 for key in moose_result_trN.csv_data:
     print(key, moose_result_trN.csv_data[key])
 print(moose_result_trN.inputs)
@@ -77,9 +78,9 @@ params_tr = params_ss
 
 # MOOSE Workflow for transient
 print("Transient calculation")
-moose_plugin_tr = watts.PluginMOOSE('MP_tr_griffin.tmpl', n_cpu=40, show_stdout=True, extra_inputs=['MP_tr_moose.i', 'MP_tr_sockeye.i', 'unitcell_nogap_hom_xml_G11_df_MP.xml'])
-moose_plugin_tr.moose_exec = app_dir + "/" + moose_app_type.lower() + "-opt"
-moose_result_tr = moose_plugin_tr(params_tr)
+moose_plugin_tr = watts.PluginMOOSE('MP_tr_griffin.tmpl', show_stdout=True, extra_inputs=['MP_tr_moose.i', 'MP_tr_sockeye.i', 'unitcell_nogap_hom_xml_G11_df_MP.xml'])
+moose_plugin_tr.executable = app_dir + "/" + moose_app_type.lower() + "-opt"
+moose_result_tr = moose_plugin_tr(params_tr, mpi_args=mpi_args)
 for key in moose_result_tr.csv_data:
     print(key, moose_result_tr.csv_data[key])
 print(moose_result_tr.inputs)

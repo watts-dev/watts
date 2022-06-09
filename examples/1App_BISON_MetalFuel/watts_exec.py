@@ -42,9 +42,9 @@ params.show_summary(show_metadata=False, sort_by='key')
 
 moose_app_type = "bison"
 app_dir = os.environ[moose_app_type.upper() + "_DIR"]
-moose_plugin = watts.PluginMOOSE('bison_template', show_stdout=True, n_cpu=2) # show all the output
-moose_plugin.moose_exec = app_dir + "/" + moose_app_type.lower() + "-opt"
-moose_result = moose_plugin(params)
+moose_plugin = watts.PluginMOOSE('bison_template', show_stdout=True) # show all the output
+moose_plugin.executable = app_dir + "/" + moose_app_type.lower() + "-opt"
+moose_result = moose_plugin(params, mpi_args=['mpiexec', '-n', '2'])
 for key in moose_result.csv_data:
     print(key, moose_result.csv_data[key])
 print(moose_result.inputs)

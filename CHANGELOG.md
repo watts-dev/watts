@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   indicating extra template files that should be rendered
 * The `PluginOpenMC` class now takes an optional `function` argument that
   specifies an arbitrary execution sequence
+* All plugins consistently use an attribute `executable` for specifying the path
+  to an executable
 
 ## [0.2.0]
 

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 """
-This example demonstrates how to use WATTS to perform 
+This example demonstrates how to use WATTS to perform
 SAM calculations. This example uses a simple VHTR unit-cell
 model with 1 coolant channel surrounded by graphite and fuel.
 The demonstration includes the application of unit-conversion
@@ -57,7 +57,7 @@ params.show_summary(show_metadata=False, sort_by='key')
 moose_app_type = "SAM"
 app_dir = os.environ[moose_app_type.upper() + "_DIR"]
 moose_plugin = watts.PluginMOOSE(moose_app_type.lower() + '_template') # show all the output
-moose_plugin.moose_exec = app_dir + "/" + moose_app_type.lower() + "-opt"
+moose_plugin.executable = app_dir + "/" + moose_app_type.lower() + "-opt"
 moose_result = moose_plugin(params)
 for key in moose_result.csv_data:
     print(key, moose_result.csv_data[key])
