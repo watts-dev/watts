@@ -235,7 +235,7 @@ prop1  prop2
 4.0  2
 5.0  3
     """)
-    stdout = Path('DAKOTA_log.txt')
+    stdout = Path('Dakota_log.txt')
     stdout.write_text('DAKOTA standard out\n')
     outputs = [csv, stdout]
 
