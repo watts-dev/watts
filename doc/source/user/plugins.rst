@@ -253,3 +253,52 @@ At this point, we recommend using the `serpentTools
 files. For example::
 
     results_reader = serpentTools.ResultsReader(str(result.outputs[-1]))
+
+Dakota Plugin
+++++++++++++++++
+
+The :class:`~watts.PluginDakota` class handles execution of Dakota. Dakota uses
+text-based input files that can be templated as follows:
+
+.. code-block:: jinja
+
+    real = {{ real }}
+    work_directory named = {{ workdir }}
+
+Note that the execution of the Dakota plugin is slightly different than the
+execution of the other plugins. Dakota is essentially an optimization and
+uncertainty quantification tool that needs to be coupled to other external tools
+or software. To run Dakota with WATTS, in addition to the WATTS Python script
+and the Dakota input file, other files are necessary, including the input file
+of the software that will be coupled with Dakota, the 'Dakota driver' Python
+script, and any file necessary to run the coupled software.
+
+If the templated Dakota input file is `dakota_watts_opt.in`, then the Dakota
+plugin can be instantiated with the following command line::
+
+    dakota_plugin = watts.PluginDakota('dakota_watts_opt.in')
+
+If the coupled software uses a text-based input file, users can also template
+this file with the `extra_template_inputs` options::
+
+    dakota_plugin = watts.PluginDakota(
+        template_file='dakota_watts_opt.in',
+        extra_template_inputs=['extra_template_file_name'])
+
+Prior to running Dakota with WATTS, the path to the 'dakota.sh' shell script
+needs to be provided either by adding it as `DAKOTA_DIR` to the environment or
+by adding it through the input file as::
+
+    dakota_plugin.dakota_exec = "path/to/dakota.sh"
+
+When the Dakota plugin is executed, it runs Dakota, which in turn executes the
+'Dakota_driver' python script that facilitates the communication and data
+transfer between Dakota and the coupled software. 'Dakota_driver' is a
+simple Python script that requires only two inputs, namely the path to Dakota's
+`interfacing` library and the coupled software's input file name. As its name
+suggests, the 'interfacing' library is used by WATTS to interact between Dakota
+and the coupled software.
+
+Once the execution is complete, WATTS saves the results from all iterations as
+individual objects and the final results as a separate object known as `finaldata1`
+in the :class:`~watts.Parameters` class.
