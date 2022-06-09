@@ -215,3 +215,56 @@ prop1,prop2
     assert new_results.inputs == results.inputs
     assert new_results.outputs == results.outputs
     assert new_results.stdout == results.stdout
+
+
+def test_results_dakota(run_in_tmpdir):
+    params = watts.Parameters(city='Chicago', population=2.7e6)
+    name = 'North_Dakota'
+    now = datetime.now()
+
+    # Create some fake input files
+    dakota_inp = Path('dakota.inp')
+    dakota_inp.touch()
+    inputs = [dakota_inp]
+
+    # Create fake output files
+    csv = Path('dakota_opt.dat')
+    csv.write_text("""\
+prop1  prop2
+3.5  1
+4.0  2
+5.0  3
+    """)
+    stdout = Path('DAKOTA_log.txt')
+    stdout.write_text('DAKOTA standard out\n')
+    outputs = [csv, stdout]
+
+    results = watts.ResultsDakota(params, name, now, inputs, outputs)
+
+    # Sanity checks
+    assert results.plugin == 'Dakota'
+    assert results.parameters == params
+    assert results.name == name
+    assert results.time == now
+    assert results.inputs == inputs
+    assert results.outputs == outputs
+
+    # Other attributes
+    assert results.stdout == 'DAKOTA standard out\n'
+    np.testing.assert_equal(results.output_data['prop1'], [3.5, 4.0, 5.0])
+    np.testing.assert_equal(results.output_data['prop2'], [1, 2, 3])
+
+    # Saving
+    p = Path('myresults.pkl')
+    results.save(p)
+    assert p.is_file()
+
+    # Ensure results read from file match
+    new_results = watts.Results.from_pickle(p)
+    assert isinstance(new_results, watts.ResultsDakota)
+    assert new_results.parameters == results.parameters
+    assert new_results.name == results.name
+    assert new_results.time == results.time
+    assert new_results.inputs == results.inputs
+    assert new_results.outputs == results.outputs
+    assert new_results.stdout == results.stdout
