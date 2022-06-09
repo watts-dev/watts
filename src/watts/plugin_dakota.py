@@ -45,12 +45,8 @@ class ResultsDakota(Results):
     """
     def __init__(self, params: Parameters, name: str, time: datetime,
                  inputs: List[PathLike], outputs: List[PathLike]):
-        super().__init__('Dakota', params, name, time, inputs, outputs)
+        super().__init__(params, name, time, inputs, outputs)
         self.output_data = self._get_Dakota_output()
-
-    @property
-    def stdout(self) -> str:
-        return (self.base_path / "Dakota_log.txt").read_text()
 
     def _get_Dakota_output(self) -> dict:
         """Read all Dakota '.dat' files and return results in a dictionary
@@ -141,15 +137,7 @@ class PluginDakota(TemplatePlugin):
         """
         self.dakota_exec = dakota_exec
 
-    def prerun(self, params: Parameters):
-        """Generate the Dakota input based on the template
-
-        Parameters
-        ----------
-        params
-            Parameters used when rendering template
-        """
-        super().prerun(params)
+    def run(self):
 
         # Copy all files to the temporary directory.
         # Avoid duplicate files.
@@ -163,7 +151,7 @@ class PluginDakota(TemplatePlugin):
                 else:
                     print(os.path.join(self._initial_dir, fname), _current_dir + " already exists")   
 
-    def run(self):
+
         """Run Dakota"""
 
         run_proc([self.dakota_exec, "-i", self.input_name])
@@ -183,8 +171,7 @@ class PluginDakota(TemplatePlugin):
         Dakota results object
         """
 
-        time, inputs, outputs = self._get_result_input(self.input_name)
-        return ResultsDakota(params, name, time, inputs, outputs)
+        return super().postrun(params, name)
 
 class PluginDakotaDriver():
     """Plugin for running the Dakota driver
