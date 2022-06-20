@@ -47,11 +47,11 @@ class PluginABCE(TemplatePlugin):
                          show_stdout, show_stderr)
         # requires users specify an environment variable, ABCE_DIR
         self._executable = Path(os.environ['ABCE_DIR'])
-        self.input_name = "run.py"
+        self.input_name = 'settings.yml'
 
     @property
     def execute_command(self):
-        return ['python', str(self.executable), self.input_name]
+        return ['python', str(self.executable), 'run.py --settings_file', self.input_name]
 
 
 class ResultsABCE(Results):

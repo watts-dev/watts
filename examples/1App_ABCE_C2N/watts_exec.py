@@ -35,7 +35,7 @@ for i,n in enumerate(ngp_list): # loop through all of the natural gas prices
     for j,p in enumerate(ptc_list):
         params['PTC_VALUE'] = p
 
-        params.show_summary(show_metadata=True, sort_by='key')
+        # params.show_summary(show_metadata=True, sort_by='key')
 
-        abce_plugin = watts.PluginABCE('abce_template.txt')
+        abce_plugin = watts.PluginABCE('abce_template.txt', show_stdout=True)
         abce_result = abce_plugin(params)
