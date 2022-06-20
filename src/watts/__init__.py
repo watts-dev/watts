@@ -9,6 +9,7 @@ from .plugin_sas import *
 from .plugin_relap5 import *
 from .plugin_mcnp import *
 from .plugin_serpent import *
+from .plugin_abce import *
 from .template import *
 from .parameters import *
 from .database import *
