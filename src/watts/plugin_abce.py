@@ -51,7 +51,7 @@ class PluginABCE(TemplatePlugin):
 
     @property
     def execute_command(self):
-        return [str(self.executable), self.input_name]
+        return ['python', str(self.executable), self.input_name]
 
 
 class ResultsABCE(Results):
