@@ -46,14 +46,12 @@ class PluginABCE(TemplatePlugin):
         super().__init__(template_file, extra_inputs, extra_template_inputs,
                          show_stdout, show_stderr)
         # requires users specify an environment variable, ABCE_DIR
-        self._executable = Path(os.path.abspath(os.path.relpath(os.environ['ABCE_DIR'])))
-        # breakpoint()
-        # print(self._executable)
+        self._executable = Path(os.environ['ABCE_DIR'])
         self.input_name = "run.py"
 
     @property
     def execute_command(self):
-        return ['sudo', str(self.executable), self.input_name]
+        return [str(self.executable), self.input_name]
 
 
 class ResultsABCE(Results):
