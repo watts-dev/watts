@@ -22,7 +22,7 @@ params.show_summary(show_metadata=True, sort_by='key')
 
 average_ngp = 5  # $/mmbtu
 variance_ngp = 2
-n_samples = 10
+n_samples = 1
 
 np.random.seed(12345)
 ngp_list = np.random.normal(loc=average_ngp, scale=variance_ngp, size=n_samples) # $/mmbtu
@@ -36,6 +36,6 @@ for i,n in enumerate(ngp_list): # loop through all of the natural gas prices
         params['PTC_VALUE'] = p
 
         # params.show_summary(show_metadata=True, sort_by='key')
-
-        abce_plugin = watts.PluginABCE('abce_template.txt', show_stdout=True)
-        abce_result = abce_plugin(params)
+        # breakpoint()
+        abce_plugin = watts.PluginABCE('abce_template.txt', show_stdout=True, show_stderr=True)
+        abce_result = abce_plugin(params, extra_args=['-f'])
