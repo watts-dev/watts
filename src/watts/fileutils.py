@@ -102,6 +102,8 @@ def run(args, wait=None):
         p.kill()
         stdout_data, stderr_data = p.communicate()
 
-    sys.stdout.write(stdout_data)
+    if stdout_data:
+        sys.stdout.write(stdout_data)
 
-    sys.stderr.write(stderr_data)
+    if stderr_data:
+        sys.stderr.write(stderr_data)
