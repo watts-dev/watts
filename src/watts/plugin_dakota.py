@@ -98,10 +98,6 @@ class PluginDakota(TemplatePlugin):
         Whether to display output from stdout when Dakota is run
     show_stderr
         Whether to display output from stderr when Dakota is run
-    Attributes
-    ----------
-    dakota_exec
-        Path to Dakota executable
 
     """
 
@@ -113,29 +109,9 @@ class PluginDakota(TemplatePlugin):
                          show_stdout, show_stderr)
 
         dakota_dir = Path(os.environ.get("DAKOTA_DIR", ""))
-        self._dakota_exec = dakota_dir / f"dakota.sh"
+        self._executable = dakota_dir / f"dakota.sh"
         self.input_name = "dakota_watts_opt.in"
         self._initial_dir = os.getcwd()
-
-    @property
-    def dakota_exec(self) -> Path:
-        return self._dakota_exec
-
-    @dakota_exec.setter
-    def dakota_exec(self, exe: PathLike):
-        if shutil.which(exe) is None:
-            raise RuntimeError(f"Dakota executable '{exe}' is missing.")
-        self._dakota_exec = Path(exe)
-
-    def options(self, dakota_exec):
-        """Input Dakota user-specified options
-
-        Parameters
-        ----------
-        Dakota_exec
-            Path to DAKOTA executable
-        """
-        self.dakota_exec = dakota_exec
 
     def run(self):
 
@@ -154,7 +130,7 @@ class PluginDakota(TemplatePlugin):
 
         """Run Dakota"""
 
-        run_proc([self.dakota_exec, "-i", self.input_name])
+        run_proc([self.executable, "-i", self.input_name])
 
     def postrun(self, params: Parameters, name: str) -> ResultsDakota:
         """Read Dakota results and create results object
