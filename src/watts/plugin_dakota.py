@@ -116,23 +116,6 @@ class PluginDakota(TemplatePlugin):
     def execute_command(self):
         return [str(self.executable), "-i", self.input_name]
 
-    def postrun(self, params: Parameters, name: str) -> ResultsDakota:
-        """Read Dakota results and create results object
-
-        Parameters
-        ----------
-        params
-            Parameters used to create Dakota model
-        name
-            Name of the workflow
-
-        Returns
-        -------
-        Dakota results object
-        """
-
-        return super().postrun(params, name)
-
 class PluginDakotaDriver():
     """Plugin for running the Dakota driver
 
