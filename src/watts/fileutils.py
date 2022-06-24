@@ -84,7 +84,7 @@ class tee_stderr(_TeeStream):
     _stream = "stderr"
 
 
-def run(args, wait):
+def run(args, wait=None):
     """Function that mimics subprocess.run but actually writes to sys.stdout and
     sys.stderr (not the same as the underlying file descriptors)
 
