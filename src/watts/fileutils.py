@@ -84,7 +84,7 @@ class tee_stderr(_TeeStream):
     _stream = "stderr"
 
 
-def run(args):
+def run(args, wait):
     """Function that mimics subprocess.run but actually writes to sys.stdout and
     sys.stderr (not the same as the underlying file descriptors)
 
@@ -94,15 +94,14 @@ def run(args):
     p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                          universal_newlines=True)
 
-    while True:
-        select.select([p.stdout, p.stderr], [], [])
+    select.select([p.stdout, p.stderr], [], [])
 
-        stdout_data = p.stdout.read()
-        stderr_data = p.stderr.read()
-        if stdout_data:
-            sys.stdout.write(stdout_data)
-        if stderr_data:
-            sys.stderr.write(stderr_data)
+    try:
+        stdout_data, stderr_data = p.communicate(timeout=wait)
+    except subprocess.TimeoutExpired:
+        p.kill()
+        stdout_data, stderr_data = p.communicate()
 
-        if p.poll() is not None:
-            break
+    sys.stdout.write(stdout_data)
+
+    sys.stderr.write(stderr_data)

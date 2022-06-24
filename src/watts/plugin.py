@@ -223,7 +223,8 @@ class TemplatePlugin(Plugin):
         return results_cls(params, name, time, inputs, outputs, **kwargs)
 
     def run(self, mpi_args: Optional[List[str]] = None,
-            extra_args: Optional[List[str]] = None):
+            extra_args: Optional[List[str]] = None, 
+            wait: Optional[int] = 60):
         """Run plugin
 
         Parameters
@@ -234,9 +235,13 @@ class TemplatePlugin(Plugin):
         extra_args
             Additional command-line arguments to append after the main command
 
+        wait 
+            The time in seconds that `watts` will wait before terminating the process.
+            Default is 60 seconds.
+
         """
         if mpi_args is None:
             mpi_args = []
         if extra_args is None:
             extra_args = []
-        run_proc(mpi_args + self.execute_command + extra_args)
+        run_proc(mpi_args + self.execute_command + extra_args, wait)
