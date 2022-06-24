@@ -255,7 +255,7 @@ files. For example::
     results_reader = serpentTools.ResultsReader(str(result.outputs[-1]))
 
 Dakota Plugin
-++++++++++++++++
++++++++++++++
 
 The :class:`~watts.PluginDakota` class handles execution of Dakota. Dakota uses
 text-based input files that can be templated as follows:
@@ -286,8 +286,9 @@ this file with the `extra_template_inputs` options::
         extra_template_inputs=['extra_template_file_name'])
 
 Prior to running Dakota with WATTS, the path to the 'dakota.sh' shell script
-needs to be provided either by adding it as `DAKOTA_DIR` to the environment or
-by adding it through the input file as::
+needs to be provided either by setting the :envvar:`DAKOTA_DIR` environment
+variable to the directory containing `dakota.sh` or by adding it through the
+input file as::
 
     dakota_plugin.dakota_exec = "path/to/dakota.sh"
 
