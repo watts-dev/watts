@@ -110,27 +110,11 @@ class PluginDakota(TemplatePlugin):
 
         dakota_dir = Path(os.environ.get("DAKOTA_DIR", ""))
         self._executable = dakota_dir / f"dakota.sh"
-        self.input_name = "dakota_watts_opt.in"
-        self._initial_dir = os.getcwd()
+        self.input_name = template_file
 
-    def run(self):
-
-        # Copy all files to the temporary directory.
-        # Avoid duplicate files.
-
-        files = os.listdir(self._initial_dir)
-        _current_dir = os.getcwd()
-        for fname in files:
-            if not os.path.isdir(os.path.join(self._initial_dir, fname)):
-                if not os.path.exists(os.path.join(_current_dir, fname)):
-                    shutil.copy2(os.path.join(self._initial_dir, fname), _current_dir)
-                else:
-                    print(os.path.join(self._initial_dir, fname), _current_dir + " already exists")   
-
-
-        """Run Dakota"""
-
-        run_proc([self.executable, "-i", self.input_name])
+    @property
+    def execute_command(self):
+        return [str(self.executable), "-i", self.input_name]
 
     def postrun(self, params: Parameters, name: str) -> ResultsDakota:
         """Read Dakota results and create results object
