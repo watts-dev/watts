@@ -6,6 +6,7 @@ import glob
 from datetime import datetime
 from pathlib import Path
 import shutil
+import re
 from typing import List, Optional
 
 import json
@@ -112,6 +113,15 @@ class PluginDakota(TemplatePlugin):
         self._executable = dakota_dir / f"dakota.sh"
         self.input_name = template_file
 
+    def prerun(self, params: Parameters):
+        with open('input.tmpl', 'w') as f:
+            for key in params.keys():
+                if bool(re.match(re.compile('Dakota_param_*'), key)):
+                    f.write(f"{params[key]}\n")
+        f.close()
+
+        super().prerun(params)
+
     @property
     def execute_command(self):
         return [str(self.executable), "-i", self.input_name]
@@ -151,10 +161,13 @@ class PluginDakotaDriver():
         with open(params_for_template_engine_file_path, 'w') as outfile:
             f = json.dump(params._variables,  outfile, default=lambda o: o.__dict__)
         
+        # Read json file to obtain values of the parameters
         f = open("params.json")
         data = json.load(f)
         f.close()
 
+        # Write to 'input.txt' using variable names from 'input.tmpl'
+        # and values from 'params.json'
         f = open("input.txt", "w+")
         with open('input.tmpl') as file:
             while (line := file.readline().rstrip()):
