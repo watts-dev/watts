@@ -114,6 +114,18 @@ class PluginDakota(TemplatePlugin):
         self._executable = dakota_dir / f"dakota.sh"
         self.input_name = template_file
 
+    def prerun(self, params: Parameters, filename: Optional[str] = None):
+        """ Change the permisison of the Dakota driver file
+
+        Parameters
+        ----------
+        params
+            Parameters used to render template
+        """
+
+        super().prerun(params)
+        os.chmod(params['dakota_driver_name'], 0o755)
+
     @property
     def execute_command(self):
         return [str(self.executable), "-i", self.input_name]
