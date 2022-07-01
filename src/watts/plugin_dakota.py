@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 import shutil
 import re
+import pickle
 from typing import List, Optional
 
 import json
@@ -113,15 +114,6 @@ class PluginDakota(TemplatePlugin):
         self._executable = dakota_dir / f"dakota.sh"
         self.input_name = template_file
 
-    def prerun(self, params: Parameters):
-        with open('input.tmpl', 'w') as f:
-            for key in params.keys():
-                if bool(re.match(re.compile('Dakota_param_*'), key)):
-                    f.write(f"{params[key]}\n")
-        f.close()
-
-        super().prerun(params)
-
     @property
     def execute_command(self):
         return [str(self.executable), "-i", self.input_name]
@@ -160,24 +152,6 @@ class PluginDakotaDriver():
         params_for_template_engine_file_path = "params.json"
         with open(params_for_template_engine_file_path, 'w') as outfile:
             f = json.dump(params._variables,  outfile, default=lambda o: o.__dict__)
-        
-        # Read json file to obtain values of the parameters
-        f = open("params.json")
-        data = json.load(f)
-        f.close()
-
-        # Write to 'input.txt' using variable names from 'input.tmpl'
-        # and values from 'params.json'
-        f = open("input.txt", "w+")
-        with open('input.tmpl') as file:
-            while (line := file.readline().rstrip()):
-
-                i_0 = line.index('=')
-                i_1 = line.index('<') + 1
-                i_2 = line.index('>') 
-
-                f.write(line[0:i_0] + " = " + str(data[line[i_1:i_2]]) + "\n")
-        f.close()
 
     def run_coupled_code(self):
         if os.path.exists(self.coupled_code_exec):
@@ -185,17 +159,17 @@ class PluginDakotaDriver():
         else:
             raise RuntimeError("Coupled-code script missing.")
 
-        res_output = []
-        with open('opt_res.out') as f:
-            reader = csv.reader(f)
-            for row in reader:
-                if len(row) > 0:
-                    new_str = str(row).split()
-                    for j in new_str:
-                        try:
-                            res_output.append(float(j))
-                        except:
-                            pass
+        # Read the 'opt_res.out' pickle file and 
+        # store the results to 'res_output' for data
+        # transfer with Dakota.
+        if os.path.exists('opt_res.out'): 
+            db = pickle.load(open('opt_res.out', 'rb'))
+            if 'dakota_descriptors' in db.keys():
+                res_output = []
+                for key in db['dakota_descriptors']:
+                    res_output.append(db[db['dakota_descriptors'][key]])
+        else:
+            raise RuntimeError("'opt_res.out' file is missing.")
 
         self.retval = dict([])
         self.retval['fns'] = res_output
