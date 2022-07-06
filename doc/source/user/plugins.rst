@@ -265,41 +265,65 @@ text-based input files that can be templated as follows:
     real = {{ real }}
     work_directory named = {{ workdir }}
 
-Note that the execution of the Dakota plugin is slightly different than the
-execution of the other plugins. Dakota is essentially an optimization and
-uncertainty quantification tool that needs to be coupled to other external tools
-or software. To run Dakota with WATTS, in addition to the WATTS Python script
-and the Dakota input file, other files are necessary, including the input file
-of the software that will be coupled with Dakota, the 'Dakota driver' Python
-script, and any file necessary to run the coupled software.
+Note that the execution of the Dakota plugin is slightly different and involves
+more steps than the execution of the other plugins. Dakota is essentially an
+optimization and uncertainty quantification tool that needs to be coupled to
+other external tools or software.
+
+The execution of Dakota with WATTS is essentially a two-step process. In the
+first step, WATTS creates Dakota's input file using the user-provided template
+and runs Dakota. In the second step, Dakota drives the execution of the coupled
+code (PyARC, SAM, SAS, etc.) via a Python script known as the "Dakota driver".
+The Dakota driver also facilitates the exchange of information between Dakota
+and the coupled code. Note that this is done through Dakota's `interfacing`
+library. The user needs to ensure that this library is available prior to running
+Dakota with WATTS.
+
+To run Dakota with WATTS, the user needs to provide a number of files including
+the the input file for Dakota, the WATTS Python script for executing Dakota,
+the input file for the coupled code, the WATTS script for executing the coupled
+code, and the Dakota driver Python script, in addition to any file necessary to
+run the coupled code. Note that all of these files could be templated automatically
+by WATTS using the `template_file` and `extra_template_inputs` options, provided
+they are text-based.
 
 If the templated Dakota input file is `dakota_watts_opt.in`, then the Dakota
 plugin can be instantiated with the following command line::
 
     dakota_plugin = watts.PluginDakota('dakota_watts_opt.in')
 
-If the coupled software uses a text-based input file, users can also template
-this file with the `extra_template_inputs` options::
+If the coupled code has a text-based input file, users can also template
+this file (or other necessary files) with the `extra_template_inputs` options::
 
     dakota_plugin = watts.PluginDakota(
         template_file='dakota_watts_opt.in',
-        extra_template_inputs=['extra_template_file_name'])
+        extra_template_inputs=['extra_template_file_name', 'other_necessary_files'])
 
-Prior to running Dakota with WATTS, the path to the 'dakota.sh' shell script
+During the execution of WATTS, the working directory is switched to a temporary
+location. Non-templated files needed by the coupled code (license file, data file,
+etc.) can be copied to the temporary location with the `extra_inputs` option::
+
+    dakota_plugin = watts.PluginDakota(
+        template_file='dakota_watts_opt.in',
+        extra_template_inputs=['extra_template_file_name', 'other_necessary_files'],
+        extra_inputs=['file_1', 'file_2'])
+
+As mentioned earlier, Dakota drives the execution of the coupled code through a
+Python script known as the Dakota driver. A template for the Dakota driver is
+provided in the example. Just like the other files mentioned earlier, the Dakota
+driver can also be templated using the approach described above.
+
+Furthermore, the path to the 'dakota.sh' shell script
 needs to be provided either by setting the :envvar:`DAKOTA_DIR` environment
 variable to the directory containing `dakota.sh` or by adding it through the
 input file as::
 
     dakota_plugin.dakota_exec = "path/to/dakota.sh"
 
-When the Dakota plugin is executed, it runs Dakota, which in turn executes the
-'Dakota_driver' python script that facilitates the communication and data
-transfer between Dakota and the coupled software. 'Dakota_driver' is a
-simple Python script that requires only two inputs, namely the path to Dakota's
-`interfacing` library and the coupled software's input file name. As its name
-suggests, the 'interfacing' library is used by WATTS to interact between Dakota
-and the coupled software.
-
 Once the execution is complete, WATTS saves the results from all iterations as
 individual objects and the final results as a separate object known as `finaldata1`
 in the :class:`~watts.Parameters` class.
+
+The setup of WATTS-Dakota coupling is more involved than other codes. Users are
+strongly encouraged to visit the example case `Optimization_PyARC_DAKOTA` for
+detailed explanation on how to prepare the input files.
