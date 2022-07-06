@@ -48,9 +48,9 @@ class ResultsDakota(Results):
     def __init__(self, params: Parameters, name: str, time: datetime,
                  inputs: List[PathLike], outputs: List[PathLike]):
         super().__init__(params, name, time, inputs, outputs)
-        self.output_data = self._get_Dakota_output()
+        self.output_data = self._get_Dakota_output(params)
 
-    def _get_Dakota_output(self) -> dict:
+    def _get_Dakota_output(self, params: Parameters) -> dict:
         """Read all Dakota '.dat' files and return results in a dictionary
 
         Returns
@@ -59,16 +59,21 @@ class ResultsDakota(Results):
 
         """
 
+        if 'dakota_out_file' in params.keys():
+            dakota_out_file_name = params['dakota_out_file']
+        else:
+            dakota_out_file_name = 'dakota_opt.dat'
+
         # Save Dakota's main output '.dat' files
         output_data = {}
         
-        if (glob.glob('dakota_opt.dat')):
-            with open('dakota_opt.dat') as f:
+        if (glob.glob(dakota_out_file_name)):
+            with open(dakota_out_file_name) as f:
                 reader = csv.reader(f)
                 rows = [row for idx, row in enumerate(reader) if idx == 0]
       
             col_names = str(rows[0][0]).split()
-            df = pd.read_csv("dakota_opt.dat", sep="\s+", skiprows=1, names=col_names)
+            df = pd.read_csv(dakota_out_file_name, sep="\s+", skiprows=1, names=col_names)
 
             for name in col_names:
                 output_data[name] = np.array(df[name])
