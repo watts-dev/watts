@@ -16,7 +16,6 @@ from .results import Results
 
 class ResultsMOOSE(Results):
     """MOOSE simulation results
-
     Parameters
     ----------
     params
@@ -29,7 +28,6 @@ class ResultsMOOSE(Results):
         List of input files
     outputs
         List of output files
-
     Attributes
     ----------
     stdout
@@ -44,11 +42,9 @@ class ResultsMOOSE(Results):
 
     def _save_MOOSE_csv(self) -> dict:
         """Read all MOOSE '.csv' files and return results in a dictionary
-
         Returns
         -------
         Results from MOOSE .csv files
-
         """
         input_file = self.inputs[0]
         csv_file = input_file.with_name(f"{input_file.stem}_csv.csv")
@@ -79,7 +75,6 @@ class ResultsMOOSE(Results):
 
 class PluginMOOSE(TemplatePlugin):
     """Plugin for running MOOSE
-
     Parameters
     ----------
     template_file
@@ -92,12 +87,10 @@ class PluginMOOSE(TemplatePlugin):
         Whether to display output from stdout when MOOSE is run
     show_stderr
         Whether to display output from stderr when MOOSE is run
-
     Attributes
     ----------
     executable
         Path to MOOSE executable
-
     """
 
     def __init__(self, template_file: str,

@@ -130,83 +130,110 @@ class PluginDakota(TemplatePlugin):
     def execute_command(self):
         return [str(self.executable), "-i", self.input_name]
 
-class PluginDakotaDriver():
-    """Plugin for running the Dakota driver
+
+def run_dakota_driver(coupled_code_exec: str):
+    """ Function to execute the workflow for data
+    exchange between Dakota and the coupled code
+    in the Dakota driver script.
 
     Parameters
     ----------
-    Attributes
+    coupled_code_exec
+        The name of the WATTS python script of the
+        coupled code.
+    """
+    results = parse_dakota_input()
+    retval = run_coupled_code(coupled_code_exec)
+    return_dakota_input(results, retval)
+
+def parse_dakota_input():
+    """Parse Dakota input
+
+    Parameters
     ----------
+
+    Returns
+    -------
+    results
+        Results from Dakota's output file
+    """
+    
+    from interfacing import interfacing as di # Dakota's interface module        
+
+    params, results = di.read_parameters_file()
+
+    # Dump params to external params.json file for future use by the template engine
+    params_for_template_engine_file_path = "params.json"
+    with open(params_for_template_engine_file_path, 'w') as outfile:
+        f = json.dump(params._variables,  outfile, default=lambda o: o.__dict__)
+    return(results)
+
+def run_coupled_code(coupled_code_exec):
+    """ Run the coupled code
+
+    Parameters
+    ----------
+    coupled_code_exec
+        The name of the WATTS python script of the
+        coupled code.
+
+    Returns
+    -------
+    retval
+        Processed output from the coupled code.
     """
 
-    def __init__(self, coupled_code_exec: str):
+    if os.path.exists(coupled_code_exec):
+        P = subprocess.check_output(["python", coupled_code_exec])
+    else:
+        raise RuntimeError("Coupled-code script missing.")
 
-        self.coupled_code_exec = coupled_code_exec
+    # Read the 'opt_res.out' pickle file and 
+    # store the results to 'res_output' for data
+    # transfer with Dakota.
+    if os.path.exists('opt_res.out'): 
+        db = pickle.load(open('opt_res.out', 'rb'))
+        if 'dakota_descriptors' in db.keys():
+            res_output = []
+            for key in db['dakota_descriptors']:
+                res_output.append(db[db['dakota_descriptors'][key]])
+    else:
+        raise RuntimeError("'opt_res.out' file is missing.")
 
-        self.parse_dakota_input()
-        self.run_coupled_code()
-        self.return_dakota_input()
+    retval = dict([])
+    retval['fns'] = res_output
+    return(retval)
 
-    def parse_dakota_input(self):
-        """Parse Dakota input
+def return_dakota_input(results, retval):
+    """ Return the output of the coupled code
+    to Dakota.
 
-        Parameters
-        ----------
+    Parameters
+    ----------
+    results
+        Results from Dakota's output file
+    retval
+        Processed output from the coupled code.
+    """
 
-        Returns
-        -------
-        """
-        from interfacing import interfacing as di # Dakota's interface module        
+    # Insert extracted values into results
+    # Results iterator provides an index, response name, and response
+    try:
+      for i, n, r in results:
+        if r.asv.function:
+            try:
+                r.function = retval['fns'][i]
+            except:
+                pass
+    # Catch Dakota 6.9 exception where results interface has changed
+    # ValueError: too many values to unpack
+    except ValueError:
+      i = 0
+      for n, r in results.items():
+          r.function = retval['fns'][i]
+          i += 1
+    results.write()
 
-        params, self.results = di.read_parameters_file()
-
-        # Dump params to external params.json file for future use by the template engine
-        params_for_template_engine_file_path = "params.json"
-        with open(params_for_template_engine_file_path, 'w') as outfile:
-            f = json.dump(params._variables,  outfile, default=lambda o: o.__dict__)
-
-    def run_coupled_code(self):
-        if os.path.exists(self.coupled_code_exec):
-            P = subprocess.check_output(["python", self.coupled_code_exec])
-        else:
-            raise RuntimeError("Coupled-code script missing.")
-
-        # Read the 'opt_res.out' pickle file and 
-        # store the results to 'res_output' for data
-        # transfer with Dakota.
-        if os.path.exists('opt_res.out'): 
-            db = pickle.load(open('opt_res.out', 'rb'))
-            if 'dakota_descriptors' in db.keys():
-                res_output = []
-                for key in db['dakota_descriptors']:
-                    res_output.append(db[db['dakota_descriptors'][key]])
-        else:
-            raise RuntimeError("'opt_res.out' file is missing.")
-
-        self.retval = dict([])
-        self.retval['fns'] = res_output
-
-    def return_dakota_input(self):
-
-        # Insert extracted values into results
-        # Results iterator provides an index, response name, and response
-        try:
-          for i, n, r in self.results:
-            if r.asv.function:
-                try:
-                    r.function = self.retval['fns'][i]
-                except:
-                    pass
-        # Catch Dakota 6.9 exception where results interface has changed
-        # ValueError: too many values to unpack
-        except ValueError:
-          i = 0
-          for n, r in self.results.items():
-              r.function = self.retval['fns'][i]
-              i+=1
-        self.results.write()
-
-        # Dump to external results.json file
-        with open('results.json', 'w') as outfile:
-            rst = json.dump(self.results,  outfile, default=lambda o: o.__dict__)
-
+    # Dump to external results.json file
+    with open('results.json', 'w') as outfile:
+        rst = json.dump(results, outfile, default=lambda o: o.__dict__)
