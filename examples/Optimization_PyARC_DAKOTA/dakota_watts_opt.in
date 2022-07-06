@@ -67,7 +67,7 @@ interface
             work_directory named = "workdir"
             directory_tag 
             directory_save
-            link_files = "watts.drive" "{{ dakota_driver_name }}" "input.tmpl" "pyarc_template" "{{ coupled_code_exec }}" "*.son" "pyarc_input.isotxs"
+            link_files = "{{ dakota_driver_name }}" "pyarc_template" "{{ coupled_code_exec }}" "*.son" "pyarc_input.isotxs"
             file_save
     failure_capture continuation
 
@@ -79,7 +79,7 @@ responses
    nonlinear_inequality_lower_bounds = 1 
   no_gradients
     descriptors =  
-                    "KO"             # Obj Function = Keff
-                    "CW"             # Obj Function = Core weight
-                    "KC"             # Constraint =  Keff
+                    "{{ dakota_descriptor_1 }}"            # Obj Function = Keff
+                    "{{ dakota_descriptor_2 }}"             # Obj Function = Core weight
+                    "{{ dakota_descriptor_3 }}"             # Constraint =  Keff
    no_hessians

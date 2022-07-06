@@ -13,8 +13,10 @@ the watts_pyarc_exec.py script can be provided using WATTS'
 'extra_template_inputs' option.
 """
 
+import os
 import sys
 import watts
+import time
 from astropy.units import Quantity
 
 watts.Database.set_default_path('/home/zooi/watts-dakota-results')
@@ -22,18 +24,30 @@ watts.Database.set_default_path('/home/zooi/watts-dakota-results')
 
 params = watts.Parameters()
 
+# Provide parameters to generate the dakota_driver.py file
+params['dakota_path'] = '/software/Workbench/dakota/share/dakota/Python/dakota'
+params['dakota_driver_name'] = 'dakota_driver.py' # Specify the file name of Dakota driver
+params['coupled_code_exec'] = 'watts_pyarc_exec.py' # Specify the script of the coupled code
+
 # Dakota parameters
 params['real'] = 2
 params['temp'] = 26.85
-params['dakota_driver_name'] = 'dakota_driver.py' # Specify the file name of Dakota driver
-params['coupled_code_exec'] = 'watts_pyarc_exec.py' # Specify the script of the coupled code
+
+# Descriptors for Dakota
+# Make sure the descriptors match those in the coupled code's WATTS script
+params['dakota_descriptor_1'] = 'KO'
+params['dakota_descriptor_2'] = 'CW'
+params['dakota_descriptor_3'] = 'KC'
 
 params.show_summary(show_metadata=False, sort_by='key')
 
 # Dakota Workflow
+# Use 'extra_template_inputs' to template optional extra files.
+# USe 'extra_inputs' to copy files to the temporary directory for WATTS operation.
 dakota_plugin = watts.PluginDakota(
     template_file='dakota_watts_opt.in',
-    extra_template_inputs=['watts_pyarc_exec.py'],
+    extra_template_inputs=['watts_pyarc_exec.py', 'dakota_driver.py'],
+    extra_inputs=['pyarc_input.isotxs', 'pyarc_template', 'lumped.son', 'watts_dakota_exec.py'],
     show_stdout=True) # show all the output
 
 dakota_result = dakota_plugin(params)

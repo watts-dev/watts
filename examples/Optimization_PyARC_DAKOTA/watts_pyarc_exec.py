@@ -7,25 +7,44 @@ optimization of a WATTS workflow.
 """
 import shutil
 import watts
+import json
 from astropy.units import Quantity
 
 # TH params
 params = watts.Parameters()
 
-input_file = open("input.txt", "r").readlines() 
-for l in range(len(input_file)):
-    if "assembly_pitch" in input_file[l]: params['assembly_pitch'] = Quantity(float(input_file[l].split()[-1]), "cm")  
-    if "assembly_length" in input_file[l]: params['assembly_length'] = Quantity(float(input_file[l].split()[-1]), "cm")
+# Load Dakota's output 
+# Read Dakota's output from 'params.json' and directly 
+# input them to WATTS' params()
+f = open("params.json") 
+dakota_output = json.load(f)
 
+params['assembly_pitch'] = Quantity(dakota_output['AP'], "cm")  
+params['assembly_length'] = Quantity(dakota_output['AL'], "cm")  
 params['temp'] = Quantity({{ temp }}, "Celsius")  # 300 K
 
+# Store the Dakota descriptors as dictionary.
+# Make sure that the ORDER of the descriptors matches the order in the Dakota input file.
+# MUST use the 'dakota_descriptors' key word here. 
+params['dakota_descriptors'] = {
+'{{ dakota_descriptor_1 }}': 'keff-dif3d', 
+'{{ dakota_descriptor_2 }}': 'core_weight', 
+'{{ dakota_descriptor_3 }}': 'keff-dif3d'
+}
+
 # PyARC Workflow
-pyarc_plugin = watts.PluginPyARC('pyarc_template', show_stdout=True, extra_inputs=['lumped.son', 'pyarc_input.isotxs']) # show all the output
+pyarc_plugin = watts.PluginPyARC(
+    template_file='pyarc_template', show_stdout=True, 
+    extra_inputs=['lumped.son', 'pyarc_input.isotxs']) # show all the output
 pyarc_result = pyarc_plugin(params)
+
+# Store results to params.
+# Make sure the keys for params match the keys 
+# for 'dakota_descriptors'.
 params['keff-dif3d'] = pyarc_result.results_data["keff_dif3d"][0.0]
 params['core_weight'] = pyarc_result.results_data["rebus_inventory"][0][('CORE', 'TOTAL')]
 
-# Generate output file for Dakota driver
+# Generate output file for the next iteration.
 for p in pyarc_result.inputs:
     if "pyarc_input.son" in str(p):
         shutil.copyfile(str(p), "pyarc_input.son")
@@ -35,14 +54,9 @@ for p in pyarc_result.outputs:
     if "pyarc_input.out" in str(p):
         shutil.copyfile(str(p), "pyarc_input.out")
 
-# The output file MUST be named as "opt_res.out" for the Dakota plugin to extract the values.
-# Given that the Dakota plugin essentially reads a text file, it is up to the user to ensure that
-# the order of the items matches that in the Dakota input file. The format of each row is trivial
-# as long as the values of the parameters are provided in a row-wise fashion, i.e. only one value
-# per row.
-results_opt = open("opt_res.out", "w")
-results_opt.writelines("\nKeffOpt = %8.3f "%(params['keff-dif3d']))
-results_opt.writelines("\nCoreWeight = %8.3f "%(params['core_weight']))
-results_opt.writelines("\nKeffCrit = %8.3f "%(params['keff-dif3d']))
-results_opt.close()
+# Save params() as a pickle file for data transfer between WATTS and Dakota.
+# The file MUST be named as 'opt_res.out'.
+# If this file is missing, an error will be generated.
+params.save("opt_res.out")
+
 print(f"results: KeffOpt = {params['keff-dif3d']} - HNinventory = {params['core_weight']} ")
