@@ -53,7 +53,6 @@ import watts
 import time
 from astropy.units import Quantity
 
-watts.Database.set_default_path('/home/zooi/watts-dakota-results')
 # watts.Database.set_default_path('/default/directory') # Set default save directory if necessary
 
 params = watts.Parameters()
