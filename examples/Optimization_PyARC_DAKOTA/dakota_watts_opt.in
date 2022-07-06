@@ -2,7 +2,7 @@
 
 environment
   tabular_data
-    tabular_data_file = 'dakota_opt.dat'
+    tabular_data_file = '{{dakota_out_file}}'
 
 method
     moga
@@ -24,31 +24,22 @@ method
 															# the postprocessor_type defines the post processing of the last generation.
 															# and it will generate the data file called finaldata.dat -  this is processed data.
 															# it is based on the normalized distance to the ideal/Utopia points
-    max_function_evaluations = 20    					# The maximum number of external code evaluations
-#    scaling 												# scaling factor for different outputs. 
-    population_size = 5                                    # the inital population size. was 500 for ABTR, but I think 100 should be already sufficient.
+    max_function_evaluations = 20    					    # The maximum number of external code evaluations
+    population_size = 5                                     # the inital population size. was 500 for ABTR, but I think 100 should be already sufficient.
     log_file = "test"
     print_each_pop											# please enable this to print out the information at all generations, then we could manually calcualte the change to determine the convergence. 
     initialization_type unique_random						# random sampling to obtained initial population.
 
-#    crossover_type multi_point_binary = 2 					# recommended by Larura to replace shuffle_randoms
     crossover_type shuffle_random							# inputs from parents are shuffled first, and then randomly mix to generate offsprings.
                    num_offspring = 2      					# or  5 recommended by Laura
                    num_parents = 4							# number of parants
                    crossover_rate = 0.8						# specifies the probability of a crossover operation being performed to generate a new offspring.
     mutation_type replace_uniform							# random variation by first randomly choosing a design variable of a randomly selected design  
                   mutation_rate = 0.1						# the probability of a mutation operation,  the number of mutations = mutation_rate * population_size
-#    seed = 5000  											# control how we generate the initial population  - control the number of samples per generation - could be useful to compare different runs
-#    convergence_tolerance = 0.0
-#    model_pointer = "insert_string_here"
-
-      
     
 variables   
-
     discrete_design_set
         real = {{ real }}
-
             elements_per_variable =     5   5   
             initial_point         =     13  20
             elements =  10 11 12 13 14 
@@ -57,9 +48,7 @@ variables
 
 
 interface
-#  direct
     asynchronous  evaluation_concurrency = 1
-#    local_evaluation_scheduling static
     analysis_drivers = 'dakota_driver.py'
         fork 
             parameters_file = 'params.in'
@@ -77,7 +66,7 @@ responses
    nonlinear_inequality_constraints = 1
    nonlinear_inequality_upper_bounds = 2 
    nonlinear_inequality_lower_bounds = 1 
-  no_gradients
+   no_gradients
     descriptors =  
                     "{{ dakota_descriptor_1 }}"            # Obj Function = Keff
                     "{{ dakota_descriptor_2 }}"             # Obj Function = Core weight
