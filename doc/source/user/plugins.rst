@@ -280,9 +280,10 @@ library. The user needs to ensure that this library is available prior to runnin
 Dakota with WATTS.
 
 To run Dakota with WATTS, the user needs to provide a number of files including
-the the input file for Dakota, the WATTS Python script for executing Dakota,
+the input file for Dakota, the WATTS Python script for executing Dakota,
 the input file for the coupled code, the WATTS script for executing the coupled
-code, and the Dakota driver Python script, in addition to any file necessary to
+code (note that this can involve complex workflows with several codes or iterations), 
+and the Dakota driver Python script, in addition to any file necessary to
 run the coupled code. Note that all of these files could be templated automatically
 by WATTS using the `template_file` and `extra_template_inputs` options, provided
 they are text-based.
