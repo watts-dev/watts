@@ -96,7 +96,7 @@ def run(args):
     https://stackoverflow.com/a/7730201
     """
     # Windows doesn't support select.select and fcntl module so just default to
-    # using subprocess.run. In this case, show_output/show_stderr won't work.
+    # using subprocess.run. In this case, show_stdout/show_stderr won't work.
     if sys.platform == 'win32':
         subprocess.run(args)
         return
