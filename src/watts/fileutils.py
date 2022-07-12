@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 from contextlib import contextmanager
+import errno
 import os
 import platform
 import select
@@ -9,6 +10,9 @@ import subprocess
 import sys
 import tempfile
 from typing import Union
+
+if sys.platform != 'win32':
+    import fcntl
 
 # Type for arguments that accept file paths
 PathLike = Union[str, bytes, os.PathLike]
@@ -91,18 +95,39 @@ def run(args):
     Based on https://stackoverflow.com/a/12272262 and
     https://stackoverflow.com/a/7730201
     """
-    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                         universal_newlines=True)
+    # Windows doesn't support select.select and fcntl module so just default to
+    # using subprocess.run. In this case, show_stdout/show_stderr won't work.
+    if sys.platform == 'win32':
+        subprocess.run(args)
+        return
+
+    # Helper function to add the O_NONBLOCK flag to a file descriptor
+    def make_async(fd):
+        fcntl.fcntl(fd, fcntl.F_SETFL, fcntl.fcntl(fd, fcntl.F_GETFL) | os.O_NONBLOCK)
+
+    # Helper function to read some data from a file descriptor, ignoring EAGAIN errors
+    def read_async(fd):
+        try:
+            return fd.read()
+        except IOError as e:
+            if e.errno != errno.EAGAIN:
+                raise e
+            else:
+                return ''
+
+    p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    make_async(p.stdout)
+    make_async(p.stderr)
 
     while True:
-        select.select([p.stdout, p.stderr], [], [])
+        select.select([p.stdout, p.stderr], [], [], 0)
 
-        stdout_data = p.stdout.read()
-        stderr_data = p.stderr.read()
+        stdout_data = read_async(p.stdout)
+        stderr_data = read_async(p.stderr)
         if stdout_data:
-            sys.stdout.write(stdout_data)
+            sys.stdout.write(stdout_data.decode())
         if stderr_data:
-            sys.stderr.write(stderr_data)
+            sys.stderr.write(stderr_data.decode())
 
         if p.poll() is not None:
             break

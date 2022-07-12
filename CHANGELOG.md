@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 
 * RELAP-5 Plugin
+* MCNP Plugin
+* Serpent Plugin
 
 ### Changes
 
@@ -17,13 +19,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   passed on to the `Plugin.run` method
 * The `Database` class now acts like a sequence
 * Database directory names use random strings to avoid clashes when multiple
-  instances of WATTS are running simulataneously
+  instances of WATTS are running simultaneously
 * File template-based plugins now accept an `extra_template_inputs` argument
   indicating extra template files that should be rendered
 * The `PluginOpenMC` class now takes an optional `function` argument that
   specifies an arbitrary execution sequence
 * All plugins consistently use an attribute `executable` for specifying the path
   to an executable
+
+### Fixed
+
+* Use non-blocking pipe when capturing output to avoid some plugins stalling.
+* Avoid use of Unix-specific features in the Python standard library when
+  running on Windows
 
 ## [0.2.0]
 
