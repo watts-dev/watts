@@ -3,12 +3,12 @@
 
 """
 This example demonstrates how to use DAKOTA to perform 
-optimization with WATTS. This example uses PyArc as the
+optimization with WATTS. This example uses PyARC as the
 coupled code for Dakota. There are a number of files in 
 this example. The primary files are 'watts_dakota_exec.py',
 'watts_pyarc_exec.py', 'dakota_watts_opt.in', 'pyarc_template',
 and 'dakota_driver.py', with several other secondary files
-needed to run PyArc. Note that all of the files mentioned above 
+needed to run PyARC. Note that all of the files mentioned above 
 can be templated with the 'extra_template_inputs' option in 
 the Dakota plugin (refer below for details).
 
@@ -16,14 +16,14 @@ The execution of Dakota with WATTS is essentially a two-step process.
 When the user runs the 'watts_dakota_exec.py' script, it generates 
 an input file for Dakota based on the 'dakota_watts_opt.in' template. 
 It then runs Dakota which in turn drives the execution of the coupled 
-code (PyArc) through 'dakota_driver.py' by running 'watts_pyarc_exec.py'.
+code (PyARC) through 'dakota_driver.py' by running 'watts_pyarc_exec.py'.
 The Dakota driver is responsible for facilitating the communication
 between Dakota and the coupled code. Note that this is done through 
 Dakota's `interfacing` library. The user needs to ensure that this 
 library is available prior to running Dakota with WATTS.
 
 The user first needs to identify the parameters that will be optimized 
-by Dakota (These are the parameters that will be varied in PyArc).
+by Dakota (These are the parameters that will be varied in PyARC).
 In this example, the parameters are the 'assembly_pitch' and 
 'assembly_length' and are represented as 'AP' and 'AL' in the 
 'dakota_watts_opt.in' file. The input values of 'assembly_pitch' 
@@ -40,7 +40,7 @@ that links 'KeffOpt' to 'KO', 'CoreWeight' to 'CW', and so on. The order of
 the descriptors MUST match the order of the response descriptors in 
 'dakota_watts_opt.in'. 
 
-After that, the user needs to save the results from PyArc as objects 
+After that, the user needs to save the results from PyARC as objects 
 to 'params'. Note that the names of these objects must match the names 
 of the response descriptors described above ('KeffOpt', 'CoreWeight', etc).
 Lastly, 'params', MUST be saved as a pickle file with the name 'opt_res.out'
