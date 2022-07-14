@@ -53,7 +53,6 @@ import watts
 import time
 from astropy.units import Quantity
 
-watts.Database.set_default_path('/home/zooi/watts-dakota-results')
 # watts.Database.set_default_path('/default/directory') # Set default save directory if necessary
 
 params = watts.Parameters()
@@ -67,9 +66,10 @@ params['dakota_driver_name'] = 'dakota_driver.py'   # Specify the file name of D
                                                     # because WATTS relies on this key name to do 
                                                     # additional internal checks to ensure Dakota
                                                     # has the right permission to run this file.
-                                                    # Note: If not templating the Dakota driver file,
+                                                    # An error will be raised if a different key is used here.
+                                                    # Note: If users do not wish to template the Dakota driver file,
                                                     # make sure that the mode of path of the file is correct.
-                                                    # Users can use os.chmod(<dakota_driver_file_name>, 0o755)
+                                                    # If not, users can use os.chmod(<dakota_driver_file_name>, 0o755)
                                                     # to change it to the right mode.
 
 # Dakota parameters

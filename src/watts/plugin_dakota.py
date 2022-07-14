@@ -155,8 +155,6 @@ class PluginDakota(TemplatePlugin):
         if 'dakota_driver_name' in params.keys():
             os.chmod(params['dakota_driver_name'], 0o755)
 
-
-
     @property
     def execute_command(self):
         return [str(self.executable), "-i", self.input_name]
