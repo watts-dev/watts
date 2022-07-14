@@ -53,14 +53,24 @@ import watts
 import time
 from astropy.units import Quantity
 
+watts.Database.set_default_path('/home/zooi/watts-dakota-results')
 # watts.Database.set_default_path('/default/directory') # Set default save directory if necessary
 
 params = watts.Parameters()
 
 # Provide optional parameters to generate the dakota_driver.py file
 params['dakota_path'] = '/software/Workbench/dakota/share/dakota/Python/dakota' # Specify path to Dakota's 'interface' library
-params['dakota_driver_name'] = 'dakota_driver.py' # Specify the file name of Dakota driver
 params['coupled_code_exec'] = 'watts_pyarc_exec.py' # Specify the script of the coupled code
+params['dakota_driver_name'] = 'dakota_driver.py'   # Specify the file name of Dakota driver.
+                                                    # If user wishes to template the Dakota driver file, 
+                                                    # make sure to set the key as 'dakota_driver_name'
+                                                    # because WATTS relies on this key name to do 
+                                                    # additional internal checks to ensure Dakota
+                                                    # has the right permission to run this file.
+                                                    # Note: If not templating the Dakota driver file,
+                                                    # make sure that the mode of path of the file is correct.
+                                                    # Users can use os.chmod(<dakota_driver_file_name>, 0o755)
+                                                    # to change it to the right mode.
 
 # Dakota parameters
 params['real'] = 2
@@ -81,10 +91,14 @@ params.show_summary(show_metadata=False, sort_by='key')
 # Dakota Workflow
 # Use 'extra_template_inputs' to template optional extra files.
 # Use 'extra_inputs' to copy files to the temporary directory for WATTS operation.
+# Set 'auto_link_files = <string_name_for_files>' if users wish to automatically add all files 
+# in 'extra_template_inputs' and 'extra_inputs' to the 'link_files' option in the Dakota 
+# input file. In the Dakota input file, users must set "link_files = {{ <string_name_for_files> }}".
 dakota_plugin = watts.PluginDakota(
     template_file='dakota_watts_opt.in',
     extra_template_inputs=['watts_pyarc_exec.py', 'dakota_driver.py'],
     extra_inputs=['pyarc_input.isotxs', 'pyarc_template', 'lumped.son', 'watts_dakota_exec.py'],
+    auto_link_files = 'auto_link_file_string_name',
     show_stdout=True) # show all the output
 
 dakota_result = dakota_plugin(params)

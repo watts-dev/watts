@@ -56,7 +56,8 @@ interface
             work_directory named = "workdir"
             directory_tag 
             directory_save
-            link_files = "{{ dakota_driver_name }}" "pyarc_template" "{{ coupled_code_exec }}" "*.son" "pyarc_input.isotxs"
+            link_files = {{ auto_link_file_string_name }} # Users can automatically add files to the link files (refer to watts_dakota_exec.py for more details).
+            # link_files = "dakota_driver.py" "pyarc_template" "watts_pyarc_exec.py" "lumped.son" "pyarc_input.isotxs"  # Users can choose to manually input the linked files
             file_save
     failure_capture continuation
 
