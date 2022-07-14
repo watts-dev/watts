@@ -280,7 +280,7 @@ library. The user needs to ensure that this library is available prior to runnin
 Dakota with WATTS.
 
 To run Dakota with WATTS, the user needs to provide a number of files including
-the the input file for Dakota, the WATTS Python script for executing Dakota,
+the input file for Dakota, the WATTS Python script for executing Dakota,
 the input file for the coupled code, the WATTS script for executing the coupled
 code, and the Dakota driver Python script, in addition to any file necessary to
 run the coupled code. Note that all of these files could be templated automatically
@@ -307,6 +307,26 @@ etc.) can be copied to the temporary location with the `extra_inputs` option::
         template_file='dakota_watts_opt.in',
         extra_template_inputs=['extra_template_file_name', 'other_necessary_files'],
         extra_inputs=['file_1', 'file_2'])
+
+In the Dakota input file, users need to provide the names of required files to the
+`link_files` or the `copy_files` options where these files will be copied by Dakota
+to the working directory during each iteration. Users can choose to input the names of
+these files manually or they can choose to have WATTS automatically include all
+file names in the `extra_template_inputs` and `extra_inputs` options. To do so, simply use
+the `auto_link_files` option::
+
+    dakota_plugin = watts.PluginDakota(
+        template_file='dakota_watts_opt.in',
+        extra_template_inputs=['extra_template_file_name', 'other_necessary_files'],
+        auto_link_files='<string_name_for_files>',
+        extra_inputs=['file_1', 'file_2'])
+
+And set::
+
+    link_files = {{ <string_name_for_files> }}
+
+in the Dakota input file. Note that the same `<string_name_for_files>` must be used
+in the two locations mentioned above.
 
 As mentioned earlier, Dakota drives the execution of the coupled code through a
 Python script known as the Dakota driver. A template for the Dakota driver is
