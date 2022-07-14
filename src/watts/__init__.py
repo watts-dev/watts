@@ -16,4 +16,4 @@ from .database import *
 # This allows a user to write watts.Quantity
 from astropy.units import Quantity
 
-__version__ = '0.3.0-dev'
+__version__ = '0.3.0'
