@@ -111,6 +111,7 @@ class PluginDakota(TemplatePlugin):
     def __init__(self, template_file: str,  
                  extra_inputs: Optional[List[str]] = None,
                  extra_template_inputs: Optional[List[PathLike]] = None,
+                 auto_link_files: Optional[str] = None,
                  show_stdout: bool = False, show_stderr: bool = False):
         super().__init__(template_file, extra_inputs, extra_template_inputs,
                          show_stdout, show_stderr)
@@ -118,6 +119,24 @@ class PluginDakota(TemplatePlugin):
         dakota_dir = Path(os.environ.get("DAKOTA_DIR", ""))
         self._executable = dakota_dir / f"dakota.sh"
         self.input_name = template_file
+        self._auto_link_files = auto_link_files
+
+        # Setup to automatically include all 'extra_inputs' and 'extra_template_inputs' 
+        # to Dakota's "link files" option. Create a string of the file names in
+        # 'extra_inputs' and 'extra_template_inputs'.
+        if self._auto_link_files is not None:
+            dakota_link_files = []
+            if extra_inputs is not None:
+                for item in extra_inputs:
+                    dakota_link_files.append(item)
+
+            if extra_template_inputs is not None:
+                for item in extra_template_inputs:
+                    dakota_link_files.append(item)
+
+            self.dakota_link_files_string = "'"
+            for item in dakota_link_files:
+                self.dakota_link_files_string = f"{self.dakota_link_files_string}{item}' '"
 
     def prerun(self, params: Parameters, filename: Optional[str] = None):
         """ Change the permisison of the Dakota driver file
@@ -128,8 +147,15 @@ class PluginDakota(TemplatePlugin):
             Parameters used to render template
         """
 
+        # Store the string for the "link_files" in params.
+        if self._auto_link_files is not None:
+            params[self._auto_link_files] = self.dakota_link_files_string
+
         super().prerun(params)
-        os.chmod(params['dakota_driver_name'], 0o755)
+        if 'dakota_driver_name' in params.keys():
+            os.chmod(params['dakota_driver_name'], 0o755)
+
+
 
     @property
     def execute_command(self):
