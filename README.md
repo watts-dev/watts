@@ -1,6 +1,7 @@
-# <img valign="middle" src="doc/source/_static/watts.svg" height="75" height="75" alt="WATTS logo"/> WATTS
+# <img valign="middle" src="https://raw.githubusercontent.com/watts-dev/watts/development/doc/source/_static/watts.svg" height="75" height="75" alt="WATTS logo"/> WATTS
 
 [![License](https://img.shields.io/badge/license-MIT-green)](https://opensource.org/licenses/MIT)
+[![PyPI](https://img.shields.io/pypi/v/watts?label=PyPI)](https://pypi.org/project/watts/)
 [![GitHub Actions build status (Linux)](https://github.com/watts-dev/watts/workflows/CI/badge.svg?branch=development)](https://github.com/watts-dev/watts/actions?query=workflow%3ACI)
 
 WATTS (Workflow and Template Toolkit for Simulation) consists of a set of Python
