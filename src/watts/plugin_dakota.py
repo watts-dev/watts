@@ -159,11 +159,11 @@ def run_dakota_driver(coupled_code_exec: str):
         The name of the WATTS python script of the
         coupled code.
     """
-    results = parse_dakota_input()
-    retval = run_coupled_code(coupled_code_exec)
-    return_dakota_input(results, retval)
+    results = _parse_dakota_input()
+    retval = _run_coupled_code(coupled_code_exec)
+    _return_dakota_input(results, retval)
 
-def parse_dakota_input():
+def _parse_dakota_input():
     """Parse Dakota input
 
     Parameters
@@ -185,7 +185,7 @@ def parse_dakota_input():
         f = json.dump(params._variables,  outfile, default=lambda o: o.__dict__)
     return(results)
 
-def run_coupled_code(coupled_code_exec):
+def _run_coupled_code(coupled_code_exec):
     """ Run the coupled code
 
     Parameters
@@ -219,7 +219,7 @@ def run_coupled_code(coupled_code_exec):
 
     return {'fns': res_output}
 
-def return_dakota_input(results, retval):
+def _return_dakota_input(results, retval):
     """ Return the output of the coupled code
     to Dakota.
 
