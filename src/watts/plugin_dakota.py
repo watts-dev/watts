@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: MIT
 
 import os
-import glob
 from datetime import datetime
 from pathlib import Path
 import pickle
@@ -62,7 +61,7 @@ class ResultsDakota(Results):
         # Save Dakota's main output '.dat' files
         output_data = {}
         
-        if (Path(dakota_out_file_name).exists()):
+        if Path(dakota_out_file_name).exists():
             with open(dakota_out_file_name) as f:
                 col_names = f.readline().split()
             df = pd.read_csv(dakota_out_file_name, sep="\s+", skiprows=1, names=col_names)
@@ -71,7 +70,7 @@ class ResultsDakota(Results):
                 output_data[name] = np.array(df[name])
 
         # Save Dakota's final output '.dat' files
-        if (Path('finaldata1.dat').exists()):
+        if Path('finaldata1.dat').exists():
             with open('finaldata1.dat') as fd:
                 reader = csv.reader(fd)
                 rows = [row for idx, row in enumerate(reader) if idx == 0]
@@ -147,6 +146,7 @@ class PluginDakota(TemplatePlugin):
     def execute_command(self):
         return [str(self.executable), "-i", self.input_name]
 
+
 def run_dakota_driver(coupled_code_exec: str):
     """ Function to execute the workflow for data
     exchange between Dakota and the coupled code
@@ -161,6 +161,7 @@ def run_dakota_driver(coupled_code_exec: str):
     results = _parse_dakota_input()
     retval = _run_coupled_code(coupled_code_exec)
     _return_dakota_input(results, retval)
+
 
 def _parse_dakota_input() -> Results:
     """Parse Dakota input
@@ -183,6 +184,7 @@ def _parse_dakota_input() -> Results:
     with open(params_for_template_engine_file_path, 'w') as outfile:
         f = json.dump(params._variables,  outfile, default=lambda o: o.__dict__)
     return(results)
+
 
 def _run_coupled_code(coupled_code_exec: str) -> dict:
     """ Run the coupled code
@@ -217,6 +219,7 @@ def _run_coupled_code(coupled_code_exec: str) -> dict:
         raise RuntimeError("'opt_res.out' file is missing.")
 
     return {'fns': res_output}
+
 
 def _return_dakota_input(results: Results, retval: dict):
     """ Return the output of the coupled code
