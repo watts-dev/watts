@@ -62,7 +62,7 @@ class ResultsDakota(Results):
         # Save Dakota's main output '.dat' files
         output_data = {}
         
-        if (glob.glob(dakota_out_file_name)):
+        if (Path(dakota_out_file_name).exists()):
             with open(dakota_out_file_name) as f:
                 col_names = f.readline().split()
             df = pd.read_csv(dakota_out_file_name, sep="\s+", skiprows=1, names=col_names)
@@ -71,7 +71,7 @@ class ResultsDakota(Results):
                 output_data[name] = np.array(df[name])
 
         # Save Dakota's final output '.dat' files
-        if (glob.glob('finaldata1.dat')):
+        if (Path('finaldata1.dat').exists()):
             with open('finaldata1.dat') as fd:
                 reader = csv.reader(fd)
                 rows = [row for idx, row in enumerate(reader) if idx == 0]
