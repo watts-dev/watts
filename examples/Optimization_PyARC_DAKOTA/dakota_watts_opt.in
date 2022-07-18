@@ -1,0 +1,75 @@
+# Dakota Input File: for mogas
+
+environment
+  tabular_data
+    tabular_data_file = '{{dakota_out_file}}'
+
+method
+    moga
+    
+    fitness_type domination_count              # another option is layer_rank. they are similar
+    replacement_type below_limit = 5.0         # designs those are dominated by 10 other designs or less are kept
+											   # designs dominated by more than 10 other designs are discarded.
+    shrinkage_fraction = 0.95                  # optional, the population size of next generation >= 0.95 * population size of current generation
+	                                           # this is to prevent a quick reduce in population size in some extreme case. 
+    
+#    niching_type distance 0.05 0.05 0.05      # In output space. if two data points have close outputs, one will be buffered and re-inserted in next generation.
+                                               # corresponses to three objectives 
+											   # this could be useful capability, but I didn't test it, and the values here are default. 
+    convergence_type metric_tracker			   # the rules are quite strict, and I recommend to use convergence criteria of our own.
+                     percent_change = 0.05     # when the change between generations is less than 5% 
+                     num_generations = 5       # for 5 consecutive generations, the optimization reach convergence.
+
+#    postprocessor_type orthogonal_distance = 0.0 0.0 0.0   # Pareto Frontier is the last generation, give by population_#.dat
+															# the postprocessor_type defines the post processing of the last generation.
+															# and it will generate the data file called finaldata.dat -  this is processed data.
+															# it is based on the normalized distance to the ideal/Utopia points
+    max_function_evaluations = 20    					    # The maximum number of external code evaluations
+    population_size = 5                                     # the inital population size. was 500 for ABTR, but I think 100 should be already sufficient.
+    log_file = "test"
+    print_each_pop											# please enable this to print out the information at all generations, then we could manually calcualte the change to determine the convergence. 
+    initialization_type unique_random						# random sampling to obtained initial population.
+
+    crossover_type shuffle_random							# inputs from parents are shuffled first, and then randomly mix to generate offsprings.
+                   num_offspring = 2      					# or  5 recommended by Laura
+                   num_parents = 4							# number of parants
+                   crossover_rate = 0.8						# specifies the probability of a crossover operation being performed to generate a new offspring.
+    mutation_type replace_uniform							# random variation by first randomly choosing a design variable of a randomly selected design  
+                  mutation_rate = 0.1						# the probability of a mutation operation,  the number of mutations = mutation_rate * population_size
+    
+variables   
+    discrete_design_set
+        real = {{ real }}
+            elements_per_variable =     5   5   
+            initial_point         =     13  20
+            elements =  10 11 12 13 14 
+                        16 18 20 22 24
+            descriptors   =   "AP" "AL" 
+
+
+interface
+    asynchronous  evaluation_concurrency = 1
+    analysis_drivers = 'dakota_driver.py'
+        fork 
+            parameters_file = 'params.in'
+            results_file    = 'results.out'
+            work_directory named = "workdir"
+            directory_tag 
+            directory_save
+            link_files = {{ auto_link_file_string_name }} # Users can automatically add files to the link files (refer to watts_dakota_exec.py for more details).
+            # link_files = "dakota_driver.py" "pyarc_template" "watts_pyarc_exec.py" "lumped.son" "pyarc_input.isotxs"  # Users can choose to manually input the linked files
+            file_save
+    failure_capture continuation
+
+responses
+  objective_functions = 2
+  sense = "minimization"  "minimization"
+   nonlinear_inequality_constraints = 1
+   nonlinear_inequality_upper_bounds = 2 
+   nonlinear_inequality_lower_bounds = 1 
+   no_gradients
+    descriptors =  
+                    "{{ dakota_descriptor_1 }}"            # Obj Function = Keff
+                    "{{ dakota_descriptor_2 }}"             # Obj Function = Core weight
+                    "{{ dakota_descriptor_3 }}"             # Constraint =  Keff
+   no_hessians
