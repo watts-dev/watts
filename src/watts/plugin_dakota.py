@@ -5,8 +5,6 @@ import os
 import glob
 from datetime import datetime
 from pathlib import Path
-import shutil
-import re
 import pickle
 from typing import List, Optional
 
@@ -16,7 +14,7 @@ import numpy as np
 import pandas as pd
 import subprocess
 
-from .fileutils import PathLike, run as run_proc
+from .fileutils import PathLike
 from .parameters import Parameters
 from .plugin import TemplatePlugin
 from .results import Results
@@ -59,20 +57,14 @@ class ResultsDakota(Results):
 
         """
 
-        if 'dakota_out_file' in params.keys():
-            dakota_out_file_name = params['dakota_out_file']
-        else:
-            dakota_out_file_name = 'dakota_opt.dat'
+        dakota_out_file_name = params.get('dakota_out_file', 'dakota_opt.dat')
 
         # Save Dakota's main output '.dat' files
         output_data = {}
         
         if (glob.glob(dakota_out_file_name)):
             with open(dakota_out_file_name) as f:
-                reader = csv.reader(f)
-                rows = [row for idx, row in enumerate(reader) if idx == 0]
-      
-            col_names = str(rows[0][0]).split()
+                col_names = f.readline().split()
             df = pd.read_csv(dakota_out_file_name, sep="\s+", skiprows=1, names=col_names)
 
             for name in col_names:
@@ -127,16 +119,12 @@ class PluginDakota(TemplatePlugin):
         if self._auto_link_files is not None:
             dakota_link_files = []
             if extra_inputs is not None:
-                for item in extra_inputs:
-                    dakota_link_files.append(item)
+                dakota_link_files.extend(list(extra_inputs))
 
             if extra_template_inputs is not None:
-                for item in extra_template_inputs:
-                    dakota_link_files.append(item)
+                dakota_link_files.extend(list(extra_template_inputs))
 
-            self.dakota_link_files_string = "'"
-            for item in dakota_link_files:
-                self.dakota_link_files_string = f"{self.dakota_link_files_string}{item}' '"
+            self.dakota_link_files_string = " ".join(f"'{item}'" for item in dakota_link_files)
 
     def prerun(self, params: Parameters, filename: Optional[str] = None):
         """ Change the permisison of the Dakota driver file
@@ -212,10 +200,10 @@ def run_coupled_code(coupled_code_exec):
         Processed output from the coupled code.
     """
 
-    if os.path.exists(coupled_code_exec):
-        P = subprocess.check_output(["python", coupled_code_exec])
-    else:
-        raise RuntimeError("Coupled-code script missing.")
+    if not os.path.exists(coupled_code_exec):
+        raise FileNotFoundError("Coupled-code script missing.")
+
+    subprocess.check_output(["python", coupled_code_exec])
 
     # Read the 'opt_res.out' pickle file and 
     # store the results to 'res_output' for data
@@ -229,9 +217,7 @@ def run_coupled_code(coupled_code_exec):
     else:
         raise RuntimeError("'opt_res.out' file is missing.")
 
-    retval = dict([])
-    retval['fns'] = res_output
-    return(retval)
+    return {'fns': res_output}
 
 def return_dakota_input(results, retval):
     """ Return the output of the coupled code
@@ -257,10 +243,8 @@ def return_dakota_input(results, retval):
     # Catch Dakota 6.9 exception where results interface has changed
     # ValueError: too many values to unpack
     except ValueError:
-      i = 0
-      for n, r in results.items():
+      for i, (n, r) in enumerate(results.items()):
           r.function = retval['fns'][i]
-          i += 1
     results.write()
 
     # Dump to external results.json file

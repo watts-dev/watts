@@ -30,9 +30,9 @@ params['temp'] = Quantity({{ temp }}, "Celsius")  # 300 K
 # because WATTS uses the order to identify the descriptors. 
 # MUST use the 'dakota_descriptors' key word here. 
 params['dakota_descriptors'] = {
-'{{ dakota_descriptor_1 }}': 'keff-dif3d', 
-'{{ dakota_descriptor_2 }}': 'core_weight', 
-'{{ dakota_descriptor_3 }}': 'keff-dif3d'
+    '{{ dakota_descriptor_1 }}': 'keff-dif3d', 
+    '{{ dakota_descriptor_2 }}': 'core_weight', 
+    '{{ dakota_descriptor_3 }}': 'keff-dif3d'
 }
 
 # PyARC Workflow

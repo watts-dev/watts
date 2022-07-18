@@ -47,11 +47,7 @@ Lastly, 'params', MUST be saved as a pickle file with the name 'opt_res.out'
 which will be loaded and returned to Dakota.
 """
 
-import os
-import sys
 import watts
-import time
-from astropy.units import Quantity
 
 # watts.Database.set_default_path('/default/directory') # Set default save directory if necessary
 

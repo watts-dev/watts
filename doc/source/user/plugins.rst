@@ -266,11 +266,11 @@ text-based input files that can be templated as follows:
     work_directory named = {{ workdir }}
 
 Note that the execution of the Dakota plugin is slightly different and involves
-more steps than the execution of the other plugins. Dakota is essentially an
+more steps than the execution of the other plugins. Dakota is an
 optimization and uncertainty quantification tool that needs to be coupled to
 other external tools or software.
 
-The execution of Dakota with WATTS is essentially a two-step process. In the
+The execution of Dakota with WATTS is a two-step process. In the
 first step, WATTS creates Dakota's input file using the user-provided template
 and runs Dakota. In the second step, Dakota drives the execution of the coupled
 code (PyARC, SAM, SAS, etc.) via a Python script known as the "Dakota driver".
