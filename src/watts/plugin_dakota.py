@@ -147,7 +147,6 @@ class PluginDakota(TemplatePlugin):
     def execute_command(self):
         return [str(self.executable), "-i", self.input_name]
 
-
 def run_dakota_driver(coupled_code_exec: str):
     """ Function to execute the workflow for data
     exchange between Dakota and the coupled code
@@ -163,7 +162,7 @@ def run_dakota_driver(coupled_code_exec: str):
     retval = _run_coupled_code(coupled_code_exec)
     _return_dakota_input(results, retval)
 
-def _parse_dakota_input():
+def _parse_dakota_input() -> Results:
     """Parse Dakota input
 
     Parameters
@@ -185,7 +184,7 @@ def _parse_dakota_input():
         f = json.dump(params._variables,  outfile, default=lambda o: o.__dict__)
     return(results)
 
-def _run_coupled_code(coupled_code_exec):
+def _run_coupled_code(coupled_code_exec: str) -> dict:
     """ Run the coupled code
 
     Parameters
@@ -219,7 +218,7 @@ def _run_coupled_code(coupled_code_exec):
 
     return {'fns': res_output}
 
-def _return_dakota_input(results, retval):
+def _return_dakota_input(results: Results, retval: dict):
     """ Return the output of the coupled code
     to Dakota.
 
