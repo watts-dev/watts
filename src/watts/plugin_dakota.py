@@ -236,17 +236,19 @@ def _return_dakota_input(results: Results, retval: dict):
     # Insert extracted values into results
     # Results iterator provides an index, response name, and response
     try:
-      for i, n, r in results:
-        if r.asv.function:
-            try:
-                r.function = retval['fns'][i]
-            except:
-                pass
+        for i, n, r in results:
+            if r.asv.function:
+                # Returns the response function value from the coupled 
+                # code to Dakota (for pre Dakota v6.9). 
+                try:
+                    r.function = retval['fns'][i]
+                except:
+                    pass
     # Catch Dakota 6.9 exception where results interface has changed
     # ValueError: too many values to unpack
     except ValueError:
-      for i, (n, r) in enumerate(results.items()):
-          r.function = retval['fns'][i]
+        for i, (n, r) in enumerate(results.items()):
+            r.function = retval['fns'][i]
     results.write()
 
     # Dump to external results.json file
