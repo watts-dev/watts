@@ -80,39 +80,5 @@ class ResultsABCE(Results):
     def __init__(self, params: Parameters, name: str, time: datetime,
                  inputs: List[PathLike], outputs: List[PathLike]):
         super().__init__(params, name, time, inputs, outputs)
-        self.csv_data = self._save_ABCE_csv()
 
-
-    def _save_ABCE_csv(self) -> dict:
-        """Read all ABCE '.csv' files and return results in a dictionary
-
-        Returns
-        -------
-        Results from ABCE .csv files
-
-        """
-        input_file = self.inputs[0]
-        csv_file = input_file.with_name(f"{input_file.stem}_csv.csv")
-
-        # Save ABCE's main output '.csv' files
-        csv_data = {}
-        if csv_file.exists():
-            csv_file_df = pd.read_csv(csv_file)
-            for column_name in csv_file_df.columns:
-                csv_data[column_name] = np.array(csv_file_df[column_name])
-
-        # Read ABCE's vector postprocesssor '.csv' files and save the
-        # parameters as individual array
-        for output in self.outputs:
-            if (output.name.startswith(f"{input_file.stem}_csv_") and
-                not output.name.endswith("_0000.csv")):
-                vector_csv_df = pd.read_csv(output)
-                csv_param = list(set(vector_csv_df.columns) - {"id", "x", "y", "z"})
-                csv_data[output.stem] = np.array(vector_csv_df[csv_param[0]], dtype=float)
-
-                for name in ("id", "x", "y", "z"):
-                    new_name = output.name[:-8] + name
-                    if new_name not in csv_data:
-                        csv_data[new_name] = np.array(vector_csv_df[name], dtype=float)
-
-        return csv_data
+        return
