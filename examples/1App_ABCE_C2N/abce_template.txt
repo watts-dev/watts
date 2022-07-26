@@ -13,12 +13,12 @@ output_file: "outputs.xlsx"
 
 first_asset_id: 2001
 
-num_steps: 2
+num_steps: {{ N_STEPS }}
 
 run_ALEAF: False
 
 natural_gas_price: {{ NATURAL_GAS_PRICE }}
-conv_nuclear_FOM: 'ATB'
+conv_nuclear_FOM: {{ NFOM_VALUE }}
 
 C2N_subsidy: 1  # deprecated: to remove
 C2N_assumption: baseline
@@ -33,10 +33,10 @@ policies:
     enabled: False
     qty: 30   # $/t CO2
   PTC:
-    enabled: False
+    enabled: True
     eligible:
-      - AdvancedNuclear
-      - Wind
+      - ConventionalNuclear
+      # - Wind
     qty: {{ PTC_VALUE }}   # $/MWh
 num_repdays: 20
 
