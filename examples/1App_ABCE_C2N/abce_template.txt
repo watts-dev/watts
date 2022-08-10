@@ -15,7 +15,7 @@ first_asset_id: 2001
 
 num_steps: {{ N_STEPS }}
 
-run_ALEAF: False
+run_ALEAF: {{ run_ALEAF }}
 
 natural_gas_price: {{ NATURAL_GAS_PRICE }}
 conv_nuclear_FOM: {{ NFOM_VALUE }}
