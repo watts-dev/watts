@@ -1,6 +1,54 @@
 [build-system]
-requires = [
-    "setuptools>=42",
-    "wheel"
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "watts"
+version = "0.3.1-dev"
+authors = [
+    { name = "UChicago Argonne, LLC", email = "watts@anl.gov" },
 ]
-build-backend = "setuptools.build_meta"
+license = { file = "LICENSE" }
+description = "Workflow and Template Toolkit for Simulation"
+readme = "README.md"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering",
+    "Programming Language :: C++",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+]
+requires-python = ">=3.7"
+dependencies = [
+    "Jinja2",
+    "dill",
+    "numpy",
+    "pandas",
+    "platformdirs",
+    "prettytable",
+    "astropy",
+    "uncertainties",
+]
+
+[project.optional-dependencies]
+test = ["pytest"]
+docs = [
+    "sphinx",
+    "pydata_sphinx_theme",
+    "sphinx_design",
+    "sphinx-autodoc-typehints",
+]
+
+[project.urls]
+"Bug Tracker" = "https://github.com/watts-dev/watts/issues"
+Documentation = "https://watts.readthedocs.io"
+"Source Code" = "https://github.com/watts-dev/watts"

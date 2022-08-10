@@ -254,6 +254,7 @@ files. For example::
 
     results_reader = serpentTools.ResultsReader(str(result.outputs[-1]))
 
+
 ABCE Plugin
 ++++++++++++
 
@@ -279,3 +280,97 @@ As with other :class:`~watts.Plugin`s, :class:`~watts.PluginABCE` is easily used
 Note: `ABCE` is still under active development.
 
 
+Dakota Plugin
++++++++++++++
+
+The :class:`~watts.PluginDakota` class handles execution of Dakota. Dakota uses
+text-based input files that can be templated as follows:
+
+.. code-block:: jinja
+
+    real = {{ real }}
+    work_directory named = {{ workdir }}
+
+Note that the execution of the Dakota plugin is slightly different and involves
+more steps than the execution of the other plugins. Dakota is an
+optimization and uncertainty quantification tool that needs to be coupled to
+other external tools or software.
+
+The execution of Dakota with WATTS is a two-step process. In the
+first step, WATTS creates Dakota's input file using the user-provided template
+and runs Dakota. In the second step, Dakota drives the execution of the coupled
+code (PyARC, SAM, SAS, etc.) via a Python script known as the "Dakota driver".
+The Dakota driver also facilitates the exchange of information between Dakota
+and the coupled code. Note that this is done through Dakota's `interfacing`
+library. The user needs to ensure that this library is available prior to running
+Dakota with WATTS.
+
+To run Dakota with WATTS, the user needs to provide a number of files including
+the input file for Dakota, the WATTS Python script for executing Dakota,
+the input file for the coupled code, the WATTS script for executing the coupled
+code (note that this can involve complex workflows with several codes or iterations), 
+and the Dakota driver Python script, in addition to any file necessary to
+run the coupled code. Note that all of these files could be templated automatically
+by WATTS using the `template_file` and `extra_template_inputs` options, provided
+they are text-based.
+
+If the templated Dakota input file is `dakota_watts_opt.in`, then the Dakota
+plugin can be instantiated with the following command line::
+
+    dakota_plugin = watts.PluginDakota('dakota_watts_opt.in')
+
+If the coupled code has a text-based input file, users can also template
+this file (or other necessary files) with the `extra_template_inputs` options::
+
+    dakota_plugin = watts.PluginDakota(
+        template_file='dakota_watts_opt.in',
+        extra_template_inputs=['extra_template_file_name', 'other_necessary_files'])
+
+During the execution of WATTS, the working directory is switched to a temporary
+location. Non-templated files needed by the coupled code (license file, data file,
+etc.) can be copied to the temporary location with the `extra_inputs` option::
+
+    dakota_plugin = watts.PluginDakota(
+        template_file='dakota_watts_opt.in',
+        extra_template_inputs=['extra_template_file_name', 'other_necessary_files'],
+        extra_inputs=['file_1', 'file_2'])
+
+In the Dakota input file, users need to provide the names of required files to the
+`link_files` or the `copy_files` options where these files will be copied by Dakota
+to the working directory during each iteration. Users can choose to input the names of
+these files manually or they can choose to have WATTS automatically include all
+file names in the `extra_template_inputs` and `extra_inputs` options. To do so, simply use
+the `auto_link_files` option::
+
+    dakota_plugin = watts.PluginDakota(
+        template_file='dakota_watts_opt.in',
+        extra_template_inputs=['extra_template_file_name', 'other_necessary_files'],
+        auto_link_files='<string_name_for_files>',
+        extra_inputs=['file_1', 'file_2'])
+
+And set::
+
+    link_files = {{ <string_name_for_files> }}
+
+in the Dakota input file. Note that the same `<string_name_for_files>` must be used
+in the two locations mentioned above.
+
+As mentioned earlier, Dakota drives the execution of the coupled code through a
+Python script known as the Dakota driver. A template for the Dakota driver is
+provided in the example. Just like the other files mentioned earlier, the Dakota
+driver can also be templated using the approach described above.
+
+Furthermore, the path to the 'dakota.sh' shell script
+needs to be provided either by setting the :envvar:`DAKOTA_DIR` environment
+variable to the directory containing `dakota.sh` or by adding it through the
+input file as::
+
+    dakota_plugin.dakota_exec = "path/to/dakota.sh"
+
+Once the execution is complete, WATTS saves the results from all iterations as
+individual objects and the final results as a separate object known as `finaldata1`
+in the :class:`~watts.Parameters` class.
+
+The setup of WATTS-Dakota coupling is more involved than other codes. Users are
+strongly encouraged to visit the example case `Optimization_PyARC_DAKOTA` for
+detailed explanation on how to prepare the input files.

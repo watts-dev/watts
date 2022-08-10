@@ -92,7 +92,6 @@ html_theme_options = {
     ],
     "switcher": {
         "json_url": "https://watts.readthedocs.io/en/latest/_static/switcher.json",
-        "url_template": "https://watts.readthedocs.io/en/{version}/",
         "version_match": version if '-dev' not in version else 'dev',
     },
     "navbar_end": ["version-switcher", "navbar-icon-links"],
