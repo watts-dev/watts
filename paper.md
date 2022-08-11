@@ -10,7 +10,7 @@ authors:
     orcid: 0000-0002-1147-045X
     corresponding: true
     affiliation: 1
-  - name: Nicholas E. Stauff
+  - name: Nicolas E. Stauff
     orcid: 0000-0001-6167-9326
     affiliation: 1
   - name: Zhiee Jhia Ooi
@@ -51,12 +51,15 @@ applications. Most importantly, it provides an ability to use placeholder values
 in text-based input files that are filled in programmatically from Python,
 thereby giving users of scientific applications a means of performing parameter
 and sensitivity studies, optimization, and other scientific workflows using
-common third-party Python packages. ``watts`` relies on the Jinja [@jinja]
-templating engine for handling templated variables and expressions in input
-files. In a Jinja template, an identifier surrounded by a pair of ``{{`` and
-``}}`` braces denotes a variable; the variable can then be specified using the
-``Parameters`` class from ``watts``. When an application is executed via
-``watts``, it will first _render_ the template using the specified parameters.
+common third-party Python packages. When running multiple applications in
+sequence, this capability also provides a means of using the outputs of one
+application as the inputs (parameters) in a subsequent application. ``watts``
+relies on the Jinja [@jinja] templating engine for handling templated variables
+and expressions in input files. In a Jinja template, an identifier surrounded by
+a pair of ``{{`` and ``}}`` braces denotes a variable; the variable can then be
+specified using the ``Parameters`` class from ``watts``. When an application is
+executed via ``watts``, it will first _render_ the template using the specified
+parameters.
 
 One of the challenges of managing scientific computing workflows that involve
 multiple applications is dealing with differing unit systems. Some applications
@@ -80,8 +83,10 @@ number of other useful capabilities for scientific simulation workflows. Each
 time an application is executed through ``watts``, an isolated execution
 environment is used so that input and output files are not overwritten from
 multiple invocations. Additionally, ``watts`` keeps a local database of
-simulation inputs and outputs along with the parameters that are associated with
-them for later retrieval.
+application input and output files along with the parameters that are associated
+with them for later retrieval. Plugin classes, which are discussed further
+below, encapsulate the execution logic for particular applications and provide
+extra postprocessing capabilities for interpreting application results.
 
 # Statement of need
 
@@ -92,8 +97,9 @@ decades, and although some---particularly those written in C++ and Python---have
 a formal API by which external software can interface with, most legacy software
 packages in NSE typically rely on simple text-based input files and do not have
 an API. Thus, ``watts`` is meant to aid scientists and engineers in working with
-these applications and enable integration with other off-the-shelf and open
-source software packages.
+these applications, enabling integration with other off-the-shelf and open
+source software packages, and providing a means of data transfer between
+applications.
 
 There have been prior efforts to develop software that enables parameterization
 of input files. In particular, the Funz package [@funz] allows input files to be
