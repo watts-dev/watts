@@ -49,6 +49,7 @@ which will be loaded and returned to Dakota.
 
 import watts
 
+watts.Database.set_default_path('/home/zooi/watts-dakota-results')
 # watts.Database.set_default_path('/default/directory') # Set default save directory if necessary
 
 params = watts.Parameters()
@@ -95,7 +96,7 @@ dakota_plugin = watts.PluginDakota(
     extra_template_inputs=['watts_pyarc_exec.py', 'dakota_driver.py'],
     extra_inputs=['pyarc_input.isotxs', 'pyarc_template', 'lumped.son', 'watts_dakota_exec.py'],
     auto_link_files = 'auto_link_file_string_name',
-    show_stdout=True) # show all the output
+    show_stdout=True,  show_stderr=True) # show all the output
 
 dakota_result = dakota_plugin(params)
 

@@ -1,14 +1,14 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
-import os
 from datetime import datetime
+import os
 from pathlib import Path
 import pickle
 from typing import List, Optional
 
-import json
 import csv
+import json
 import numpy as np
 import pandas as pd
 import subprocess
@@ -111,6 +111,8 @@ class PluginDakota(TemplatePlugin):
         self._executable = dakota_dir / f"dakota.sh"
         self.input_name = template_file
         self._auto_link_files = auto_link_files
+        self._show_stdout = show_stdout
+        self._show_stderr = show_stderr
 
         # Setup to automatically include all 'extra_inputs' and 'extra_template_inputs' 
         # to Dakota's "link files" option. Create a string of the file names in
@@ -145,6 +147,24 @@ class PluginDakota(TemplatePlugin):
     @property
     def execute_command(self):
         return [str(self.executable), "-i", self.input_name]
+
+    def run(self):
+        """Run Dakota
+
+        Parameters
+        ----------
+        """
+
+        if self._show_stdout or self._show_stderr:
+            command = self.execute_command
+
+            # run_proc() blocks the output from Dakota while the code is running.
+            # As a work-around, we explicitly use subprocess.Popen() 
+            # here without specifying 'stdout=subprocess.PIPE').
+            p = subprocess.Popen(command)
+            stdout, stderr = p.communicate()
+        else:
+            super().run()
 
 
 def run_dakota_driver(coupled_code_exec: str):
