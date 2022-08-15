@@ -34,19 +34,23 @@ bibliography: paper.bib
 
 # Summary
 
-Modeling and simulation in many scientific domains relies on applications that
-often do not have a formal application programming interface (API). Instead,
+Modeling and simulation in many scientific and engineering domains often involve
+the executions and/or iterations of a sequence of software/applications, where
+a workfolow and data transferring among applications are typically required.
+Most of these applications often do not have
+a formal application programming interface (API). Instead,
 executing an application requires first writing a text-based input file, the
 format of which is typically defined in a user's manual. While text-based input
 files are suitable for simple one-off calculations, they can become cumbersome
-if a user wants to execute the application multiple times and systematically
-vary input parameters. In this case, they must resort to either manually making
+if a user wants to execute the applications multiple times and systematically
+vary input parameters, especially when a complex workflow is involved.
+In this case, they must resort to either manually making
 changes in the input file or developing their own script that modifies the input
 file and executes the application. Depending on the format of the input file,
 writing such a script can be a non-trivial and error-prone task.
 
 ``watts`` (Workflow and Template Toolkit for Simulation) is a Python package
-that consists of a set of classes that can manage the execution of one or more
+that consists of a set of classes that can manage the input files and execution of one or more
 applications. Most importantly, it provides an ability to use placeholder values
 in text-based input files that are filled in programmatically from Python,
 thereby giving users of scientific applications a means of performing parameter
@@ -92,7 +96,8 @@ extra postprocessing capabilities for interpreting application results.
 
 The motivation for the development of ``watts`` originated from research and
 development activities in nuclear science and engineering (NSE), which rely on a
-wide array of applications. Many of these applications have been developed over
+wide array of applications, such as reactor physics, thermal-hydraulic, fuel
+performance, etc. Many of these applications have been developed over
 decades, and although some---particularly those written in C++ and Python---have
 a formal API by which external software can interface with, most legacy software
 packages in NSE typically rely on simple text-based input files and do not have
@@ -123,7 +128,8 @@ applications. These plugin classes define how the application is executed
 (location of executable and command-line arguments, if any), what input files
 are necessary, the system of units to use, and what output files are produced
 and collected at the end of a simulation. At present, the collection of plugin
-classes consists of common applications used in NSE, including MOOSE [@moose],
+classes consists of common applications used in NSE, including MOOSE [@moose] and
+MOOSE-based applications (any references here?),
 SAS [@sas], OpenMC [@openmc; @openmc_zenodo], MCNP [@mcnp], Serpent [@serpent],
 RELAP5 [@relap5], Dakota [@dakota], and PyARC [@pyarc]. However, the core
 capabilities of ``watts`` are not specific to NSE applications and could be
