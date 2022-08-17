@@ -18,7 +18,7 @@ n_steps = 2
 params = watts.Parameters()
 params['NFOM_VALUE'] = "ATB"
 params['N_STEPS'] = n_steps
-params['run_ALEAF'] = "False
+params['run_ALEAF'] = "False"
 
 template_name = "abce_template.txt"
 results_path = Path.cwd() / 'results' / f"{n_steps}_periods_ALEAF_{params['run_ALEAF']}"
