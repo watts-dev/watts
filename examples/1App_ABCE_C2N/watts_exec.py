@@ -13,15 +13,16 @@ import numpy as np
 import time
 
 
-params = watts.Parameters()
-
 n_steps = 2
-template_name = "abce_template.txt"
-results_path = Path.cwd() / 'results'
-results_path.mkdir(exist_ok=True)
+
+params = watts.Parameters()
 params['NFOM_VALUE'] = "ATB"
 params['N_STEPS'] = n_steps
-params['run_ALEAF'] = "False"
+params['run_ALEAF'] = "False
+
+template_name = "abce_template.txt"
+results_path = Path.cwd() / 'results' / f"{n_steps}_periods_ALEAF_{params['run_ALEAF']}"
+results_path.mkdir(exist_ok=True)
 
 watts.Database.set_default_path(results_path)
 
@@ -40,7 +41,7 @@ for i, n in enumerate(ngp_list): # loop through all of the natural gas prices
     params['NATURAL_GAS_PRICE'] = n
     for j, p in enumerate(ptc_list):
         params['PTC_VALUE'] = p
-        params['DATABASE_NAME'] = f'NG_PTC_run_4{i}{j}_pd{n_steps}_ALEAF_True.db'
+        params['DATABASE_NAME'] = f'NG_PTC_run_4{i}{j}_pd{n_steps}.db'
         params.show_summary(show_metadata=True, sort_by='key')
         abce_plugin = watts.PluginABCE(f'{template_name}', show_stdout=True, show_stderr=True)
         abce_result = abce_plugin(params, extra_args=['-f'])
