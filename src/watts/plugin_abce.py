@@ -4,14 +4,11 @@
 from datetime import datetime
 from pathlib import Path
 import os
-import sys
-import tempfile
-from typing import Mapping, List, Optional
+from typing import List, Optional
 
 from .fileutils import PathLike
 from .parameters import Parameters
 from .plugin import TemplatePlugin
-from .plugin import Plugin
 from .results import Results
 
 
@@ -51,7 +48,8 @@ class PluginABCE(TemplatePlugin):
 
     @property
     def execute_command(self):
-        return ['python', str(self.executable)+'/run.py', '--settings_file',f'{self.input_name}']
+        return [sys.executable, str(self.executable / 'run.py'), '--settings_file',
+                f'{self.input_name}']
 
 
 class ResultsABCE(Results):
@@ -74,11 +72,7 @@ class ResultsABCE(Results):
     ----------
     stdout
         Standard output from ABCE run
-    csv_data
-        Dictionary with data from .csv files
     """
     def __init__(self, params: Parameters, name: str, time: datetime,
                  inputs: List[PathLike], outputs: List[PathLike]):
         super().__init__(params, name, time, inputs, outputs)
-
-        return

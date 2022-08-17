@@ -36,9 +36,9 @@ ngp_list = np.array([2.0, 3.5, 5.5, 8.5]) # $/mmbtu
 # nfom_list = np.linspace(start=40, stop=500, num=n_samples) # $/MWh
 ptc_list = np.linspace(start=0, stop=30, num=n_samples) # $/MWh
 
-for i,n in enumerate(ngp_list): # loop through all of the natural gas prices
+for i, n in enumerate(ngp_list): # loop through all of the natural gas prices
     params['NATURAL_GAS_PRICE'] = n
-    for j,p in enumerate(ptc_list):
+    for j, p in enumerate(ptc_list):
         params['PTC_VALUE'] = p
         params['DATABASE_NAME'] = f'NG_PTC_run_4{i}{j}_pd{n_steps}_ALEAF_True.db'
         params.show_summary(show_metadata=True, sort_by='key')
