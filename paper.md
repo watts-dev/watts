@@ -105,6 +105,20 @@ to aid scientists and engineers in working with these applications, enabling
 integration with other off-the-shelf and open source software packages, and
 providing a means of data transfer between applications.
 
+It is helpful to place ``watts`` within the context of other open source
+[workflow systems](https://workflows.community). Many workflow systems
+[@snakemake; @merlin; @aiida; @scipipe] provide capabilities to define workflows
+involving multiple applications, either through a dedicated workflow
+specification language or via high-level logic in a programming language.
+Although ``watts`` allows multiple applications to be executed within a Python
+script, it does not provide a mechanism for defining these workflows through a
+formal specification. Instead, ``watts`` is primarily intended to enable the
+execution of applications with templated input files that can be rendered
+programmatically. Other workflow systems [@parsl; @scipipe; @balsam] are focused
+on enabling the execution of a workflow on heterogeneous and/or distributed
+computing resources, often involving high-performance computing clusters. This
+is also outside of the scope of what ``watts`` provides.
+
 There have been prior efforts to develop software that enables parameterization
 of input files. In particular, the Funz package [@funz] allows input files to be
 templated in a similar manner to ``watts``. However, it differs in several key
