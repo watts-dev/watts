@@ -10,6 +10,7 @@ db_file: {{ DATABASE_NAME }}
 ABCE_sysimage_file: "abceSysimage.so"
 dispatch_sysimage_file: "dispatch.so"
 output_file: "outputs.xlsx"
+solver: "cplex"
 
 first_asset_id: 2001
 

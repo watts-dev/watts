@@ -21,7 +21,7 @@ params['N_STEPS'] = n_steps
 params['run_ALEAF'] = "False"
 
 template_name = "abce_template.txt"
-results_path = Path.cwd() / 'results' / f"{n_steps}_periods_ALEAF_{params['run_ALEAF']}"
+results_path = Path.cwd() / 'results' / f"{n_steps}_periods_ALEAF_{params['run_ALEAF']}_99"
 results_path.mkdir(exist_ok=True)
 
 watts.Database.set_default_path(results_path)
