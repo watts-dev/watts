@@ -44,12 +44,12 @@ class PluginABCE(TemplatePlugin):
         super().__init__(template_file, extra_inputs, extra_template_inputs,
                          show_stdout, show_stderr)
         # requires users specify an environment variable, ABCE_DIR
-        self._executable = Path(os.environ['ABCE_DIR'])
+        self._executable = Path(os.environ['ABCE_DIR']) / 'run.py'
         self.input_name = 'settings.yml'
 
     @property
     def execute_command(self):
-        return [sys.executable, str(self.executable / 'run.py'), '--settings_file',
+        return [sys.executable, str(self._executable), '--settings_file',
                 f'{self.input_name}']
 
 
