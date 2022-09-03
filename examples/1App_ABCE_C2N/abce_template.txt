@@ -1,0 +1,79 @@
+# File locations and runtime options for ABCE
+demand_data_file: "inputs/demand_data.csv"
+seed_dispatch_data_file: "inputs/ALEAF_inputs/ABCE_IL_C2N__dispatch_summary_OP__step_0.csv"
+unit_specs_abce_supp_file: "inputs/unit_specs_abce_supplemental.csv"
+retirement_period_specs_file: "inputs/portfolio_retirement_specification.csv"
+time_series_data_file: "inputs/timeseriesParams.xlsx"
+gc_params_file: "inputs/gc_params.yml"
+portfolios_file: "inputs/IL_portfolios.csv"
+db_file: {{ DATABASE_NAME }}
+ABCE_sysimage_file: "abceSysimage.so"
+dispatch_sysimage_file: "dispatch.so"
+output_file: "outputs.xlsx"
+solver: "cplex"
+
+first_asset_id: 2001
+
+num_steps: {{ N_STEPS }}
+
+run_ALEAF: {{ run_ALEAF }}
+
+natural_gas_price: {{ NATURAL_GAS_PRICE }}
+conv_nuclear_FOM: {{ NFOM_VALUE }}
+
+C2N_subsidy: 1  # deprecated: to remove
+C2N_assumption: baseline
+
+use_precomputed_price_curve: True # deprecated: to remove
+enable_subsidy: False # deprecated: to remove
+subsidy_amount: 0    # $/MWh
+price_cap: 9001
+
+policies:
+  CTAX:
+    enabled: False
+    qty: 30   # $/t CO2
+  PTC:
+    enabled: True
+    eligible:
+      - ConventionalNuclear
+      # - Wind
+    qty: {{ PTC_VALUE }}   # $/MWh
+num_repdays: 20
+
+allowed_xtr_types:
+  - Wind
+  - Solar
+  # - AdvancedNuclear
+  - ConventionalNuclear
+  - NGCC
+  - NGCT
+  - Coal
+
+peak_demand: 28967  # MWh, to scale load duration data
+demand_visibility_horizon: 5
+demand_projection_mode: exp_termrate     # flat, exp_fitted, or exp_termrate
+demand_projection_window: 10 # Total number of periods used to project demand
+historical_demand_growth_rate: 0.01
+terminal_demand_growth_rate: 0.01  # Exponential growth rate of demand
+planning_reserve_margin: 0.1375
+peak_initial_reserves: 0    # MW, peak reserves demand (added to PD by agent_choice.jl)
+tax_rate: 0.21
+large_epsilon: 1.0    # Value for determining non-zero-ness of large values
+num_dispatch_years: 10  # Num. of years to explicitly simulate dispatch
+
+hours_per_year: 8760
+total_forecast_horizon: 100    # Number of periods in the complete forecast horizon
+consider_future_projects: True
+num_future_periods_considered: 4    # Number of periods for which to consider future projects
+max_type_rets_per_pd: 5
+max_type_newbuilds_per_pd: 3
+
+
+#### ALEAF SETTINGS
+ALEAF_master_settings_file: "ALEAF_Master.xlsx"
+ALEAF_model_type: "LC_GEP"
+ALEAF_region: "IL"
+ALEAF_model_settings_file: "ALEAF_Master_LC_GEP.xlsx"
+ALEAF_portfolio_file: "ALEAF_IL.xlsx"
+ALEAF_scenario_name: "ABCE_IL"

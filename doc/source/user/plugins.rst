@@ -254,6 +254,33 @@ files. For example::
 
     results_reader = serpentTools.ResultsReader(str(result.outputs[-1]))
 
+
+ABCE Plugin
++++++++++++
+
+The :class:`~watts.PluginABCE` class enables simulations with the Agent Based Capacity
+Expansion (ABCE) code using a templated input file. Since :mod:`watts` relies on the `Jinja
+<https://jinja.palletsprojects.com>`_ templating engine, any parameter in the ABCE settings
+file could be updated with :mod:`watts`. For example:
+
+.. code-block:: jinja
+
+    num_steps: {{ N_STEPS }}  # The number of timesteps
+
+    run_ALEAF: {{ run_ALEAF }}  # Toggles the A-LEAF dispatch model
+
+    natural_gas_price: {{ NATURAL_GAS_PRICE }}  # Sets the price of natural gas in [$/MMBTU]
+    conv_nuclear_FOM: {{ NFOM_VALUE }}  # Sets the fixed operating costs of conventional nuclear plants.
+
+As with other plugins, :class:`~watts.PluginABCE` is easily used by::
+
+    abce_plugin = watts.PluginABCE(template_file, show_stdout=True, show_stderr=True)
+    abce_result = abce_plugin(params, extra_args=['-f'])
+
+.. note::
+    `ABCE` is still under active development.
+
+
 Dakota Plugin
 +++++++++++++
 
