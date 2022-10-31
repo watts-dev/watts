@@ -5,8 +5,9 @@ from pathlib import Path
 import os
 
 import pytest
-import openmc
 import watts
+
+openmc = pytest.importorskip('openmc')
 
 
 @pytest.fixture(scope='module', autouse=True)
