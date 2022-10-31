@@ -2,25 +2,34 @@
 # SPDX-License-Identifier: MIT
 
 from pathlib import Path
+import os
 
 import pytest
 import openmc
 import watts
 
 
+@pytest.fixture(scope='module', autouse=True)
+def data_library():
+    """Create data library with only Am244"""
+    lib = openmc.data.DataLibrary()
+    lib.register_file(Path(__file__).with_name('Am244.h5'))
+    lib.export_to_xml()
+
+    # Temporarily set cross sections to the library just created
+    os.environ['OPENMC_CROSS_SECTIONS'] = str(Path.cwd() / 'cross_sections.xml')
+
+
 def build_openmc_model(params):
     model = openmc.model.Model()
 
-    pu_metal = openmc.Material()
-    pu_metal.set_density('sum')
-    pu_metal.add_nuclide('Pu239', 3.7047e-02)
-    pu_metal.add_nuclide('Pu240', 1.7512e-03)
-    pu_metal.add_nuclide('Pu241', 1.1674e-04)
-    pu_metal.add_element('Ga', 1.3752e-03)
-    model.materials.append(pu_metal)
+    am244 = openmc.Material()
+    am244.set_density('sum')
+    am244.add_nuclide('Am244', 0.02)
+    model.materials.append(am244)
 
     sph = openmc.Sphere(r=params['radius'], boundary_type='vacuum')
-    cell = openmc.Cell(fill=pu_metal, region=-sph)
+    cell = openmc.Cell(fill=am244, region=-sph)
     model.geometry = openmc.Geometry([cell])
 
     model.settings.batches = 50
@@ -39,12 +48,12 @@ def test_openmc_plugin():
     plugin = watts.PluginOpenMC(build_openmc_model)
     assert plugin.model_builder == build_openmc_model
 
-    params = watts.Parameters(radius=6.38)
+    params = watts.Parameters(radius=11.45)
     result = plugin(params, name="OpenMC run")
 
     # Sanity checks
     assert isinstance(result, watts.ResultsOpenMC)
-    assert result.parameters['radius'] == 6.38
+    assert result.parameters['radius'] == 11.45
     assert result.name == "OpenMC run"
     assert len(result.statepoints) == 5
     input_names = {p.name for p in result.inputs}
@@ -77,11 +86,11 @@ def test_openmc_plugin():
 
 
 @pytest.fixture
-def pu_model():
-    """Model of a 10 cm sphere of Pu239"""
+def am_model():
+    """Model of a 10 cm sphere of Am244"""
     model = openmc.model.Model()
     mat = openmc.Material()
-    mat.add_nuclide('Pu239', 1.0)
+    mat.add_nuclide('Am244', 1.0)
     mat.set_density('g/cm3', 10.0)
     sph = openmc.Sphere(r=10.0, boundary_type='vacuum')
     cell = openmc.Cell(fill=mat, region=-sph)
@@ -92,9 +101,9 @@ def pu_model():
     return model
 
 
-def test_extra_inputs(run_in_tmpdir, pu_model):
+def test_extra_inputs(run_in_tmpdir, am_model):
+    am_model.export_to_xml()
     # Export model to XML
-    pu_model.export_to_xml()
 
     # Use OpenMC plugin with extra inputs
     plugin = watts.PluginOpenMC(extra_inputs=['geometry.xml', 'materials.xml', 'settings.xml'])
@@ -105,14 +114,14 @@ def test_extra_inputs(run_in_tmpdir, pu_model):
     assert input_names == {'geometry.xml', 'materials.xml', 'settings.xml'}
 
 
-def test_arbitrary_function(run_in_tmpdir, pu_model):
+def test_arbitrary_function(run_in_tmpdir, am_model):
     # Add a plot to the model and export
     plot = openmc.Plot()
     plot.filename = 'watts_plot'
     plot.pixels = (100, 100)
     plot.width = (20.0, 20.0)
-    pu_model.plots.append(plot)
-    pu_model.export_to_xml()
+    am_model.plots.append(plot)
+    am_model.export_to_xml()
 
     # Use OpenMC plugin to run a geometry plot
     plugin = watts.PluginOpenMC(extra_inputs=Path.cwd().glob('*.xml'))
