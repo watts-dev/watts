@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from pathlib import Path
 import pprint
 import shutil
-from typing import List, Union
+from typing import Union
 from warnings import warn
 
 import platformdirs
@@ -135,6 +135,18 @@ class Database(Sequence):
         for dir in self.path.iterdir():
             shutil.rmtree(dir)
         self._results.clear()
+
+    def remove(self, result: Results):
+        """Remove a single result from the database
+
+        Parameters
+        ----------
+        result
+            Result to remove from the database
+
+        """
+        self._results.remove(result)
+        shutil.rmtree(result.base_path)
 
     def show_summary(self):
         """Show a summary of results in database"""
