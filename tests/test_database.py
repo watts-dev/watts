@@ -3,6 +3,7 @@
 
 from datetime import datetime
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 import watts
@@ -16,13 +17,19 @@ def restore_database_path():
 
 
 def get_result():
-    return watts.ResultsOpenMC(
+    res = watts.ResultsOpenMC(
         params=watts.Parameters(value=1, lab='Argonne'),
         name='Workflow',
         time=datetime.now(),
         inputs=['geometry.xml'],
         outputs=['statepoint.50.h5'],
     )
+
+    # Set base path of result
+    db = watts.Database()
+    res.base_path = db.path / uuid4().hex
+    res.base_path.mkdir()
+    return res
 
 
 def test_change_default_dir(run_in_tmpdir):
@@ -56,8 +63,10 @@ def test_specify_path(run_in_tmpdir):
 def test_add_results(run_in_tmpdir):
     db = watts.Database('tmp_db')
 
-    db.add_result(get_result())
-    db.add_result(get_result())
+    res1 = get_result()
+    res2 = get_result()
+    db.add_result(res1)
+    db.add_result(res2)
 
     # Basic sanity checks
     assert len(db) == 2
@@ -67,6 +76,10 @@ def test_add_results(run_in_tmpdir):
         assert result.parameters['lab'] == 'Argonne'
         assert len(result.inputs) == 1
         assert len(result.outputs) == 1
+
+    # Remove method
+    db.remove(res1)
+    assert db[0] is res2
 
     # Ensure database can be cleared
     db.clear()

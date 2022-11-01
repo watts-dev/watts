@@ -326,7 +326,23 @@ plugins. If you want to change the default database path used in plugins, the
     >>> db.path
     PosixPath('/opt/watts_db')
 
-To clear results from the database, simply use the
+To remove a result from the databse, you can call the
+:meth:`~watts.Database.remove` method, passing a :class:`watts.Results` object::
+
+    >>> db = watts.Database()
+    >>> db
+    [<ResultsOpenMC: 2022-01-01 12:05:02.130384>,
+     <ResultsOpenMC: 2022-01-01 12:11:38.037813>,
+     <ResultsMOOSE: 2022-01-02 08:45:12.846409>]
+    >>> moose_result = db[-1]
+    >>> db.remove(moose_result)
+    >>> db
+    [<ResultsOpenMC: 2022-01-01 12:05:02.130384>,
+     <ResultsOpenMC: 2022-01-01 12:11:38.037813>]
+
+Note that removing a database result will delete the data directory associated
+with the result but will not affect the input files stored in their original
+location on your system. To clear all results from the database, simply use the
 :meth:`~watts.Database.clear` method:
 
 .. code-block::
@@ -335,5 +351,7 @@ To clear results from the database, simply use the
     >>> db
     []
 
-Be aware that clearing the database **will** delete all the corresponding
-results on disk, including input and output files from the workflow.
+As with the :meth:`~watts.Database.remove` method, clearing the database will
+delete all the corresponding results on disk, including copies of the input and
+output files from the workflow stored in the data directory. Original input
+files stored outside the database directory will be unaffected.
