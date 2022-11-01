@@ -38,4 +38,4 @@ jobs:
 
       - name: Test
         shell: bash
-        run: pytest tests
+        run: pytest -rs tests
