@@ -64,7 +64,7 @@ class Plugin(ABC):
         ...
 
     @abstractmethod
-    def postrun(self, params) -> Results:
+    def postrun(self, params, name) -> Results:
         ...
 
     @property
