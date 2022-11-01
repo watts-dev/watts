@@ -44,6 +44,12 @@ WATTS
         Once you're acquainted with the basics of watts, check out our examples
         that illustrate a variety of use cases.
 
+    .. grid-item-card:: \ :octicon:`comment-discussion;2em` Getting Help
+        :text-align: center
+        :link: https://github.com/watts-dev/watts/discussions
+
+        Have questions? Click here for our discussions forum where you can ask
+        questions and engage with our development team.
 
 .. toctree::
     :maxdepth: 2
