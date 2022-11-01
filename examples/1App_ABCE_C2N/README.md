@@ -20,4 +20,4 @@ transition scenario.
 ## File descriptions
 
 - [__watts_exec.py__](watts_exec.py): WATTS workflow for this example. This is the file to execute to run the problem described above.
-- [__abce_template__](abce_template): Templated ABCE model.
+- [__abce_template__](abce_template.txt): Templated ABCE model.
