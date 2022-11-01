@@ -9,11 +9,11 @@ from typing import List, Optional
 
 from .fileutils import PathLike
 from .parameters import Parameters
-from .plugin import TemplatePlugin
+from .plugin import PluginGeneric
 from .results import Results
 
 
-class PluginABCE(TemplatePlugin):
+class PluginABCE(PluginGeneric):
     """Plugin for running ABCE
 
     Parameters
@@ -33,6 +33,8 @@ class PluginABCE(TemplatePlugin):
     ----------
     executable
         Path to ABCE executable
+    execute_command
+        List of command-line arguments used to call the executable
 
     """
 
@@ -41,16 +43,15 @@ class PluginABCE(TemplatePlugin):
                  extra_inputs: Optional[List[str]] = None,
                  extra_template_inputs: Optional[List[PathLike]] = None,
                  show_stdout: bool = False, show_stderr: bool = False):
-        super().__init__(template_file, extra_inputs, extra_template_inputs,
-                         show_stdout, show_stderr)
-        # requires users specify an environment variable, ABCE_DIR
-        self._executable = Path(os.environ['ABCE_DIR']) / 'run.py'
+        try:
+            executable = Path(os.environ['ABCE_DIR']) / 'run.py'
+        except KeyError:
+            raise OSError("Use of the ABCE plugin requires setting the ABCE_DIR environment variable.")
+        execute_command = [sys.executable, '{self.executable}', '--settings_file', '{self.input_name}']
+        super().__init__(
+            executable, execute_command, template_file, extra_inputs,
+            extra_template_inputs, show_stdout, show_stderr)
         self.input_name = 'settings.yml'
-
-    @property
-    def execute_command(self):
-        return [sys.executable, str(self._executable), '--settings_file',
-                f'{self.input_name}']
 
 
 class ResultsABCE(Results):

@@ -10,7 +10,7 @@ import pandas as pd
 
 from .fileutils import PathLike
 from .parameters import Parameters
-from .plugin import TemplatePlugin
+from .plugin import PluginGeneric
 from .results import Results
 
 
@@ -77,7 +77,7 @@ class ResultsMOOSE(Results):
         return csv_data
 
 
-class PluginMOOSE(TemplatePlugin):
+class PluginMOOSE(PluginGeneric):
     """Plugin for running MOOSE
 
     Parameters
@@ -97,6 +97,8 @@ class PluginMOOSE(TemplatePlugin):
     ----------
     executable
         Path to MOOSE executable
+    execute_command
+        List of command-line arguments used to call the executable
 
     """
 
@@ -104,11 +106,9 @@ class PluginMOOSE(TemplatePlugin):
                  extra_inputs: Optional[List[str]] = None,
                  extra_template_inputs: Optional[List[PathLike]] = None,
                  show_stdout: bool = False, show_stderr: bool = False):
-        super().__init__(template_file, extra_inputs, extra_template_inputs,
-                         show_stdout, show_stderr)
-        self._executable = Path('moose-opt')
+        executable = 'moose-opt'
+        execute_command = ['{self.executable}', '-i', '{self.input_name}']
+        super().__init__(
+            executable, execute_command, template_file, extra_inputs,
+            extra_template_inputs, show_stdout, show_stderr)
         self.input_name = "MOOSE.i"
-
-    @property
-    def execute_command(self):
-        return [str(self.executable), "-i", self.input_name]

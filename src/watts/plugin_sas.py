@@ -15,7 +15,7 @@ import pandas as pd
 
 from .fileutils import PathLike, run as run_proc
 from .parameters import Parameters
-from .plugin import TemplatePlugin
+from .plugin import PluginGeneric
 from .results import Results
 
 
@@ -66,7 +66,7 @@ class ResultsSAS(Results):
         return csv_data
 
 
-class PluginSAS(TemplatePlugin):
+class PluginSAS(PluginGeneric):
     """Plugin for running SAS
 
     Parameters
@@ -86,6 +86,8 @@ class PluginSAS(TemplatePlugin):
     ----------
     executable
         Path to SAS executable
+    execute_command
+        List of command-line arguments used to call the executable
     conv_channel
         Path to CHANNELtoCSV utility executable
     conv_primar4
@@ -97,17 +99,19 @@ class PluginSAS(TemplatePlugin):
                   extra_inputs: Optional[List[str]] = None,
                   extra_template_inputs: Optional[List[PathLike]] = None,
                   show_stdout: bool = False, show_stderr: bool = False):
-        super().__init__(template_file, extra_inputs, extra_template_inputs,
-                         show_stdout, show_stderr)
-
         # Check OS to make sure the extension of the executable is correct.
         # Linux and macOS have different executables but both are ".x".
         # The Windows executable is ".exe".
         sas_dir = Path(os.environ.get("SAS_DIR", ""))
-        ext = "exe" if platform.system() == "Windows" else "x"
-        self._executable = sas_dir / f"sas.{ext}"
         self._conv_channel = sas_dir / f"CHANNELtoCSV.{ext}"
         self._conv_primar4 = sas_dir / f"PRIMAR4toCSV.{ext}"
+        ext = "exe" if platform.system() == "Windows" else "x"
+        executable = sas_dir / f"sas.{ext}"
+        execute_command = ['{self.executable}', '-i', '{self.input_name}',
+                           '-o', 'out.txt']
+
+        super().__init__(executable, execute_command, template_file, extra_inputs,
+                         extra_template_inputs, show_stdout, show_stderr)
         self.input_name = "SAS.inp"
 
     @property

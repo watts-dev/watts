@@ -7,7 +7,7 @@ from typing import List, Optional
 from uncertainties import ufloat
 
 from .fileutils import PathLike
-from .plugin import TemplatePlugin
+from .plugin import PluginGeneric
 from .results import Results
 
 
@@ -49,7 +49,7 @@ class ResultsMCNP(Results):
                     "Could not determine final k-effective value from MCNP output")
 
 
-class PluginMCNP(TemplatePlugin):
+class PluginMCNP(PluginGeneric):
     """Plugin for running MCNP
 
     Parameters
@@ -69,6 +69,8 @@ class PluginMCNP(TemplatePlugin):
     ----------
     executable
         Path to MCNP executable
+    execute_command
+        List of command-line arguments used to call the executable
 
     """
 
@@ -76,12 +78,8 @@ class PluginMCNP(TemplatePlugin):
                  extra_inputs: Optional[List[str]] = None,
                  extra_template_inputs: Optional[List[PathLike]] = None,
                  show_stdout: bool = False, show_stderr: bool = False):
-        super().__init__(template_file, extra_inputs, extra_template_inputs,
-                         show_stdout, show_stderr)
-        self._executable = Path('mcnp6')
+        super().__init__(
+            'mcnp6', ['{self.executable}', 'i={self.input_name}'],
+            template_file, extra_inputs, extra_template_inputs,
+            show_stdout, show_stderr, unit_system='cgs')
         self.input_name = "mcnp_input"
-        self.unit_system = 'cgs'
-
-    @property
-    def execute_command(self):
-        return [str(self.executable), f"i={self.input_name}"]

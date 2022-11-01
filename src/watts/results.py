@@ -38,7 +38,10 @@ class Results:
 
     @property
     def plugin(self):
-        return type(self).__name__[7:]
+        if type(self) is Results:
+            return "Generic"
+        else:
+            return type(self).__name__[7:]
 
     @property
     def stdout(self) -> str:
@@ -95,19 +98,3 @@ class Results:
 
     def __repr__(self):
         return f"<Results{self.plugin}: {self.time}>"
-
-
-class ResultsGeneric(Results):
-    """Results from running a workflow using a generic plugin
-
-    Parameters
-    ----------
-    params
-        Parameters used to generate inputs
-    time
-        Time at which workflow was run
-    inputs
-        List of input files
-    outputs
-        List of output files
-    """
