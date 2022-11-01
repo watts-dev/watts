@@ -95,3 +95,19 @@ class Results:
 
     def __repr__(self):
         return f"<Results{self.plugin}: {self.time}>"
+
+
+class ResultsGeneric(Results):
+    """Results from running a workflow using a generic plugin
+
+    Parameters
+    ----------
+    params
+        Parameters used to generate inputs
+    time
+        Time at which workflow was run
+    inputs
+        List of input files
+    outputs
+        List of output files
+    """

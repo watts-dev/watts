@@ -240,3 +240,55 @@ class TemplatePlugin(Plugin):
         if extra_args is None:
             extra_args = []
         run_proc(mpi_args + self.execute_command + extra_args)
+
+
+class PluginGeneric(TemplatePlugin):
+    """Plugin for a generic executable
+
+    This class can be used to control the execution of an arbitrary executable,
+    first rendering one or more templated input files.
+
+    Parameters
+    ----------
+    executable
+        Path to executable
+    execute_command
+        List of command-line arguments, where each is formatted using the
+        instance of the class as ``self``. The first string normally indicates
+        the executable, i.e. "{self.executable}". The rendered input file can be
+        accessed as "{self.input_name}".
+    template_file
+        Path to template file
+    extra_inputs
+        Extra (non-templated) input files
+    extra_template_inputs
+        Extra templated input files
+    show_stdout
+        Whether to display output from stdout when :math:`run` is called
+    show_stderr
+        Whether to display output from stderr when :meth:`run` is called
+    unit_system : {'si', 'cgs'}
+        Unit system to convert to when rendering input files
+
+    """
+
+    def __init__(self,
+        executable: PathLike,
+        execute_command: List[str],
+        template_file: PathLike,
+        extra_inputs: Optional[List[PathLike]] = None,
+        extra_template_inputs: Optional[List[PathLike]] = None,
+        show_stdout: bool = False,
+        show_stderr: bool = False,
+        unit_system: str = 'si'
+    ):
+        super().__init__(template_file, extra_inputs, extra_template_inputs,
+                         show_stdout, show_stderr)
+        self.executable = executable
+        self.input_name = "input_rendered"
+        self._execute_command = execute_command
+        self.unit_system = unit_system
+
+    @property
+    def execute_command(self):
+        return [item.format(self=self) for item in self._execute_command]
