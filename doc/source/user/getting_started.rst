@@ -141,3 +141,54 @@ five MCNP simulations:
      0.97663+/-0.00063,
      1.24086+/-0.00075,
      1.47152+/-0.00081]
+
+Your First ``watts`` Program
+++++++++++++++++++++++++++++
+
+To show how the various classes fit together, the example below creates a plugin
+for a "code" (in this case, just the Linux ``cat`` command) and executes the
+code on a templated input file that is rendered using parameters that are
+defined in a :class:`~watts.Parameters` instance. This example assumes we have a
+file called triangle.txt containing the following text:
+
+.. code-block:: jinja
+
+    width={{ width }}
+    height={{ height }}
+    area={{ 0.5 * height * width }}
+
+The ``watts`` script is as follows::
+
+    import watts
+
+    # Create a plugin for the 'cat' code
+    plugin = watts.PluginGeneric(
+        executable='cat',
+        execute_command=['{self.executable}', '{self.input_name}'],
+        template_file='triangle.txt',
+        unit_system='cgs'
+    )
+
+    # Define some parameters that will be used to render the input file
+    params = watts.Parameters()
+    params['width'] = watts.Quantity(1.0, 'm')
+    params['height'] = watts.Quantity(1.0, 'inch')
+
+    # Execute the plugin
+    result = plugin(params)
+
+    # Show the resulting input file
+    print(result.stdout)
+
+Running this example will produce the following output:
+
+.. code-block:: text
+
+    width=100.0
+    height=2.54
+    area=127.0
+
+When the plugin is executed, the ``cat`` command is called on the rendered input
+file, which is just the triangle.txt file where the parameters have been filled
+in. Note that the physical quantities were :ref:`converted <units>` to
+centimeters since we indicated that this plugin uses CGS units.
