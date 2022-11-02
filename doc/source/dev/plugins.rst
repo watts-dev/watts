@@ -10,7 +10,7 @@ that does not already have a plugin available, extending WATTS to handle another
 code can be done quite easily.
 
 There are two ways to incorporate new codes into WATTS. First, if the code uses
-a text-based input, the :class:`~watts.PluginTemplate` class can be used to
+a text-based input, the :class:`~watts.PluginGeneric` class can be used to
 specify the executable, how it should be invoked from a command-line, and a
 template for the input file. For example, if you have a code called ``goblin``
 that should be executed from a command line as:
@@ -21,27 +21,39 @@ that should be executed from a command line as:
 
 a plugin can be set up as::
 
-    goblin = watts.PluginTemplate(
+    goblin = watts.PluginGeneric(
         executable='goblin',
         execute_command=['{self.executable}', 'input={self.input_name}'],
         template_file='filein.gbl'
     )
 
-where ``filein.gbl`` is a template input for the ``goblin`` code. Executing the
-code is done by passing it a set of parameters::
+where ``filein.gbl`` is a template input for the ``goblin`` code. Alternatively,
+the command-line arguments can be specified as a single string::
+
+    goblin = watts.PluginGeneric(
+        executable='goblin',
+        execute_command='{self.executable} input={self.input_name}',
+        template_file='filein.gbl'
+    )
+
+Executing the code is done by passing the plugin instance a set of parameters::
 
     params = watts.Parameters()
     ...
 
     result = goblin(params)
 
+The ``result`` object will be a :class:`~watts.Results` instance, which holds
+lists of input/output files, the parameters used to generate the results, and a
+timestamp.
+
 Plugin Customization
 ++++++++++++++++++++
 
-If the :class:`~watts.PluginTemplate` class doesn't quite meet your needs, you
+If the :class:`~watts.PluginGeneric` class doesn't quite meet your needs, you
 will need to write your own plugin class that is a subclass of either
-:class:`~watts.Plugin` or :class:`~watts.PluginTemplate`. Subclassing
-:class:`~watts.PluginTemplate` is appropriate if the code you're working with
+:class:`~watts.Plugin` or :class:`~watts.PluginGeneric`. Subclassing
+:class:`~watts.PluginGeneric` is appropriate if the code you're working with
 uses text-based input files. If text-based input files are not used, you will
 need to subclass the more general :class:`~watts.Plugin` class.
 

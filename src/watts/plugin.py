@@ -8,7 +8,7 @@ import uuid
 from pathlib import Path
 import shutil
 import time
-from typing import Optional, List
+from typing import Optional, List, Union
 
 from .database import Database
 from .fileutils import cd_tmpdir, PathLike, tee_stdout, tee_stderr, run as run_proc
@@ -148,7 +148,8 @@ class PluginGeneric(Plugin):
         List of command-line arguments, where each is formatted using the
         instance of the class as ``self``. The first string normally indicates
         the executable, i.e. "{self.executable}". The rendered input file can be
-        accessed as "{self.input_name}".
+        accessed as "{self.input_name}". A single string of command-line
+        arguments is also accepted.
     template_file
         Path to template file
     extra_inputs
@@ -172,7 +173,7 @@ class PluginGeneric(Plugin):
     """
     def __init__(self,
         executable: PathLike,
-        execute_command: List[str],
+        execute_command: Union[List[str], str],
         template_file: PathLike,
         extra_inputs: Optional[List[PathLike]] = None,
         extra_template_inputs: Optional[List[PathLike]] = None,
@@ -188,7 +189,10 @@ class PluginGeneric(Plugin):
             self.extra_render_templates = [TemplateRenderer(f, '') for f in extra_template_inputs]
 
         self.executable = executable
-        self._execute_command = execute_command
+        if isinstance(execute_command, str):
+            self._execute_command = execute_command.split()
+        else:
+            self._execute_command = execute_command
 
     @property
     def executable(self) -> Path:
