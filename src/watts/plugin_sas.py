@@ -102,10 +102,10 @@ class PluginSAS(PluginGeneric):
         # Check OS to make sure the extension of the executable is correct.
         # Linux and macOS have different executables but both are ".x".
         # The Windows executable is ".exe".
+        ext = "exe" if platform.system() == "Windows" else "x"
         sas_dir = Path(os.environ.get("SAS_DIR", ""))
         self._conv_channel = sas_dir / f"CHANNELtoCSV.{ext}"
         self._conv_primar4 = sas_dir / f"PRIMAR4toCSV.{ext}"
-        ext = "exe" if platform.system() == "Windows" else "x"
         executable = sas_dir / f"sas.{ext}"
         execute_command = ['{self.executable}', '-i', '{self.input_name}',
                            '-o', 'out.txt']
