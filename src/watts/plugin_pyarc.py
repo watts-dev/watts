@@ -67,15 +67,20 @@ class PluginPyARC(PluginGeneric):
                  extra_inputs: Optional[List[str]] = None,
                  extra_template_inputs: Optional[List[PathLike]] = None,
                  show_stdout: bool = False, show_stderr: bool = False):
-        executable = Path(os.environ.get('PyARC_DIR', 'PyARC.py'))
+        executable = Path(os.environ.get('PyARC_DIR', ''))
         super().__init__(executable, None, template_file, extra_inputs,
                          extra_template_inputs, show_stdout, show_stderr)
         self.input_name = "pyarc_input.son"
 
     @PluginGeneric.executable.setter
     def executable(self, exe: PathLike):
-        if Path(exe).exists():
-            raise RuntimeError(f"{self.plugin_name} executable '{exe}' is missing.")
+        pyarc_module = Path(exe) / 'PyARC.py'
+        if not pyarc_module.is_file():
+            raise RuntimeError(
+                f"{self.plugin_name} module '{pyarc_module}' does not exist. The "
+                "PyARC_DIR environment variable needs to be set to a directory "
+                "containing the PyARC.py module."
+            )
         self._executable = Path(exe)
 
     def run(self, **kwargs: Mapping):
