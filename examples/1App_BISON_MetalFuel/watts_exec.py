@@ -1,8 +1,9 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
-from math import cos, pi
+from pathlib import Path
 import os
+
 import watts
 
 params = watts.Parameters()
@@ -38,12 +39,14 @@ params['Wrapping_Wire_Thickness'] = 1.067e-03 # m
 params.show_summary(show_metadata=False, sort_by='key')
 
 # MOOSE Workflow
-# set your BISON directorate as BISON_DIR
+# set your BISON directory as BISON_DIR
 
-moose_app_type = "bison"
-app_dir = os.environ[moose_app_type.upper() + "_DIR"]
-moose_plugin = watts.PluginMOOSE('bison_template', show_stdout=True) # show all the output
-moose_plugin.executable = app_dir + "/" + moose_app_type.lower() + "-opt"
+app_dir = Path(os.environ["BISON_DIR"])
+moose_plugin = watts.PluginMOOSE(
+    'bison_template',
+    executable=app_dir / 'bison-opt',
+    show_stdout=True
+)
 moose_result = moose_plugin(params, mpi_args=['mpiexec', '-n', '2'])
 for key in moose_result.csv_data:
     print(key, moose_result.csv_data[key])

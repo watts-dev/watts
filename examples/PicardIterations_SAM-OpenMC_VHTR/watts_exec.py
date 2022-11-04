@@ -9,6 +9,7 @@ until convergence. This example uses a simple VHTR unit-cell
 model with 1 coolant channel surrounded by graphite and fuel.
 """
 
+from pathlib import Path
 from math import cos, pi
 import os
 import watts
@@ -64,13 +65,15 @@ conv_it = True
 nmax_it = 5
 conv_criteria = 1e-4
 
+app_dir = Path(os.environ["SAM_DIR"])
 list_keff = []
 while conv_it:
     # MOOSE Workflow
-    moose_app_type = "SAM"
-    app_dir = os.environ[moose_app_type.upper() + "_DIR"]
-    sam_plugin = watts.PluginMOOSE('../1App_SAM_VHTR/sam_template', show_stderr=True) # show only error
-    sam_plugin.executable = app_dir + "/" + moose_app_type.lower() + "-opt"
+    sam_plugin = watts.PluginMOOSE(
+        '../1App_SAM_VHTR/sam_template',
+        executable=app_dir / "sam-opt",
+        show_stderr=True
+    )
     sam_result = sam_plugin(params)
 
     # get temperature from SAM results

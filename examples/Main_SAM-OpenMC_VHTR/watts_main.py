@@ -7,10 +7,11 @@ and applies it in a procedure for re-use in optimization and
 sensitivity analyses.
 """
 
+from pathlib import Path
 from math import cos, pi
 import os
 import watts
-from statistics import mean, stdev
+from statistics import mean
 from openmc_template import build_openmc_model
 
 params = watts.Parameters()
@@ -64,11 +65,13 @@ def calc_workflow(X):
     print("FuelPin_rad / cool_hole_rad", X[0], X[1])
 
     # MOOSE Workflow
-    # set your SAM directorate as SAM_DIR
-    moose_app_type = "SAM"
-    app_dir = os.environ[moose_app_type.upper() + "_DIR"]
-    sam_plugin = watts.PluginMOOSE('../1App_SAM_VHTR/sam_template', show_stderr=False) # does not show anything
-    sam_plugin.executable = app_dir + "/" + moose_app_type.lower() + "-opt"
+    # set your SAM directory as SAM_DIR
+    app_dir = Path(os.environ["SAM_DIR"])
+    sam_plugin = watts.PluginMOOSE(
+        '../1App_SAM_VHTR/sam_template',
+        executable=app_dir / 'sam-opt',
+        show_stderr=False
+    )
     sam_result = sam_plugin(params)
     max_Tf = max(sam_result.csv_data[f'max_Tf_{i}'][-1] for i in range(1, 6))
     avg_Tf = mean(sam_result.csv_data[f'avg_Tf_{i}'][-1] for i in range(1, 6))

@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: MIT
 
 from datetime import datetime
-from pathlib import Path
 from typing import List, Optional
 
 import numpy as np
@@ -84,6 +83,8 @@ class PluginMOOSE(PluginGeneric):
     ----------
     template_file
         Templated MOOSE input
+    executable
+        Path to MOOSE executable
     extra_inputs
         List of extra (non-templated) input files that are needed
     extra_template_inputs
@@ -103,10 +104,10 @@ class PluginMOOSE(PluginGeneric):
     """
 
     def __init__(self, template_file: str,
+                 executable: PathLike = 'moose-opt',
                  extra_inputs: Optional[List[str]] = None,
                  extra_template_inputs: Optional[List[PathLike]] = None,
                  show_stdout: bool = False, show_stderr: bool = False):
-        executable = 'moose-opt'
         execute_command = ['{self.executable}', '-i', '{self.input_name}']
         super().__init__(
             executable, execute_command, template_file, extra_inputs,
