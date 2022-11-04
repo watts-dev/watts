@@ -7,4 +7,5 @@ Developer's Guide
    :maxdepth: 2
 
    contributing
+   plugins
    styleguide

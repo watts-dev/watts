@@ -7,7 +7,7 @@ from typing import List, Optional
 from uncertainties import ufloat
 
 from .fileutils import PathLike
-from .plugin import TemplatePlugin
+from .plugin import PluginGeneric
 from .results import Results
 
 
@@ -34,7 +34,7 @@ class ResultsSerpent(Results):
     """
 
 
-class PluginSerpent(TemplatePlugin):
+class PluginSerpent(PluginGeneric):
     """Plugin for running Serpent
 
     Parameters
@@ -54,6 +54,8 @@ class PluginSerpent(TemplatePlugin):
     ----------
     executable
         Path to Serpent executable
+    execute_command
+        List of command-line arguments used to call the executable
 
     """
 
@@ -61,12 +63,9 @@ class PluginSerpent(TemplatePlugin):
                  extra_inputs: Optional[List[str]] = None,
                  extra_template_inputs: Optional[List[PathLike]] = None,
                  show_stdout: bool = False, show_stderr: bool = False):
-        super().__init__(template_file, extra_inputs, extra_template_inputs,
-                         show_stdout, show_stderr)
-        self._executable = Path('sss2')
+        super().__init__(
+            'sss2', ['{self.executable}', '{self.input_name}'],
+            template_file, extra_inputs, extra_template_inputs,
+            show_stdout, show_stderr, unit_system='cgs'
+        )
         self.input_name = "serpent_input"
-        self.unit_system = 'cgs'
-
-    @property
-    def execute_command(self):
-        return [str(self.executable), str(self.input_name)]

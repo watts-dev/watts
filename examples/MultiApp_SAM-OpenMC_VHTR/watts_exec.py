@@ -15,6 +15,7 @@ the main results from OpenMC are printed out and stored
 in the params database.
 """
 
+from pathlib import Path
 from math import cos, pi
 import os
 import watts
@@ -70,12 +71,14 @@ params.show_summary(show_metadata=True, sort_by='time')
 
 
 # MOOSE Workflow
-# set your SAM directorate as SAM_DIR
+# set your SAM directory as SAM_DIR
 
-moose_app_type = "SAM"
-app_dir = os.environ[moose_app_type.upper() + "_DIR"]
-moose_plugin = watts.PluginMOOSE('../1App_SAM_VHTR/sam_template', show_stderr=True) # show only error
-moose_plugin.executable = app_dir + "/" + moose_app_type.lower() + "-opt"
+app_dir = Path(os.environ["SAM_DIR"])
+moose_plugin = watts.PluginMOOSE(
+    '../1App_SAM_VHTR/sam_template',
+    executable=app_dir / 'sam-opt',
+    show_stderr=True
+)
 moose_result = moose_plugin(params)
 for key in moose_result.csv_data:
     print(key, moose_result.csv_data[key])

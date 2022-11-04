@@ -38,7 +38,10 @@ class Results:
 
     @property
     def plugin(self):
-        return type(self).__name__[7:]
+        if type(self) is Results:
+            return "Generic"
+        else:
+            return type(self).__name__[7:]
 
     @property
     def stdout(self) -> str:

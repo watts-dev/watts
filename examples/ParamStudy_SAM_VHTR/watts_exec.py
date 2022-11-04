@@ -15,8 +15,9 @@ create results of different lengths to show that the
 output CSV file can accept columns of different lengths.
 """
 
-from math import cos, pi
+from pathlib import Path
 import os
+
 import watts
 import pandas as pd
 from astropy.units import Quantity
@@ -45,8 +46,7 @@ params['Graphite_thickness'] = (params['Lattice_pitch'] - params['FuelPin_rad'] 
 params.show_summary(show_metadata=False, sort_by='key')
 
 # MOOSE Workflow
-moose_app_type = "SAM"
-app_dir = os.environ[moose_app_type.upper() + "_DIR"]
+app_dir = Path(os.environ["SAM_DIR"])
 
 power = [100_000, 250_000, 300_000, 400_000, 500_000] # Watts
 endtime = [50, 100, 100, 50, 50] # End time is varied to artificially create results of different lengths.
@@ -56,8 +56,7 @@ for i in range(len(power)):
     params['endtime'] = endtime[i]
 
     # Execute WATTS
-    moose_plugin = watts.PluginMOOSE(moose_app_type.lower() + '_template') # show all the output
-    moose_plugin.executable = app_dir + "/" + moose_app_type.lower() + "-opt"
+    moose_plugin = watts.PluginMOOSE('sam_template', executable=app_dir / 'sam-opt')
     moose_result = moose_plugin(params)
 
     # Add items to dictionary.

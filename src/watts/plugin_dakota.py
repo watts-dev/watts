@@ -15,7 +15,7 @@ import subprocess
 
 from .fileutils import PathLike
 from .parameters import Parameters
-from .plugin import TemplatePlugin
+from .plugin import PluginGeneric
 from .results import Results
 
 
@@ -60,7 +60,7 @@ class ResultsDakota(Results):
 
         # Save Dakota's main output '.dat' files
         output_data = {}
-        
+
         if Path(dakota_out_file_name).exists():
             with open(dakota_out_file_name) as f:
                 col_names = f.readline().split()
@@ -81,7 +81,7 @@ class ResultsDakota(Results):
         return output_data
 
 
-class PluginDakota(TemplatePlugin):
+class PluginDakota(PluginGeneric):
     """Plugin for running Dakota
 
     Parameters
@@ -97,22 +97,30 @@ class PluginDakota(TemplatePlugin):
     show_stderr
         Whether to display output from stderr when Dakota is run
 
-    """
+    Attributes
+    ----------
+    executable
+        Path to DAKOTA script
+    execute_command
+        List of command-line arguments used to call the executable
 
-    def __init__(self, template_file: str,  
+    """
+    def __init__(self, template_file: str,
                  extra_inputs: Optional[List[str]] = None,
                  extra_template_inputs: Optional[List[PathLike]] = None,
                  auto_link_files: Optional[str] = None,
                  show_stdout: bool = False, show_stderr: bool = False):
-        super().__init__(template_file, extra_inputs, extra_template_inputs,
-                         show_stdout, show_stderr)
-
         dakota_dir = Path(os.environ.get("DAKOTA_DIR", ""))
-        self._executable = dakota_dir / f"dakota.sh"
+        executable = dakota_dir / f"dakota.sh"
+        execute_command = ['{self.executable}', '-i', '{self.input_name}']
+        super().__init__(
+            executable, execute_command, template_file, extra_inputs,
+            extra_template_inputs, show_stdout, show_stderr)
+
         self.input_name = template_file
         self._auto_link_files = auto_link_files
 
-        # Setup to automatically include all 'extra_inputs' and 'extra_template_inputs' 
+        # Setup to automatically include all 'extra_inputs' and 'extra_template_inputs'
         # to Dakota's "link files" option. Create a string of the file names in
         # 'extra_inputs' and 'extra_template_inputs'.
         if self._auto_link_files is not None:
@@ -174,8 +182,8 @@ def _parse_dakota_input() -> Results:
     results
         Results from Dakota's output file
     """
-    
-    from interfacing import interfacing as di # Dakota's interface module        
+
+    from interfacing import interfacing as di # Dakota's interface module
 
     params, results = di.read_parameters_file()
 
@@ -206,10 +214,10 @@ def _run_coupled_code(coupled_code_exec: str) -> dict:
 
     subprocess.check_output(["python", coupled_code_exec])
 
-    # Read the 'opt_res.out' pickle file and 
+    # Read the 'opt_res.out' pickle file and
     # store the results to 'res_output' for data
     # transfer with Dakota.
-    if os.path.exists('opt_res.out'): 
+    if os.path.exists('opt_res.out'):
         db = pickle.load(open('opt_res.out', 'rb'))
         if 'dakota_descriptors' in db.keys():
             res_output = []
@@ -238,8 +246,8 @@ def _return_dakota_input(results: Results, retval: dict):
     try:
         for i, n, r in results:
             if r.asv.function:
-                # Returns the response function value from the coupled 
-                # code to Dakota (for pre Dakota v6.9). 
+                # Returns the response function value from the coupled
+                # code to Dakota (for pre Dakota v6.9).
                 try:
                     r.function = retval['fns'][i]
                 except:

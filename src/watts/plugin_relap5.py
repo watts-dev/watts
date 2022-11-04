@@ -14,7 +14,7 @@ import pandas as pd
 
 from .fileutils import PathLike
 from .parameters import Parameters
-from .plugin import TemplatePlugin
+from .plugin import PluginGeneric
 from .results import Results
 
 
@@ -61,7 +61,7 @@ class ResultsRELAP5(Results):
                 csv_data[column_name] =  np.array(csv_file_df[column_name])
         return csv_data
 
-class PluginRELAP5(TemplatePlugin):
+class PluginRELAP5(PluginGeneric):
     """Plugin for running RELAP5
 
     Parameters
@@ -90,17 +90,17 @@ class PluginRELAP5(TemplatePlugin):
                   extra_inputs: Optional[List[str]] = None,
                   extra_template_inputs: Optional[List[PathLike]] = None,
                   show_stdout: bool = False, show_stderr: bool = False):
-        super().__init__(template_file, extra_inputs, extra_template_inputs,
-                         show_stdout, show_stderr)
-
         # Check OS to make sure the extension of the executable is correct.
         # Linux and macOS have different executables but both are ".x".
         # The Windows executable is ".exe".
-
         self._relap5_dir = Path(os.environ.get("RELAP5_DIR", ""))
         self.ext = "exe" if platform.system() == "Windows" else "x"
-        self._executable = f"relap5.{self.ext}"
+        executable = f"relap5.{self.ext}"
+        execute_command = ['{self.executable}', '-i', '{self.input_name}']
 
+        super().__init__(
+            executable, execute_command, template_file, extra_inputs,
+            extra_template_inputs, show_stdout, show_stderr)
         self.input_name = "RELAP5.i"
         self.plotfl_to_csv = plotfl_to_csv
 
@@ -113,10 +113,6 @@ class PluginRELAP5(TemplatePlugin):
         if shutil.which(Path(relap5_directory) / f"relap5.{self.ext}") is None:
             raise RuntimeError("RELAP5 executable is missing.")
         self._relap5_dir = Path(relap5_directory)
-
-    @property
-    def execute_command(self):
-        return [str(self.executable), '-i', self.input_name]
 
     def run(self, extra_args: Optional[List[str]] = None):
         """Run RELAP5
@@ -203,8 +199,7 @@ class PluginRELAP5(TemplatePlugin):
         id_list = self._extract_value(ids)
 
         # Create a dictionary to store data
-        data_dict = {'channel': channel_list,
-                'id': id_list}
+        data_dict = {'channel': channel_list, 'id': id_list}
 
         for i in range(len(n_plotrec)):
             i_start = n_plotrec[i] - n_plotrec[0] # Subtract n_plotrec[0] to offset the the 'content' above 'values'

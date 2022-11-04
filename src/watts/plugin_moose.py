@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: MIT
 
 from datetime import datetime
-from pathlib import Path
 from typing import List, Optional
 
 import numpy as np
@@ -10,7 +9,7 @@ import pandas as pd
 
 from .fileutils import PathLike
 from .parameters import Parameters
-from .plugin import TemplatePlugin
+from .plugin import PluginGeneric
 from .results import Results
 
 
@@ -77,13 +76,15 @@ class ResultsMOOSE(Results):
         return csv_data
 
 
-class PluginMOOSE(TemplatePlugin):
+class PluginMOOSE(PluginGeneric):
     """Plugin for running MOOSE
 
     Parameters
     ----------
     template_file
         Templated MOOSE input
+    executable
+        Path to MOOSE executable
     extra_inputs
         List of extra (non-templated) input files that are needed
     extra_template_inputs
@@ -97,18 +98,18 @@ class PluginMOOSE(TemplatePlugin):
     ----------
     executable
         Path to MOOSE executable
+    execute_command
+        List of command-line arguments used to call the executable
 
     """
 
     def __init__(self, template_file: str,
+                 executable: PathLike = 'moose-opt',
                  extra_inputs: Optional[List[str]] = None,
                  extra_template_inputs: Optional[List[PathLike]] = None,
                  show_stdout: bool = False, show_stderr: bool = False):
-        super().__init__(template_file, extra_inputs, extra_template_inputs,
-                         show_stdout, show_stderr)
-        self._executable = Path('moose-opt')
+        execute_command = ['{self.executable}', '-i', '{self.input_name}']
+        super().__init__(
+            executable, execute_command, template_file, extra_inputs,
+            extra_template_inputs, show_stdout, show_stderr)
         self.input_name = "MOOSE.i"
-
-    @property
-    def execute_command(self):
-        return [str(self.executable), "-i", self.input_name]

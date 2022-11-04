@@ -167,7 +167,7 @@ Specifying an Executable
 Each plugin has a default executable name for the underlying code. For example,
 the :class:`~watts.PluginMCNP` class uses the executable ``mcnp6`` by default.
 You can both view and/or change the executable using the
-:class:`~watts.TemplatePlugin.executable` attribute:
+:class:`~watts.PluginGeneric.executable` attribute:
 
 .. code-block:: pycon
 

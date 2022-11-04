@@ -12,6 +12,8 @@ the results stored in CSV files are displayed to the user.
 
 from math import cos, pi
 import os
+from pathlib import Path
+
 import watts
 from astropy.units import Quantity
 
@@ -52,12 +54,10 @@ params['control_pin_rad'] = Quantity(9.9, "mm") # Automatically converts to 'm' 
 params.show_summary(show_metadata=False, sort_by='key')
 
 # MOOSE Workflow
-# set your SAM directorate as SAM_DIR
+# set your SAM directory as SAM_DIR
 
-moose_app_type = "SAM"
-app_dir = os.environ[moose_app_type.upper() + "_DIR"]
-moose_plugin = watts.PluginMOOSE(moose_app_type.lower() + '_template') # show all the output
-moose_plugin.executable = app_dir + "/" + moose_app_type.lower() + "-opt"
+app_dir = Path(os.environ["SAM_DIR"])
+moose_plugin = watts.PluginMOOSE('sam_template', executable=app_dir / 'sam-opt')
 moose_result = moose_plugin(params)
 for key in moose_result.csv_data:
     print(key, moose_result.csv_data[key])
