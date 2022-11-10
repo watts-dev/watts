@@ -5,7 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.4.0]
+
+### Added
+
+* DAKOTA plugin via the `PluginDakota` class
+* ABCE plugin via the `PluginABCE` class
+* Ability to define a generic plugin via the `PluginGeneric` class
+* The `Database` class now has a `remove` method that allows a single result to
+  be removed
+
+### Changes
+
+* The OpenMC plugin unit test no longer requires the `OPENMC_CROSS_SECTIONS`
+  environment variable to be set
 
 ## [0.3.0]
 
