@@ -59,3 +59,11 @@ WATTS
     user/index
     reference/index
     dev/index
+
+.. admonition:: Recommended publication for citing
+   :class: tip
+
+   Paul K. Romano, Nicholas E. Stauff, Zhiee Jhia Ooi, Yinbin Miao, Amanda Lund,
+   and Ling Zou, "WATTS: Workflow and template toolkit for simulation,"
+   *Journal of Open Source Software*, **7** (79), 4735 (2022).
+   `doi:10.21105/joss.04735 <https://doi.org/10.21105/joss.04735>`_

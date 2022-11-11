@@ -29,6 +29,16 @@ To install `watts`, run:
 Documentation for WATTS can be found
 [__here__](https://watts.readthedocs.io/en/latest/index.html).
 
+## Citing
+
+If you use WATTS in your research, please consider giving proper attribution by
+citing the following publication:
+
+- Paul K. Romano, Nicholas E. Stauff, Zhiee Jhia Ooi, Yinbin Miao, Amanda Lund,
+  and Ling Zou, "WATTS: Workflow and template toolkit for simulation," *Journal
+  of Open Source Software*, **7** (79), 4735 (2022).
+  [doi:10.21105/joss.04735](https://doi.org/10.21105/joss.04735)
+
 ## Sponsors
 
 WATTS is being developed with support from Argonne National Laboratory. For any
