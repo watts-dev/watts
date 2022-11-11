@@ -1,0 +1,11 @@
+commentDelimiter = "%"
+enabled = true
+extensions = [son]
+highlighter = "watts.wbh"
+maxDepth = 4
+name = watts
+nav = watts % indicates navigation logic for watts documents
+parser = waspson
+schema = "watts.sch"
+templates = "templates"
+validator = wasp
