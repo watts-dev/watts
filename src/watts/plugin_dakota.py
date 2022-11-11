@@ -15,7 +15,7 @@ import subprocess
 
 from .fileutils import PathLike
 from .parameters import Parameters
-from .plugin import PluginGeneric
+from .plugin import PluginGeneric, _find_executable
 from .results import Results
 
 
@@ -88,6 +88,8 @@ class PluginDakota(PluginGeneric):
     ----------
     template_file
         Templated Dakota input
+    executable
+        Path to Dakota script
     extra_inputs
         List of extra (non-templated) input files that are needed
     extra_template_inputs
@@ -105,13 +107,17 @@ class PluginDakota(PluginGeneric):
         List of command-line arguments used to call the executable
 
     """
-    def __init__(self, template_file: str,
-                 extra_inputs: Optional[List[str]] = None,
-                 extra_template_inputs: Optional[List[PathLike]] = None,
-                 auto_link_files: Optional[str] = None,
-                 show_stdout: bool = False, show_stderr: bool = False):
-        dakota_dir = Path(os.environ.get("DAKOTA_DIR", ""))
-        executable = dakota_dir / f"dakota.sh"
+    def __init__(
+        self,
+        template_file: str,
+        executable: PathLike = 'dakota.sh',
+        extra_inputs: Optional[List[str]] = None,
+        extra_template_inputs: Optional[List[PathLike]] = None,
+        auto_link_files: Optional[str] = None,
+        show_stdout: bool = False,
+        show_stderr: bool = False
+    ):
+        executable = _find_executable(executable, 'DAKOTA_DIR')
         execute_command = ['{self.executable}', '-i', '{self.input_name}']
         super().__init__(
             executable, execute_command, template_file, extra_inputs,

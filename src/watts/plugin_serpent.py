@@ -4,10 +4,8 @@
 from pathlib import Path
 from typing import List, Optional
 
-from uncertainties import ufloat
-
 from .fileutils import PathLike
-from .plugin import PluginGeneric
+from .plugin import PluginGeneric, _find_executable
 from .results import Results
 
 
@@ -41,6 +39,8 @@ class PluginSerpent(PluginGeneric):
     ----------
     template_file
         Templated Serpent input
+    executable
+        Path to Serpent executable
     extra_inputs
         List of extra (non-templated) input files that are needed
     extra_template_inputs
@@ -59,12 +59,18 @@ class PluginSerpent(PluginGeneric):
 
     """
 
-    def __init__(self, template_file: str,
-                 extra_inputs: Optional[List[str]] = None,
-                 extra_template_inputs: Optional[List[PathLike]] = None,
-                 show_stdout: bool = False, show_stderr: bool = False):
+    def __init__(
+        self,
+        template_file: str,
+        executable: PathLike = 'sss2',
+        extra_inputs: Optional[List[str]] = None,
+        extra_template_inputs: Optional[List[PathLike]] = None,
+        show_stdout: bool = False,
+        show_stderr: bool = False
+    ):
+        executable = _find_executable(executable, 'SERPENT_DIR')
         super().__init__(
-            'sss2', ['{self.executable}', '{self.input_name}'],
+            executable, ['{self.executable}', '{self.input_name}'],
             template_file, extra_inputs, extra_template_inputs,
             show_stdout, show_stderr, unit_system='cgs'
         )

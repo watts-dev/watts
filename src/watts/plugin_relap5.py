@@ -14,7 +14,7 @@ import pandas as pd
 
 from .fileutils import PathLike
 from .parameters import Parameters
-from .plugin import PluginGeneric
+from .plugin import PluginGeneric, _find_executable
 from .results import Results
 
 
@@ -68,6 +68,8 @@ class PluginRELAP5(PluginGeneric):
     ----------
     template_file
         Templated RELAP5 input
+    executable
+        Path to RELAP5 executable
     plotfl_to_csv
         Whether to convert RELAP5's plotfl file to CSV file
     extra_inputs
@@ -79,40 +81,25 @@ class PluginRELAP5(PluginGeneric):
     show_stderr
         Whether to display output from stderr when RELAP5 is run
 
-    Attributes
-    ----------
-    relap5_dir
-        Path to directory containing RELAP5 executable
-
     """
 
-    def  __init__(self, template_file: str, plotfl_to_csv: bool = True,
-                  extra_inputs: Optional[List[str]] = None,
-                  extra_template_inputs: Optional[List[PathLike]] = None,
-                  show_stdout: bool = False, show_stderr: bool = False):
-        # Check OS to make sure the extension of the executable is correct.
-        # Linux and macOS have different executables but both are ".x".
-        # The Windows executable is ".exe".
-        self._relap5_dir = Path(os.environ.get("RELAP5_DIR", ""))
-        self.ext = "exe" if platform.system() == "Windows" else "x"
-        executable = f"relap5.{self.ext}"
+    def  __init__(
+        self,
+        template_file: str,
+        executable: PathLike = 'relap5.x',
+        plotfl_to_csv: bool = True,
+        extra_inputs: Optional[List[str]] = None,
+        extra_template_inputs: Optional[List[PathLike]] = None,
+        show_stdout: bool = False,
+        show_stderr: bool = False
+    ):
+        executable = _find_executable(executable, 'RELAP5_DIR')
         execute_command = ['{self.executable}', '-i', '{self.input_name}']
-
         super().__init__(
             executable, execute_command, template_file, extra_inputs,
             extra_template_inputs, show_stdout, show_stderr)
         self.input_name = "RELAP5.i"
         self.plotfl_to_csv = plotfl_to_csv
-
-    @property
-    def relap5_dir(self) -> Path:
-        return self._relap5_dir
-
-    @relap5_dir.setter
-    def relap5_dir(self, relap5_directory: PathLike):
-        if shutil.which(Path(relap5_directory) / f"relap5.{self.ext}") is None:
-            raise RuntimeError("RELAP5 executable is missing.")
-        self._relap5_dir = Path(relap5_directory)
 
     def run(self, extra_args: Optional[List[str]] = None):
         """Run RELAP5
@@ -128,7 +115,7 @@ class PluginRELAP5(PluginGeneric):
         # the input file to run. Users can also add all fluid property files
         # here.
         cwd = Path.cwd()
-        for fname in self._relap5_dir.iterdir():
+        for fname in self.executable.parent.iterdir():
             shutil.copy2(str(fname), str(cwd))
 
         # Create a list for RELAP5 input command and append any extra

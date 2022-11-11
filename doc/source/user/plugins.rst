@@ -31,9 +31,9 @@ If you need to specify additional input files / templates, see
 :ref:`input_files`.
 
 The MOOSE plugin defaults to using the executable ``moose-opt`` but can also be
-specified explicitly with the :attr:`~watts.PluginMOOSE.executable` attribute::
+specified explicitly ::
 
-    moose_plugin.executable = "/path/to/sam-opt"
+    moose_plugin = watts.PluginMOOSE(..., executable="/path/to/sam-opt")
 
 OpenMC Plugin
 +++++++++++++
@@ -117,10 +117,12 @@ instantiated with following command line::
 
     pyarc_plugin = watts.PluginPyARC('pyarc_template')
 
-The path to PyARC directory must be specified explicitly with the
-:attr:`~watts.PluginPyARC.executable` attribute::
+The path to the PyARC module can be specified explicitly::
 
-    pyarc_plugin.executable = "/path/to/PyARC"
+    pyarc_plugin = watts.PluginPyARC(
+        'pyarc_template',
+        executable="/path/to/PyARC/PyARC.py"
+    )
 
 To execute PyARC, the :meth:`~watts.PluginPyARC` instance is called directly the
 same way as other plugins. Extra input files and templates can be specified as
@@ -144,12 +146,10 @@ be instantiated with the following command line::
 
     sas_plugin = watts.PluginSAS('sas_template')
 
-The SAS executable is OS-dependent. It defaults to ``sas.x`` (assumed to be
-present on your :envvar:`PATH`) for Linux and macOS, and ``sas.exe`` for
-Windows. You can also explicitly specify the
-:attr:`~watts.PluginSAS.executable`::
+The name of the SAS executable is OS-dependent. It defaults to ``sas.x`` but can
+be changed if you are running on Windows::
 
-    sas_plugin.executable = "/path/to/sas-exec"
+    sas_plugin = watts.PluginSAS('sas_template', executable='sas.exe')
 
 Furthermore, the paths to the SAS utilities that convert the ".dat" files to
 ".csv" files must be specified with the :attr:`~watts.PluginSAS.conv_channel`
@@ -158,9 +158,9 @@ and :attr:`~watts.PluginSAS.conv_primar4` attributes::
     sas_plugin.conv_channel  = "/path/to/CHANNELtoCSV.x"
     sas_plugin.conv_primar4  = "/path/to/PRIMAR4toCSV.x"
 
-Similar to the SAS executable, the utilities are also OS-dependent. To execute
-SAS, the :meth:`~watts.PluginSAS` instance is called directly in the same way as
-other plugins.
+By default, the plugin will try to find these utilities based on the location of
+the SAS executable. To execute SAS, the :meth:`~watts.PluginSAS` instance is
+called directly in the same way as other plugins.
 
 RELAP5-3D Plugin
 ++++++++++++++++
@@ -219,11 +219,9 @@ MCNP Plugin
 The :class:`~watts.PluginMCNP` class handles execution of MCNP. As with other
 plugins, MCNP input files can be templated as described in
 :ref:`usage_templates`. By default, this plugin will try to call ``mcnp6`` but
-this can be changed with the :attr:`~watts.PluginMCNP.executable` attribute if
-needed::
+this can be changed if needed::
 
-    mcnp_plugin = watts.PluginMCNP('mcnp_input')
-    mcnp_plugin.executable = "mcnp5"
+    mcnp_plugin = watts.PluginMCNP('mcnp_input', executable='mcnp5')
 
 Serpent Plugin
 ++++++++++++++
@@ -309,7 +307,7 @@ Dakota with WATTS.
 To run Dakota with WATTS, the user needs to provide a number of files including
 the input file for Dakota, the WATTS Python script for executing Dakota,
 the input file for the coupled code, the WATTS script for executing the coupled
-code (note that this can involve complex workflows with several codes or iterations), 
+code (note that this can involve complex workflows with several codes or iterations),
 and the Dakota driver Python script, in addition to any file necessary to
 run the coupled code. Note that all of these files could be templated automatically
 by WATTS using the `template_file` and `extra_template_inputs` options, provided

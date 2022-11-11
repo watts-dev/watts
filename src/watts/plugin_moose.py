@@ -9,7 +9,7 @@ import pandas as pd
 
 from .fileutils import PathLike
 from .parameters import Parameters
-from .plugin import PluginGeneric
+from .plugin import PluginGeneric, _find_executable
 from .results import Results
 
 
@@ -103,11 +103,16 @@ class PluginMOOSE(PluginGeneric):
 
     """
 
-    def __init__(self, template_file: str,
-                 executable: PathLike = 'moose-opt',
-                 extra_inputs: Optional[List[str]] = None,
-                 extra_template_inputs: Optional[List[PathLike]] = None,
-                 show_stdout: bool = False, show_stderr: bool = False):
+    def __init__(
+        self,
+        template_file: str,
+        executable: PathLike = 'moose-opt',
+        extra_inputs: Optional[List[str]] = None,
+        extra_template_inputs: Optional[List[PathLike]] = None,
+        show_stdout: bool = False,
+        show_stderr: bool = False
+    ):
+        executable = _find_executable(executable, 'MOOSE_DIR')
         execute_command = ['{self.executable}', '-i', '{self.input_name}']
         super().__init__(
             executable, execute_command, template_file, extra_inputs,
