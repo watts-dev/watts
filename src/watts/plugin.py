@@ -303,7 +303,5 @@ def _find_executable(path: PathLike, environment_variable: str) -> Path:
         return exe
 
     # Check for environment variable
-    if (base_dir := os.environ.get(environment_variable)) is not None:
-        return base_dir / exe
-    else:
-        return exe
+    base_dir = os.environ.get(environment_variable)
+    return base_dir / exe if base_dir is not None else exe
