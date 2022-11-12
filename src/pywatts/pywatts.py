@@ -6,6 +6,7 @@ import os
 #pywatts nstauff$ mkdir bin
 #pywatts nstauff$ ln -s /Applications/Workbench-5.0.0.app/Contents/bin/sonvalidxml bin/sonvalidxml
 #pywatts nstauff$ ln -s /Applications/Workbench-5.0.0.app/Contents/wasppy ./
+# if needed - change wasppy/xml2obj.py line 89 - if isinstance(src, (str,bytes)):
 ###
 
 def load_obj(input_path, watts_path):
@@ -27,4 +28,5 @@ watts = load_obj(input_path, watts_path).watts
 if watts.workflow_level1 is not None:
     print ("here - workflow_level1")
 if watts.plugins is not None:
-    print ("here - plugin")
+    for it, plg in enumerate(watts.plugins.plugin):
+        print ("plugin ", str(plg.id), " code ", str(plg.code.value))
