@@ -1,12 +1,15 @@
 
 import os
-
+import sys, getopt
+# import watts # this needs to be installed in Workbench environment (follow example from setup_openmc or setup_dassh)
 ###
 #etc nstauff$ cp watts.py /Applications/Workbench-5.0.0.app/Contents/rte/
 #pywatts nstauff$ mkdir bin
 #pywatts nstauff$ ln -s /Applications/Workbench-5.0.0.app/Contents/bin/sonvalidxml bin/sonvalidxml
 #pywatts nstauff$ ln -s /Applications/Workbench-5.0.0.app/Contents/wasppy ./
 # if needed - change wasppy/xml2obj.py line 89 - if isinstance(src, (str,bytes)):
+# chmod 777 watts_ui.py
+# execute with command: `python watts_ui.py -i examples/watts_comprehensive.son`
 ###
 
 def load_obj(input_path, watts_path):
@@ -20,8 +23,12 @@ def load_obj(input_path, watts_path):
     from wasppy import xml2obj
     return xml2obj.xml2obj(xmlresult)
 
-watts_path = os.getcwd()
-input_path = os.getcwd() + "/examples/watts_comprehensive.son"
+# Need to update and get properly from workbench the executable path and the argument
+watts_path = "/Users/nstauff/Documents/CODES/WATTS/src/watts_ui/"
+opts, args = getopt.getopt(sys.argv[1:],"hi:o:",["ifile=","ofile="])
+for opt, arg in opts:
+    if opt == "-i":
+         input_path = os.getcwd() +"/"+ str(arg)
 
 watts = load_obj(input_path, watts_path).watts
 
