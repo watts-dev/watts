@@ -34,6 +34,9 @@ watts = load_obj(input_path, watts_path).watts
 
 if watts.workflow_level1 is not None:
     print ("here - workflow_level1")
+    if watts.workflow_level1.variables is not None:
+    	for it, param in enumerate(watts.workflow_level1.variables.param):
+    		print (str(param.id), str(param.value.value), str(param.unit.value))
 if watts.plugins is not None:
     for it, plg in enumerate(watts.plugins.plugin):
         print ("plugin ", str(plg.id), " code ", str(plg.code.value))

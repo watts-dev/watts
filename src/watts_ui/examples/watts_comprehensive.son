@@ -2,6 +2,9 @@ watts{
     workflow_level1{
         plugin = ID1
         workflow_level2{}
+        variables{
+            param(temp) {value = 100 range = [100 200]}
+        }
     }
     plugins{
         plugin(ID1){
