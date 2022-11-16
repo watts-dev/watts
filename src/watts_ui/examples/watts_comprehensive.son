@@ -1,0 +1,21 @@
+watts{
+    workflow_level1{
+        plugin = ID1
+        workflow_level2{}
+        variables{
+            param(temp) {value = 100 range = [100 200]}
+        }
+    }
+    plugins{
+        plugin(ID1){
+            code = MCNP
+            template = "my_template.tmpl"
+            extra_inputs = [input1 input2]
+        }
+        plugin(ID2){
+            code = openmc
+            template = "my_template.tmpl"
+            extra_inputs = [input1 input2]
+        }
+    }
+}

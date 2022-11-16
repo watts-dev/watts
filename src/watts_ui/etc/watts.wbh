@@ -1,0 +1,70 @@
+rule("Comment") {
+    foreground {
+        red = 0
+        green = 128
+        blue = 0
+    }
+    italic = true
+    pattern = "(^'|%|//).*"
+}
+rule("Double-quoted string") {
+    foreground {
+        red = 128
+        green = 0
+        blue = 0
+    }
+    pattern = '"[^"]*"'
+}
+rule("Single-quoted string") {
+    foreground {
+        red = 128
+        green = 0
+        blue = 0
+    }
+    pattern = "'[^']*'"
+}
+rule("Sequence") {
+    bold = true
+    foreground {
+        red = 0
+        green = 0
+        blue = 0
+    }
+    pattern = "^(=\S+|end\s*$)"
+}
+%rule("Keyword") {
+%    bold = true
+%    foreground {
+%        red = 0
+%        green = 0
+%        blue = 128
+%    }
+%    pattern = "\s*((read|end)\s+\S+|end\s*$)"
+%}
+rule("Number") {
+    bold = true
+    foreground {
+        red = 128
+        green = 0
+        blue = 0
+    }
+    pattern = "\b[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?\b"
+}
+rule("Keyword") {
+    bold = true
+    foreground {
+        red = 0
+        green = 0
+        blue = 128
+    }
+    pattern = "\([^)]+\)"
+}
+rule("List Elements") {
+    bold = true
+    foreground {
+        red = 0
+        green = 128
+        blue = 128
+    }
+    pattern = "\[[^]]+\]"
+}
