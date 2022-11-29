@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changes
+
+* All plugins now support an `executable` argument to explicitly specify the
+  executable to be used ([#75](https://github.com/watts-dev/watts/pull/75))
+
 ## [0.4.0]
 
 ### Added
