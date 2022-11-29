@@ -9,7 +9,7 @@ from typing import List, Optional
 
 from .fileutils import PathLike
 from .parameters import Parameters
-from .plugin import PluginGeneric
+from .plugin import PluginGeneric, _find_executable
 from .results import Results
 
 
@@ -20,6 +20,8 @@ class PluginABCE(PluginGeneric):
     ----------
     template_file
         Templated ABCE input
+    executable
+        Path to ABCE run.py script
     extra_inputs
         List of extra (non-templated) input files that are needed
     extra_template_inputs
@@ -39,14 +41,16 @@ class PluginABCE(PluginGeneric):
     """
 
 
-    def __init__(self, template_file: str,
-                 extra_inputs: Optional[List[str]] = None,
-                 extra_template_inputs: Optional[List[PathLike]] = None,
-                 show_stdout: bool = False, show_stderr: bool = False):
-        try:
-            executable = Path(os.environ['ABCE_DIR']) / 'run.py'
-        except KeyError:
-            raise OSError("Use of the ABCE plugin requires setting the ABCE_DIR environment variable.")
+    def __init__(
+        self,
+        template_file: str,
+        executable: PathLike = 'run.py',
+        extra_inputs: Optional[List[str]] = None,
+        extra_template_inputs: Optional[List[PathLike]] = None,
+        show_stdout: bool = False,
+        show_stderr: bool = False
+    ):
+        executable = _find_executable(executable, 'ABCE_DIR')
         execute_command = [sys.executable, '{self.executable}', '--settings_file', '{self.input_name}']
         super().__init__(
             executable, execute_command, template_file, extra_inputs,

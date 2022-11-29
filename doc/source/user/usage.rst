@@ -166,7 +166,21 @@ Specifying an Executable
 
 Each plugin has a default executable name for the underlying code. For example,
 the :class:`~watts.PluginMCNP` class uses the executable ``mcnp6`` by default.
-You can both view and/or change the executable using the
+You can explicitly specify the path to an executable at the time a plugin is
+created::
+
+    mcnp = watts.PluginMCNP(template, executable='mcnp5')
+
+The ``executable`` argument can be given as an absolute path, in which case it
+will be used as is. Alternatively, when the ``executable`` argument is given as
+a relative path, WATTS will look for an environment variable indicating the
+directory where the executable can be found and prepend that to the executable
+if it exists. For example, the :class:`~watts.PluginMCNP` class will look for a
+:envvar:`MCNP_DIR` environment variable. If no environment variable is found,
+the directory containing the executable must be present on your :envvar:`PATH`
+environment variable.
+
+You can also view and change the executable using the
 :class:`~watts.PluginGeneric.executable` attribute:
 
 .. code-block:: pycon
@@ -174,9 +188,6 @@ You can both view and/or change the executable using the
     >>> plugin_mcnp.executable
     PosixPath('mcnp6')
     >>> plugin_mcnp.executable = 'mcnp5'
-
-If the ``executable`` you specify is not an absolute path, the directory
-containing it must be present on your :envvar:`PATH` environment variable.
 
 .. _input_files:
 
