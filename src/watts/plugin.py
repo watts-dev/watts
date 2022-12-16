@@ -72,7 +72,7 @@ class Plugin(ABC):
     def plugin_name(self):
         return type(self).__name__[6:]
 
-    def __call__(self, params: Parameters = None, name: str = 'Workflow', **kwargs) -> Results:
+    def __call__(self, params: Parameters = None, name: str = '', verbose=True, **kwargs) -> Results:
         """Run the complete workflow for the plugin
 
         Parameters
@@ -81,6 +81,8 @@ class Plugin(ABC):
             Parameters used in generating inputs
         name
             Name for workflow
+        verbose
+            Whether to print execution information
         **kwargs
             Keyword arguments passed to the `run` method
 
@@ -90,6 +92,11 @@ class Plugin(ABC):
         """
         db = Database()
         plugin_name = self.plugin_name
+        if verbose:
+            if name:
+                print(f'[watts] Calling {plugin_name} ({name})...')
+            else:
+                print(f'[watts] Calling {plugin_name}...')
 
         # Generate empty Parameters object if none provided
         if params is None:
@@ -103,11 +110,9 @@ class Plugin(ABC):
 
             # Generate input files and perform any other prerun actions
             self._run_time = time.time_ns()
-            print(f"[watts] Calling prerun() for {plugin_name} Plugin")
             self.prerun(params)
 
             # Execute the code, redirecting stdout/stderr if requested
-            print(f"[watts] Calling run() for {plugin_name} Plugin")
             with open(f'{plugin_name}_log.txt', 'w') as outfile:
                 func_stdout = tee_stdout if self.show_stdout else redirect_stdout
                 func_stderr = tee_stderr if self.show_stderr else redirect_stderr
@@ -115,7 +120,6 @@ class Plugin(ABC):
                     self.run(**kwargs)
 
             # Collect results and perform any postrun actions
-            print(f"[watts] Calling postrun() for {plugin_name} Plugin")
             result = self.postrun(params, name)
 
             # Create new directory for results and move files there

@@ -97,4 +97,8 @@ class Results:
         open_file(self.base_path)
 
     def __repr__(self):
-        return f"<Results{self.plugin}: {self.time}>"
+        if self.name:
+            return f"<Results{self.plugin}: {self.name}, {self.time})>"
+        else:
+            return f"<Results{self.plugin}: {self.time})>"
+
