@@ -1,0 +1,76 @@
+watts{
+    plugins{
+        plugin(ID1){
+            code = moose
+%            template = sam_junction_template
+            template = "/Users/zhieejhiaooi/Documents/ANL/watts-devel/watts/src/watts_ui/examples/PicardIterations_SAM-OpenMC_VHTR/sam_template"
+%            extra_inputs = [input1 input2]
+            exec_dir= SAM_DIR
+            exec_name = "sam-opt"
+            show_stderr = False
+            show_stdout = False
+            output = "out.txt"
+        }
+        plugin(ID2){
+            code = openmc
+            module_dir = "/Users/zhieejhiaooi/Documents/ANL/watts-devel/watts/src/watts_ui/examples/PicardIterations_SAM-OpenMC_VHTR"
+            template = "/Users/zhieejhiaooi/Documents/ANL/watts-devel/watts/src/watts_ui/examples/PicardIterations_SAM-OpenMC_VHTR/openmc_template.py"
+            scores = ["nu-fission"] % Name of scores for OpenMC tallies. This will be the base name used for saving the tallies.
+            score_names = ["Init_P"] % A more representative name for the scores
+        }
+    }
+
+    workflow_level1{
+%        plugin = ID2
+        variables{
+            param(He_inlet_temp) {value = 873.15}
+            param(He_outlet_temp) {value = 1023.15}
+            param(He_cp) {value = 5189.2}
+            param(He_K) {value = 0.32802}
+            param(He_density) {value = 3.8815}
+            param(He_viscosity) {value = 4.16e-5}
+            param(He_Pressure) {value = 7e6}
+            param(Tot_assembly_power) {value = 250000}
+
+            param("Init_P_1") {value = 1}
+            param("Init_P_2") {value = 1}
+            param("Init_P_3") {value = 1}
+            param("Init_P_4") {value = 1}
+            param("Init_P_5") {value = 1}
+
+
+            param(ax_ref) {value = 2.0}
+            param(num_cool_pins) {value = 24}
+            param(num_fuel_pins) {value = 44}
+            param(Height_FC) {value = 2.0}
+            param(Lattice_pitch) {value = 2.0}
+            param(FuelPin_rad) {value = 0.9}
+            param(cool_hole_rad) {value = 0.6}
+            param(Coolant_channel_diam) {value = 0.012}
+            param(Graphite_thickness) {value = 0.5}
+            param(Assembly_pitch) {value = 17.3205080756887}
+            param(lbp_rad) {value = 0.25}
+            param(mod_ext_rad) {value = 0.90}
+            param(shell_thick) {value = 0.05}
+            param(liner_thick) {value = 0.007}
+            param(control_pin_rad) {value = 9.9, unit = mm}
+            param(cl) {value = 160.0}
+            param(pf) {value = 40.0}
+            param(temp) {value = 700.0}
+            param(use_sab) = {bool = True}
+            param(use_sab_BeO) = {bool = True}
+            param(use_sab_YH2) = {bool = False}
+        }
+        
+        iteration{
+            plugin_main = ID1 
+            plugin_sub = ID2 
+            nmax = 10 
+            convergence_params = keff % Make sure that this parameter is po
+            convergence_criteria = 0.0001 
+            to_sub_params = ["avg_Tf_1" "avg_Tf_2" "avg_Tf_3" "avg_Tf_4" "avg_Tf_5"]
+            to_main_params = ["Init_P_1" "Init_P_2" "Init_P_3" "Init_P_4" "Init_P_5"]
+        }
+    }
+
+}

@@ -1,0 +1,46 @@
+watts{
+    plugins{
+        plugin(ID1){
+            code = moose
+%            template = sam_junction_template
+            template = "/Users/zhieejhiaooi/Documents/ANL/watts-devel/watts/src/watts_ui/examples/1App_SAM_VHTR/sam_junction_template"
+%            extra_inputs = [input1 input2]
+            exec_dir= SAM_DIR
+            exec_name = "sam-opt"
+            show_stderr = False
+            show_stdout = False
+            output = "out.txt"
+        }
+        plugin(ID2){
+            code = openmc
+            template = "my_template.tmpl"
+            extra_inputs = [input1 input2]
+        }
+        plugin(ID3){
+            code = MCNP
+            template = "my_template.tmpl"
+            extra_inputs = [input1 input2]
+        }
+    }
+
+    workflow_level1{
+        plugin = ID1
+        variables{
+            param(temperature_inlet) {value = 2.0}
+            param(friction_factor) {value = 0.1}
+            param(flow_area) {value = 3.14e-4}
+            param(country) {value = USA}
+            param(Dh) {value = 1 unit = m}
+            param(velocity_inlet) {value = 1}
+            param(name) {list = [ANL INL ORNL LANL]}
+            param(size) {list = [30.0 50.4 -60.6 1e-5]}
+            param(velocity_outlet) {func = "2 * temperature_inlet ** 3"}
+            param(velocity_outlet_2) {func = "friction_factor + 2 + temperature_inlet ** 3"}
+            param(wall_bc) {bool = "True"}
+            param(heat_source) {value = 1e5}
+        }
+%        iterations{nmax = 10 convergence_criteria = 0.0001 iter_params = var1}
+%        workflow_level2{}
+    }
+
+}

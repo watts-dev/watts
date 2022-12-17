@@ -1,0 +1,60 @@
+watts{
+    plugins{
+        plugin(ID1){
+            code = moose
+%            template = sam_junction_template
+            template = "/Users/zhieejhiaooi/Documents/ANL/watts-devel/watts/src/watts_ui/examples/1App_SAM_VHTR/sam_junction_template"
+%            extra_inputs = [input1 input2]
+            exec_dir= SAM_DIR
+            exec_name = "sam-opt"
+            show_stderr = False
+            show_stdout = False
+            output = "out.txt"
+        }
+        plugin(ID2){
+            code = openmc
+            module_dir = "/Users/zhieejhiaooi/Documents/ANL/watts-devel/watts/src/watts_ui/examples/1App_OpenMC_VHTR"
+            template = "/Users/zhieejhiaooi/Documents/ANL/watts-devel/watts/src/watts_ui/examples/1App_OpenMC_VHTR/openmc_template.py"
+            scores = ["nu-fission"] % Name of scores for OpenMC tallies. This will be the base name used for saving the tallies.
+            score_names = ["power"] % A more representative name for the scores
+        }
+        plugin(ID3){
+            code = MCNP
+            template = "my_template.tmpl"
+            extra_inputs = [input1 input2]
+        }
+    }
+
+    workflow_level1{
+        plugin = ID2
+        variables{
+            param(ax_ref) {value = 2.0}
+            param(num_cool_pins) {value = 24}
+            param(num_fuel_pins) {value = 44}
+            param(Height_FC) {value = 2.0}
+            param(Lattice_pitch) {value = 2.0}
+            param(FuelPin_rad) {value = 0.9}
+            param(cool_hole_rad) {value = 0.6}
+            param(Coolant_channel_diam) {value = 0.012}
+            param(Graphite_thickness) {value = 0.5}
+            param(Assembly_pitch) {value = 17.3205080756887}
+            param(lbp_rad) {value = 0.25}
+            param(mod_ext_rad) {value = 0.90}
+            param(shell_thick) {value = 0.05}
+            param(liner_thick) {value = 0.007}
+            param(control_pin_rad) {value = 9.9, unit = mm}
+            param(cl) {value = 160.0}
+            param(pf) {value = 40.0}
+            param(temp) {value = 725.0}
+            param(temp_F1) {value = 725.0}
+            param(temp_F2) {value = 725.0}
+            param(temp_F3) {value = 725.0}
+            param(temp_F4) {value = 725.0}
+            param(temp_F5) {value = 725.0}
+            param(use_sab) = {bool = True}
+            param(use_sab_BeO) = {bool = True}
+            param(use_sab_YH2) = {bool = False}
+        }
+    }
+
+}
