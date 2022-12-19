@@ -37,6 +37,7 @@ dependencies = [
     "prettytable",
     "astropy",
     "uncertainties",
+    "click",
 ]
 
 [project.optional-dependencies]
@@ -52,3 +53,6 @@ docs = [
 "Bug Tracker" = "https://github.com/watts-dev/watts/issues"
 Documentation = "https://watts.readthedocs.io"
 "Source Code" = "https://github.com/watts-dev/watts"
+
+[project.scripts]
+watts = "watts:console.main"
