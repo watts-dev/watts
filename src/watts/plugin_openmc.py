@@ -91,6 +91,7 @@ class PluginOpenMC(Plugin):
         super().__init__(extra_inputs, show_stdout, show_stderr)
         self.model_builder = model_builder
         self.unit_system = 'cgs'
+        self.plugin_name = 'OpenMC'
 
     def prerun(self, params: Parameters) -> None:
         """Generate OpenMC input files

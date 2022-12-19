@@ -75,6 +75,7 @@ class PluginPyARC(PluginGeneric):
         super().__init__(executable, None, template_file, extra_inputs,
                          extra_template_inputs, show_stdout, show_stderr)
         self.input_name = "pyarc_input.son"
+        self.plugin_name = "PyARC"
 
     @PluginGeneric.executable.setter
     def executable(self, exe: PathLike):

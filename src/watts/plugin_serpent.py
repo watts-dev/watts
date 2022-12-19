@@ -72,3 +72,4 @@ class PluginSerpent(PluginGeneric):
             show_stdout, show_stderr, unit_system='cgs'
         )
         self.input_name = "serpent_input"
+        self.plugin_name = "Serpent"

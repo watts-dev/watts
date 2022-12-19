@@ -68,10 +68,6 @@ class Plugin(ABC):
     def postrun(self, params: Parameters, exec_info: ExecInfo) -> Results:
         ...
 
-    @property
-    def plugin_name(self):
-        return type(self).__name__[6:]
-
     def __call__(self, params: Parameters = None, name: str = '', verbose=True, **kwargs) -> Results:
         """Run the complete workflow for the plugin
 
@@ -164,6 +160,8 @@ class PluginGeneric(Plugin):
         Extra (non-templated) input files
     extra_template_inputs
         Extra templated input files
+    plugin_name
+        Name of the plugin
     show_stdout
         Whether to display output from stdout when :math:`run` is called
     show_stderr
@@ -185,11 +183,13 @@ class PluginGeneric(Plugin):
         template_file: PathLike,
         extra_inputs: Optional[List[PathLike]] = None,
         extra_template_inputs: Optional[List[PathLike]] = None,
+        plugin_name: str = 'Generic',
         show_stdout: bool = False,
         show_stderr: bool = False,
-        unit_system: str = 'si'
+        unit_system: str = 'si',
     ):
         super().__init__(extra_inputs, show_stdout, show_stderr, unit_system)
+        self.plugin_name = plugin_name
         self.render_template = TemplateRenderer(template_file)
         self.extra_render_templates = []
         self.input_name = 'input_rendered'

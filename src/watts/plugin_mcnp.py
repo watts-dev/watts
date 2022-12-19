@@ -88,3 +88,4 @@ class PluginMCNP(PluginGeneric):
             template_file, extra_inputs, extra_template_inputs,
             show_stdout, show_stderr, unit_system='cgs')
         self.input_name = "mcnp_input"
+        self.plugin_name = "MCNP"

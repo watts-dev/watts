@@ -115,3 +115,4 @@ class PluginMOOSE(PluginGeneric):
             executable, execute_command, template_file, extra_inputs,
             extra_template_inputs, show_stdout, show_stderr)
         self.input_name = "MOOSE.i"
+        self.plugin_name = "MOOSE"

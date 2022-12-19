@@ -121,6 +121,7 @@ class PluginDakota(PluginGeneric):
             extra_template_inputs, show_stdout, show_stderr)
 
         self.input_name = template_file
+        self.plugin_name = "Dakota"
         self._auto_link_files = auto_link_files
 
         # Setup to automatically include all 'extra_inputs' and 'extra_template_inputs'

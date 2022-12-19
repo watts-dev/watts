@@ -127,7 +127,10 @@ class Results:
         # For older results objects, add in execution info tuple
         if not hasattr(result, 'exec_info'):
             job_id = None
-            plugin = type(result).__name__[7:]
+            if type(result) is Results:
+                plugin = 'Generic'
+            else:
+                plugin = type(result).__name__[7:]
             name = result.__dict__['name']
             dt = result.__dict__['time']
             timestamp = int(dt.timestamp() * 1e6) * 1000
@@ -141,7 +144,7 @@ class Results:
 
     def __repr__(self):
         if self.name:
-            return f"<Results{self.plugin}: {self.name}, {self.time})>"
+            return f"<Results: {self.plugin}, {self.name}, {self.time})>"
         else:
-            return f"<Results{self.plugin}: {self.time})>"
+            return f"<Results: {self.plugin}, {self.time})>"
 
