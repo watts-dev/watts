@@ -1,0 +1,28 @@
+watts{
+    % Change the working directory to the directory where the input files are stored. This is necessary
+    % due to how WATTS copies input files to the temporary working directory.
+    workflow_dir = "C:/Users/zooi/Desktop/watts-workbench/src/watts_ui/examples/1App_RELAP5_SingleChannel"
+
+    % Make sure that all necessary files (executable, fluid property files, etc) are in the
+    % same directory as the input and template files. 
+    plugins{
+        plugin(ID1){
+            code = "RELAP5"
+            template = "relap5_template"
+            show_stderr = False
+            show_stdout = False
+            plotfl_to_csv = True
+            % extra_args = ["-w", "tpfh2o", "-e", "tpfn2", "-tpfdir", "C:/Users/zooi/Documents/NSTF/watts/R5/"]
+        }
+    }
+
+    workflow_level1{
+        plugin = ID1
+        variables{
+            param(inlet_pressure) {value = 3.0e5}
+            param(outlet_pressure) {value = 1.013e5}
+            param(heater_power) {value = 20000}
+        }
+    }
+
+}

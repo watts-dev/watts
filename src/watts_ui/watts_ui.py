@@ -1,9 +1,11 @@
+
+import getopt
 import os
 from pathlib import Path
+import subprocess
 import sys
 from typing import Optional
-import getopt
-import subprocess
+import warnings
 
 from astropy.units import Quantity
 import numpy as np
@@ -433,8 +435,8 @@ def run_direct(watts_params, plugin):
             for key in app_result.results_data:
                 watts_params[key] = app_result.results_data[key]
         else:
-            for key in app_result:
-                watts_params[key] = app_result[key]
+            warnings.warn(
+                "Results class has no attribute 'csv_data', 'output_data', or 'results_data'. Output results are not saved to WATTS params.")
 
     return (watts_params, app_result)
 

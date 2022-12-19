@@ -244,7 +244,7 @@ watts{
                 ValType=String
                 InputTmpl="flagtypes"
                 InputDefault= codename
-                ValEnums=[PyARC OpenMC SERPENT ABCE MCNP MOOSE SAS Dakota Serpent]
+                ValEnums=[PyARC OpenMC SERPENT ABCE MCNP MOOSE SAS Dakota Serpent RELAP5]
             }
             template{
                 Description = "Template name"
