@@ -4,11 +4,12 @@
 from abc import ABC, abstractmethod
 from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime
-import uuid
+import os
 from pathlib import Path
 import shutil
 import time
 from typing import Optional, List, Union
+import uuid
 
 from .database import Database
 from .fileutils import cd_tmpdir, PathLike, tee_stdout, tee_stderr, run as run_proc
@@ -278,3 +279,29 @@ class PluginGeneric(Plugin):
         if extra_args is None:
             extra_args = []
         run_proc(mpi_args + self.execute_command + extra_args)
+
+
+def _find_executable(path: PathLike, environment_variable: str) -> Path:
+    """Determine executable for a given code with a hint from environment variable
+
+    Parameters
+    ----------
+    path
+        Name of exeuctable or absolute path
+    environment_variable
+        Environment variable indicating directory where executable is found
+
+    Returns
+    -------
+    Path to executable
+    """
+
+    exe = Path(path)
+
+    # If path is already an absolute path, use it
+    if exe.is_absolute():
+        return exe
+
+    # Check for environment variable
+    base_dir = os.environ.get(environment_variable)
+    return base_dir / exe if base_dir is not None else exe

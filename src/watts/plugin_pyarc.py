@@ -10,7 +10,7 @@ from typing import Mapping, List, Optional
 
 from .fileutils import PathLike
 from .parameters import Parameters
-from .plugin import PluginGeneric
+from .plugin import PluginGeneric, _find_executable
 from .results import Results
 
 
@@ -47,6 +47,8 @@ class PluginPyARC(PluginGeneric):
     ----------
     template_file
         Templated PyARC input
+    executable
+        Path to PyARC.py script
     extra_inputs
         List of extra (non-templated) input files that are needed
     extra_template_inputs
@@ -63,21 +65,25 @@ class PluginPyARC(PluginGeneric):
 
     """
 
-    def __init__(self, template_file: str,
-                 extra_inputs: Optional[List[str]] = None,
-                 extra_template_inputs: Optional[List[PathLike]] = None,
-                 show_stdout: bool = False, show_stderr: bool = False):
-        executable = Path(os.environ.get('PyARC_DIR', ''))
+    def __init__(
+        self,
+        template_file: str,
+        executable: PathLike = 'PyARC.py',
+        extra_inputs: Optional[List[str]] = None,
+        extra_template_inputs: Optional[List[PathLike]] = None,
+        show_stdout: bool = False,
+        show_stderr: bool = False
+    ):
+        executable = _find_executable(executable, 'PyARC_DIR')
         super().__init__(executable, None, template_file, extra_inputs,
                          extra_template_inputs, show_stdout, show_stderr)
         self.input_name = "pyarc_input.son"
 
     @PluginGeneric.executable.setter
     def executable(self, exe: PathLike):
-        pyarc_module = Path(exe) / 'PyARC.py'
-        if not pyarc_module.is_file():
+        if not exe.is_file():
             raise RuntimeError(
-                f"{self.plugin_name} module '{pyarc_module}' does not exist. The "
+                f"{self.plugin_name} module '{exe}' does not exist. The "
                 "PyARC_DIR environment variable needs to be set to a directory "
                 "containing the PyARC.py module."
             )
@@ -91,7 +97,7 @@ class PluginPyARC(PluginGeneric):
         **kwargs
             Keyword arguments passed on to :func:`pyarc.execute`
         """
-        sys.path.insert(0, f'{self.executable}')
+        sys.path.insert(0, f'{self.executable.parent}')
         import PyARC
         self.pyarc = PyARC.PyARC()
         self.pyarc.user_object.do_run = True

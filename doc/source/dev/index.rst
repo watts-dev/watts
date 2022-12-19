@@ -9,3 +9,4 @@ Developer's Guide
    contributing
    plugins
    styleguide
+   release

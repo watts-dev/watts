@@ -13,9 +13,9 @@ from typing import List, Optional
 import numpy as np
 import pandas as pd
 
-from .fileutils import PathLike, run as run_proc
+from .fileutils import PathLike
 from .parameters import Parameters
-from .plugin import PluginGeneric
+from .plugin import PluginGeneric, _find_executable
 from .results import Results
 
 
@@ -73,6 +73,8 @@ class PluginSAS(PluginGeneric):
     ----------
     template_file
         Templated SAS input
+    executable
+        Path to SAS executable
     extra_inputs
         List of extra (non-templated) input files that are needed
     extra_template_inputs
@@ -95,24 +97,26 @@ class PluginSAS(PluginGeneric):
 
     """
 
-    def  __init__(self, template_file: str,
-                  extra_inputs: Optional[List[str]] = None,
-                  extra_template_inputs: Optional[List[PathLike]] = None,
-                  show_stdout: bool = False, show_stderr: bool = False):
-        # Check OS to make sure the extension of the executable is correct.
-        # Linux and macOS have different executables but both are ".x".
-        # The Windows executable is ".exe".
-        ext = "exe" if platform.system() == "Windows" else "x"
-        sas_dir = Path(os.environ.get("SAS_DIR", ""))
-        self._conv_channel = sas_dir / f"CHANNELtoCSV.{ext}"
-        self._conv_primar4 = sas_dir / f"PRIMAR4toCSV.{ext}"
-        executable = sas_dir / f"sas.{ext}"
+    def  __init__(
+        self,
+        template_file: str,
+        executable: PathLike = 'sas.x',
+        extra_inputs: Optional[List[str]] = None,
+        extra_template_inputs: Optional[List[PathLike]] = None,
+        show_stdout: bool = False,
+        show_stderr: bool = False
+    ):
+        executable = _find_executable(executable, 'SAS_DIR')
         execute_command = ['{self.executable}', '-i', '{self.input_name}',
                            '-o', 'out.txt']
-
         super().__init__(executable, execute_command, template_file, extra_inputs,
                          extra_template_inputs, show_stdout, show_stderr)
         self.input_name = "SAS.inp"
+
+        # Set other executables based on the main SAS executable
+        suffix = executable.suffix
+        self._conv_channel = executable.with_name(f"CHANNELtoCSV{suffix}")
+        self._conv_primar4 = executable.with_name(f"PRIMAR4toCSV{suffix}")
 
     @property
     def conv_channel(self) -> Path:
