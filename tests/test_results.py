@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
-from datetime import datetime
 from pathlib import Path
+import time
 
 import watts
 import numpy as np
@@ -10,8 +10,10 @@ import numpy as np
 
 def test_results_openmc(run_in_tmpdir):
     params = watts.Parameters(city='Chicago', population=2.7e6)
+    plugin = 'OpenMC'
     name = "🎲"
-    now = datetime.now()
+    timestamp = time.time_ns()
+    exec_info = watts.ExecInfo(123, plugin, name, timestamp)
 
     # Create some fake input files
     geom_xml = Path('geometry.xml')
@@ -27,14 +29,14 @@ def test_results_openmc(run_in_tmpdir):
     log_file.write_text("this is output\n")
     outputs = [sp, log_file]
 
-
-    results = watts.ResultsOpenMC(params, name, now, inputs, outputs)
+    results = watts.ResultsOpenMC(params, exec_info, inputs, outputs)
 
     # Sanity checks
     assert results.plugin == 'OpenMC'
     assert results.parameters == params
+    assert results.job_id == 123
     assert results.name == name
-    assert results.time == now
+    assert results.exec_info.timestamp == timestamp
     assert results.inputs == inputs
     assert results.outputs == outputs
     assert results.stdout == "this is output\n"
@@ -51,6 +53,8 @@ def test_results_openmc(run_in_tmpdir):
     new_results = watts.Results.from_pickle(p)
     assert isinstance(new_results, watts.ResultsOpenMC)
     assert new_results.parameters == results.parameters
+    assert new_results.job_id == results.job_id
+    assert new_results.plugin == results.plugin
     assert new_results.name == results.name
     assert new_results.time == results.time
     assert new_results.inputs == results.inputs
@@ -60,8 +64,9 @@ def test_results_openmc(run_in_tmpdir):
 
 def test_results_moose(run_in_tmpdir):
     params = watts.Parameters(city='Chicago', population=2.7e6)
-    name = "Elk"
-    now = datetime.now()
+    name = 'Elk'
+    timestamp = time.time_ns()
+    exec_info = watts.ExecInfo(1984, 'MOOSE', name, timestamp)
 
     # Create some fake input files
     moose_inp = Path('MOOSE.i')
@@ -80,13 +85,14 @@ prop1,prop2
     stdout.write_text('MOOSE standard out\n')
     outputs = [csv, stdout]
 
-    results = watts.ResultsMOOSE(params, name, now, inputs, outputs)
+    results = watts.ResultsMOOSE(params, exec_info, inputs, outputs)
 
     # Sanity checks
     assert results.plugin == 'MOOSE'
     assert results.parameters == params
+    assert results.job_id == 1984
     assert results.name == name
-    assert results.time == now
+    assert results.exec_info.timestamp == timestamp
     assert results.inputs == inputs
     assert results.outputs == outputs
 
@@ -104,6 +110,8 @@ prop1,prop2
     new_results = watts.Results.from_pickle(p)
     assert isinstance(new_results, watts.ResultsMOOSE)
     assert new_results.parameters == results.parameters
+    assert new_results.job_id == results.job_id
+    assert new_results.plugin == results.plugin
     assert new_results.name == results.name
     assert new_results.time == results.time
     assert new_results.inputs == results.inputs
@@ -113,8 +121,10 @@ prop1,prop2
 
 def test_results_sas(run_in_tmpdir):
     params = watts.Parameters(city='Chicago', population=2.7e6)
+    plugin = 'SAS'
     name = 'Sassy!'
-    now = datetime.now()
+    timestamp = time.time_ns()
+    exec_info = watts.ExecInfo(57, plugin, name, timestamp)
 
     # Create some fake input files
     sas_inp = Path('sas.inp')
@@ -133,13 +143,14 @@ prop1,prop2
     stdout.write_text('SAS standard out\n')
     outputs = [csv, stdout]
 
-    results = watts.ResultsSAS(params, name, now, inputs, outputs)
+    results = watts.ResultsSAS(params, exec_info, inputs, outputs)
 
     # Sanity checks
     assert results.plugin == 'SAS'
     assert results.parameters == params
+    assert results.job_id == 57
     assert results.name == name
-    assert results.time == now
+    assert results.exec_info.timestamp == timestamp
     assert results.inputs == inputs
     assert results.outputs == outputs
 
@@ -157,6 +168,8 @@ prop1,prop2
     new_results = watts.Results.from_pickle(p)
     assert isinstance(new_results, watts.ResultsSAS)
     assert new_results.parameters == results.parameters
+    assert new_results.plugin == results.plugin
+    assert new_results.job_id == results.job_id
     assert new_results.name == results.name
     assert new_results.time == results.time
     assert new_results.inputs == results.inputs
@@ -166,8 +179,10 @@ prop1,prop2
 
 def test_results_relap5(run_in_tmpdir):
     params = watts.Parameters(city='Chicago', population=2.7e6)
+    plugin = 'RELAP5'
     name = 'SinglePipe'
-    now = datetime.now()
+    timestamp = time.time_ns()
+    exec_info = watts.ExecInfo(5, plugin, name, timestamp)
 
     # Create some fake input files
     relap5_inp = Path('relap5.i')
@@ -186,13 +201,14 @@ prop1,prop2
     stdout.write_text('RELAP5 standard out\n')
     outputs = [csv, stdout]
 
-    results = watts.ResultsRELAP5(params, name, now, inputs, outputs)
+    results = watts.ResultsRELAP5(params, exec_info, inputs, outputs)
 
     # Sanity checks
-    assert results.plugin == 'RELAP5'
+    assert results.plugin == plugin
     assert results.parameters == params
+    assert results.job_id == 5
     assert results.name == name
-    assert results.time == now
+    assert results.exec_info.timestamp == timestamp
     assert results.inputs == inputs
     assert results.outputs == outputs
 
@@ -210,6 +226,8 @@ prop1,prop2
     new_results = watts.Results.from_pickle(p)
     assert isinstance(new_results, watts.ResultsRELAP5)
     assert new_results.parameters == results.parameters
+    assert new_results.plugin == results.plugin
+    assert new_results.job_id == results.job_id
     assert new_results.name == results.name
     assert new_results.time == results.time
     assert new_results.inputs == results.inputs
@@ -219,8 +237,10 @@ prop1,prop2
 
 def test_results_dakota(run_in_tmpdir):
     params = watts.Parameters(city='Chicago', population=2.7e6)
+    plugin = 'Dakota'
     name = 'North_Dakota'
-    now = datetime.now()
+    timestamp = time.time_ns()
+    exec_info = watts.ExecInfo(99, plugin, name, timestamp)
 
     # Create some fake input files
     dakota_inp = Path('dakota.inp')
@@ -239,13 +259,14 @@ prop1  prop2
     stdout.write_text('DAKOTA standard out\n')
     outputs = [csv, stdout]
 
-    results = watts.ResultsDakota(params, name, now, inputs, outputs)
+    results = watts.ResultsDakota(params, exec_info, inputs, outputs)
 
     # Sanity checks
     assert results.plugin == 'Dakota'
     assert results.parameters == params
+    assert results.job_id == 99
     assert results.name == name
-    assert results.time == now
+    assert results.exec_info.timestamp == timestamp
     assert results.inputs == inputs
     assert results.outputs == outputs
 
@@ -263,6 +284,8 @@ prop1  prop2
     new_results = watts.Results.from_pickle(p)
     assert isinstance(new_results, watts.ResultsDakota)
     assert new_results.parameters == results.parameters
+    assert new_results.plugin == results.plugin
+    assert new_results.job_id == results.job_id
     assert new_results.name == results.name
     assert new_results.time == results.time
     assert new_results.inputs == results.inputs
