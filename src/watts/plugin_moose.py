@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
-from datetime import datetime
 from typing import List, Optional
 
 import numpy as np
@@ -10,7 +9,7 @@ import pandas as pd
 from .fileutils import PathLike
 from .parameters import Parameters
 from .plugin import PluginGeneric, _find_executable
-from .results import Results
+from .results import Results, ExecInfo
 
 
 class ResultsMOOSE(Results):
@@ -20,10 +19,8 @@ class ResultsMOOSE(Results):
     ----------
     params
         Parameters used to generate inputs
-    name
-        Name of workflow producing results
-    time
-        Time at which workflow was run
+    exec_info
+        Execution information (job ID, plugin name, time, etc.)
     inputs
         List of input files
     outputs
@@ -36,9 +33,9 @@ class ResultsMOOSE(Results):
     csv_data
         Dictionary with data from .csv files
     """
-    def __init__(self, params: Parameters, name: str, time: datetime,
+    def __init__(self, params: Parameters, exec_info: ExecInfo,
                  inputs: List[PathLike], outputs: List[PathLike]):
-        super().__init__(params, name, time, inputs, outputs)
+        super().__init__(params, exec_info, inputs, outputs)
         self.csv_data = self._save_MOOSE_csv()
 
     def _save_MOOSE_csv(self) -> dict:

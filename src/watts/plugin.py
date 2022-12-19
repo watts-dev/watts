@@ -14,7 +14,7 @@ import uuid
 from .database import Database
 from .fileutils import cd_tmpdir, PathLike, tee_stdout, tee_stderr, run as run_proc
 from .parameters import Parameters
-from .results import Results
+from .results import Results, ExecInfo
 from .template import TemplateRenderer
 import watts
 
@@ -57,7 +57,7 @@ class Plugin(ABC):
         self.unit_system = unit_system
 
     @abstractmethod
-    def prerun(self, params):
+    def prerun(self, params: Parameters):
         ...
 
     @abstractmethod
@@ -65,7 +65,7 @@ class Plugin(ABC):
         ...
 
     @abstractmethod
-    def postrun(self, params, name) -> Results:
+    def postrun(self, params: Parameters, exec_info: ExecInfo) -> Results:
         ...
 
     @property
@@ -80,7 +80,7 @@ class Plugin(ABC):
         params
             Parameters used in generating inputs
         name
-            Name for workflow
+            Name associated with execution of plugin
         verbose
             Whether to print execution information
         **kwargs
@@ -88,7 +88,7 @@ class Plugin(ABC):
 
         Returns
         -------
-        Results from running workflow
+        Results from running plugin
         """
         db = Database()
         plugin_name = self.plugin_name
@@ -102,6 +102,10 @@ class Plugin(ABC):
         if params is None:
             params = Parameters()
 
+        # Create execution info
+        timestamp = time.time_ns()
+        exec_info = ExecInfo(db.job_id, plugin_name, name, timestamp)
+
         with cd_tmpdir():
             # Copy extra inputs to temporary directory
             cwd = Path.cwd()
@@ -109,7 +113,6 @@ class Plugin(ABC):
                 shutil.copy(str(path), str(cwd))  # Remove str() for Python 3.8+
 
             # Generate input files and perform any other prerun actions
-            self._run_time = time.time_ns()
             self.prerun(params)
 
             # Execute the code, redirecting stdout/stderr if requested
@@ -120,7 +123,7 @@ class Plugin(ABC):
                     self.run(**kwargs)
 
             # Collect results and perform any postrun actions
-            result = self.postrun(params, name)
+            result = self.postrun(params, exec_info)
 
             # Create new directory for results and move files there
             workflow_path = db.path / uuid.uuid4().hex
@@ -237,15 +240,15 @@ class PluginGeneric(Plugin):
         for render_template in self.extra_render_templates:
             render_template(params_copy)
 
-    def postrun(self, params: Parameters, name: str, **kwargs) -> Results:
+    def postrun(self, params: Parameters, exec_info: ExecInfo, **kwargs) -> Results:
         """Read simulation results and create results object
 
         Parameters
         ----------
         params
             Parameters used to generate input files
-        name
-            Name of the plugin
+        exec_info
+            Execution information
         **kwargs
             Keyword arguments for Results subclasses
 
@@ -254,8 +257,7 @@ class PluginGeneric(Plugin):
         Results object
         """
 
-        # Determine time, inputs and outputs
-        time = datetime.fromtimestamp(self._run_time * 1e-9)
+        # Determine inputs and outputs
         inputs = [self.input_name] + [p.name for p in self.extra_inputs]
         for renderer in self.extra_render_templates:
             inputs.append(renderer.template_file.name)
@@ -263,7 +265,7 @@ class PluginGeneric(Plugin):
 
         # Get correct Results subclass and return instance
         results_cls = getattr(watts, f'Results{self.plugin_name}', Results)
-        return results_cls(params, name, time, inputs, outputs, **kwargs)
+        return results_cls(params, exec_info, inputs, outputs, **kwargs)
 
     def run(self, mpi_args: Optional[List[str]] = None,
             extra_args: Optional[List[str]] = None):

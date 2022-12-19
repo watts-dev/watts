@@ -23,10 +23,12 @@ class Database(Sequence):
 
     Attributes
     ----------
-    path
-        Base path for the database directory
     default_path
         Path used by default when creating instances if no path is specified
+    job_id
+        Integer ID assigned to new results
+    path
+        Base path for the database directory
     results
         List of simulation results in database
 
@@ -69,6 +71,14 @@ class Database(Sequence):
                 self._results.append(Results.from_pickle(dir / ".result_info.pkl"))
             except Exception:
                 warn(f"Could not read results from {dir}")
+
+        # Determine unique job ID based on what has already been used
+        used_job_ids = set()
+        for result in self:
+            job_id = getattr(result, 'job_id', None)
+            if job_id is not None:
+                used_job_ids.add(job_id)
+        self.job_id = max(used_job_ids, default=0) + 1
 
         # Add instance to class-wide dictionary
         Database._instances[path.resolve()] = self
