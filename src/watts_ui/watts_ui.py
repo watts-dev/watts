@@ -429,6 +429,9 @@ def run_direct(watts_params, plugin):
         elif hasattr(app_result, 'output_data'):
             for key in app_result.output_data:
                 watts_params[key] = app_result.output_data[key]
+        elif hasattr(app_result, 'results_data'):
+            for key in app_result.results_data:
+                watts_params[key] = app_result.results_data[key]
         else:
             for key in app_result:
                 watts_params[key] = app_result[key]

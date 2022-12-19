@@ -1,0 +1,25 @@
+watts{
+    % Change the working directory to the directory where the input files are stored. This is necessary
+    % due to how WATTS copies input files to the temporary working directory.
+    workflow_dir = "/home/zooi/watts/src/watts_ui/examples/1App_PyARC_UnitCell"
+
+    plugins{
+        plugin(ID1){
+            code = "PyARC"
+            template = "pyarc_template"
+            extra_inputs = ["lumped.son"]
+            show_stderr = False
+            show_stdout = True
+        }
+    }
+
+    workflow_level1{
+        plugin = ID1
+        variables{
+            param(assembly_pitch) {value = 20 unit = cm}
+            param(assembly_length) {value = 13 unit = cm}
+            param(temp) {value = 26.85 unit = Celsius}
+        }
+    }
+
+}
