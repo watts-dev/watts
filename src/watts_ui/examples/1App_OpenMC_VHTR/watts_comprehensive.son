@@ -1,32 +1,20 @@
 watts{
+    % Change the working directory to the directory where the input files are stored. This is necessary
+    % due to how WATTS copies input files to the temporary working directory.
+    workflow_dir = "/Users/zhieejhiaooi/Documents/ANL/watts-devel/watts/src/watts_ui/examples/1App_OpenMC_VHTR"
+
     plugins{
         plugin(ID1){
-            code = moose
-%            template = sam_junction_template
-            template = "/Users/zhieejhiaooi/Documents/ANL/watts-devel/watts/src/watts_ui/examples/1App_SAM_VHTR/sam_junction_template"
-%            extra_inputs = [input1 input2]
-            exec_dir= SAM_DIR
-            exec_name = "sam-opt"
-            show_stderr = False
-            show_stdout = False
-            output = "out.txt"
-        }
-        plugin(ID2){
             code = openmc
-            module_dir = "/Users/zhieejhiaooi/Documents/ANL/watts-devel/watts/src/watts_ui/examples/1App_OpenMC_VHTR"
-            template = "/Users/zhieejhiaooi/Documents/ANL/watts-devel/watts/src/watts_ui/examples/1App_OpenMC_VHTR/openmc_template.py"
-            scores = ["nu-fission"] % Name of scores for OpenMC tallies. This will be the base name used for saving the tallies.
-            score_names = ["power"] % A more representative name for the scores
-        }
-        plugin(ID3){
-            code = MCNP
-            template = "my_template.tmpl"
-            extra_inputs = [input1 input2]
+            template = "openmc_template.py"
+            scores = ["nu-fission"] % Name of scores for OpenMC tallies.
+            score_names = ["power"] % A more representative name for the scores. Optional but might be necessary for score names with 
+                                    % hyphens because Jinja and Workbench have difficulties reading hyphens.
         }
     }
 
     workflow_level1{
-        plugin = ID2
+        plugin = ID1
         variables{
             param(ax_ref) {value = 2.0}
             param(num_cool_pins) {value = 24}
@@ -56,5 +44,4 @@ watts{
             param(use_sab_YH2) = {bool = False}
         }
     }
-
 }

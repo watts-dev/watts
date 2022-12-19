@@ -151,7 +151,6 @@ watts{
                     ValType=String
                     InputTmpl="flagtypes"
                     InputDefault= codename
-                     ValEnums=[ K m s kg mm]
                     MinOccurs=0
                     MaxOccurs=1
                 }
@@ -245,7 +244,7 @@ watts{
                 ValType=String
                 InputTmpl="flagtypes"
                 InputDefault= codename
-                ValEnums=[ PyARC OpenMC SERPENT ABCE MCNP MOOSE]
+                ValEnums=[PyARC OpenMC SERPENT ABCE MCNP MOOSE SAS Dakota Serpent]
             }
             template{
                 Description = "Template name"
@@ -254,11 +253,6 @@ watts{
                 ValType=String
                 InputTmpl="flagtypes"
                 InputDefault= "path-to-template"
-            }
-            module_dir{
-                MinOccurs=0
-                MaxOccurs=1
-                ValType=String
             }
             exec_dir{
                 MinOccurs=0
@@ -311,13 +305,13 @@ watts{
                 }
             }
             output{
+                Description = "[optional] List of output files"
                 InputTmpl="sonarray"
                 MinOccurs=0
                 MaxOccurs=1
                 value{
                     MinOccurs=0
                     MaxOccurs=NoLimit
-                    ValType=String
                 }
             }
             show_stderr{
@@ -330,6 +324,42 @@ watts{
                 MaxOccurs=1
                 ValType=String
             }
+            plotfl_to_csv{
+                MinOccurs=0
+                MaxOccurs=1
+                ValType=String
+            }
+            extra_args{
+                Description = "[optional] List of extra arguments"
+                InputTmpl="sonarray"
+                MinOccurs=0
+                MaxOccurs=1
+                value{
+                    MinOccurs=0
+                    MaxOccurs=NoLimit
+                }
+            }
+            conv_channel{
+                MinOccurs=0
+                MaxOccurs=1
+                ValType=String
+            }
+            conv_primar4{
+                MinOccurs=0
+                MaxOccurs=1
+                ValType=String
+            }
+            auto_link_files{
+                MinOccurs=0
+                MaxOccurs=1
+                ValType=String
+            }
         }
+    }
+    workflow_dir{
+            Description = "[Required] Workflow directory: Dir where all files are located in. Necessary if have multiple input files."
+            InputTmpl="sonobject"
+            MinOccurs=1
+            MaxOccurs=1
     }
 }

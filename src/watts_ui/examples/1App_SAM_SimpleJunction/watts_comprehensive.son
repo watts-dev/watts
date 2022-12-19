@@ -1,25 +1,16 @@
 watts{
+    % Change the working directory to the directory where the input files are stored. This is necessary
+    % due to how WATTS copies input files to the temporary working directory.
+    workflow_dir = "/Users/zhieejhiaooi/Documents/ANL/watts-devel/watts/src/watts_ui/examples/1App_SAM_SimpleJunction"
+
     plugins{
         plugin(ID1){
-            code = moose
-%            template = sam_junction_template
-            template = "/Users/zhieejhiaooi/Documents/ANL/watts-devel/watts/src/watts_ui/examples/1App_SAM_VHTR/sam_junction_template"
-%            extra_inputs = [input1 input2]
-            exec_dir= SAM_DIR
+            code = "moose"
+            template = "sam_template"          
+            exec_dir = "SAM_DIR"
             exec_name = "sam-opt"
             show_stderr = False
             show_stdout = False
-            output = "out.txt"
-        }
-        plugin(ID2){
-            code = openmc
-            template = "my_template.tmpl"
-            extra_inputs = [input1 input2]
-        }
-        plugin(ID3){
-            code = MCNP
-            template = "my_template.tmpl"
-            extra_inputs = [input1 input2]
         }
     }
 
@@ -39,8 +30,6 @@ watts{
             param(wall_bc) {bool = "True"}
             param(heat_source) {value = 1e5}
         }
-%        iterations{nmax = 10 convergence_criteria = 0.0001 iter_params = var1}
-%        workflow_level2{}
     }
 
 }
