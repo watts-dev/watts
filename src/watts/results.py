@@ -122,7 +122,18 @@ class Results:
             Path to load results from
         """
         with open(filename, 'rb') as fh:
-            return dill.loads(fh.read())
+            result =  dill.loads(fh.read())
+
+        # For older results objects, add in execution info tuple
+        if not hasattr(result, 'exec_info'):
+            job_id = None
+            plugin = type(result).__name__[7:]
+            name = result.__dict__['name']
+            dt = result.__dict__['time']
+            timestamp = int(dt.timestamp() * 1e6) * 1000
+            result.exec_info = ExecInfo(job_id, plugin, name, timestamp)
+
+        return result
 
     def open_folder(self):
         """Open folder containing results"""
