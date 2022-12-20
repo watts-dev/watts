@@ -12,7 +12,7 @@ import watts
 params = watts.Parameters()
 params['thermal_power'] = 3200
 params['electric_power'] = 1300
-input_name = "ACCERT_input.son"
+input_name = "ACCERT_input.tmpl"
 
 
 accert_plugin = watts.PluginACCERT(f'{input_name}')
@@ -24,8 +24,6 @@ print(accert_result.total_cost)
 
 # ### uncomment below to see the ACCERT account table
 # print(accert_result.account_table.to_markdown())
-
-
 
 params.show_summary(show_metadata=True, sort_by='key')
 
