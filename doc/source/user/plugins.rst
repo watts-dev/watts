@@ -373,3 +373,41 @@ in the :class:`~watts.Parameters` class.
 The setup of WATTS-Dakota coupling is more involved than other codes. Users are
 strongly encouraged to visit the example case `Optimization_PyARC_DAKOTA` for
 detailed explanation on how to prepare the input files.
+
+ACCERT Plugin
++++++++++++
+
+The :class:`~watts.PluginACCERT` class enables simulations with the Algorithm for the 
+Capital Cost Estimation of Reactor Technologies (ACCERT) code using a templated input 
+file that can be templated as follows:
+
+.. code-block:: jinja
+
+    power(Thermal){ value = {{ thermal_power }}   unit = MW } 
+    power(Electric){ value = {{ electric_power }}   unit = MW } 
+    l0COA(2){
+        l1COA(21){
+            l2COA(217){
+                total_cost{value =  {{cost_217}}  unit = dollar}       
+            } 
+        } 
+    } 
+
+Before running the ACCERT plugin, the directory that the executable 'Main.py' 
+must be set. This can be done by adding the ``ACCERT_DIR``
+variable to the environment::
+
+    export ACCERT_DIR='/path/to/accert/src'
+
+Or the path to the ACCERT module can be specified explicitly::
+
+    accert_plugin = watts.PluginACCERT(
+        'accert_template',
+        executable="/path/to/accert/src/Main.py"
+    )
+
+    
+As with other plugins, :class:`~watts.PluginACCERT` is used by::
+
+    accert_plugin = watts.PluginACCERT('accert_template')
+    accert_result = accert_plugin(params)

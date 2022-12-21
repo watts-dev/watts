@@ -12,6 +12,7 @@ import watts
 params = watts.Parameters()
 params['thermal_power'] = 3200
 params['electric_power'] = 1300
+params['cost_217'] = 29000000
 input_name = "ACCERT_input.tmpl"
 
 
