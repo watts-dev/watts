@@ -107,7 +107,19 @@ simple as changing the corresponding parameter and calling the plugin::
 
     for r in [2.0, 4.0, 6.0, 8.0, 10.0]:
         params['radius'] = r
-        result = plugin_mcnp(params)
+        result = plugin_mcnp(params, name=f'r={r}')
+
+Note that the ``name`` argument provides a means of identifying a result both
+while the code is executing as well as afterwards. During execution, the
+``name`` will be shown in the output:
+
+.. code-block:: text
+
+    [watts] Calling MCNP (r=2.0)...
+    [watts] Calling MCNP (r=4.0)...
+    [watts] Calling MCNP (r=6.0)...
+    [watts] Calling MCNP (r=8.0)...
+    [watts] Calling MCNP (r=10.0)...
 
 Results Database
 ++++++++++++++++
