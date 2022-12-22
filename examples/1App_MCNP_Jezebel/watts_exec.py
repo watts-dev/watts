@@ -25,13 +25,12 @@ mcnp_plugin = watts.PluginMCNP('mcnp_template')
 # 'target' argument that could specify a different target k-effective value.
 def f(radius, target=1.0):
     """Return difference between actual and target k-effective as a function of radius"""
-    print(f'Running with r={radius}...')
     # Set radius in parameters
     params['radius'] = radius
 
     # Run MCNP in parallel
     threads = str(cpu_count())
-    result = mcnp_plugin(params, extra_args=['TASKS', str(threads)])
+    result = mcnp_plugin(params, name=f'r={radius}', extra_args=['TASKS', str(threads)])
 
     # Display the resulting k-effective value
     print(f'k={result.keff}')
