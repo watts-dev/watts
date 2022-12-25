@@ -1,0 +1,38 @@
+watts{
+    % Change the working directory to the directory where the input files are stored. This is necessary
+    % due to how WATTS copies input files to the temporary working directory.
+    workflow_dir = "/Users/zhieejhiaooi/Documents/ANL/watts-devel/watts/examples/1App_SAS_MultiTemplates_SodiumLoop"
+
+    plugins{
+        plugin(ID1){
+            code = "sas"
+            template = "sas_template"         
+            executable = "/Users/zhieejhiaooi/Documents/ANL/SAS/SAS/sas.x"
+            show_stderr = False
+            show_stdout = False
+            extra_template_inputs=["Primary", "FuelCladding", "Channel", "DecayPower", "PointKinetics", "PRIMAR4"]
+            % conv_channel = "path\to\CHANNELtoCSV.x" % Assumed to be in the same dir as the SAS executable if not provided
+            % conv_primar4 = "path\to\PRIMAR4toCSV.x" % Assumed to be in the same dir as the SAS executable if not provided
+        }
+    }
+
+    workflow_level1{
+        plugin = ID1
+        variables{
+            param(sas_version) {value = 5.5}
+            param(tmax) {value = 1000.0}
+            param(flow_per_pin) {value = 0.15}
+            param(total_reactor_power) {value = 20.0 unit = kW}
+            param(betai_1) {value = 2.0E-04} %Effective delayed neutron fraction
+            param(betai_2) {value = 1.0E-03}
+            param(betai_3) {value = 1.2E-03}
+            param(betai_4) {value = 2.5E-03}
+            param(betai_5) {value = 1.5E-03}
+            param(betai_6) {value = 5.0E-04}
+            param(fuel_axial_exp_coeff) {value = 2.0E-05}
+            param(clad_axial_exp_coeff) {value = 1.4E-05}
+            param(outlet_pressure) {value = 200000.0}
+        }
+    }
+
+}

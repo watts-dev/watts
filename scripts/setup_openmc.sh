@@ -1,14 +1,21 @@
 #!/bin/bash
 ########################################################################
-# Date: 2022-12-22
-# Authors: zooi (zooi [at] anl [dot] gov)
-# Comment: Finds the workbench conda environment and initializes it.
-# Requires `workbench_path` to be set in workbench.sh
+# Date: 2022-09-08
+# Author: kkiesling (kkiesling [at] anl [dot] gov)
+# Comment: Install OpenMC and its dependencies into the Workbench conda
+# environment so that that are available in workbench.
 ########################################################################
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
+BLUE='\033[0;34m'
 NC='\033[0m'
+
+# ----------------------------------------------------------------------
+# Initialize conda
+script_path=$(cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P)
+# source $script_path/setup_conda_wb.sh
+
 
 # ----------------------------------------------------------------------
 # Gather workbench_path from workbench.sh
@@ -55,49 +62,25 @@ unset __conda_setup
 # <<< conda init <<<
 
 # ----------------------------------------------------------------------
-# Check Python version available in Workbench (v3.x required)
-pyv=$(python -V 2>&1 | sed 's/.* \([0-9]\).\([0-9]\).*/\1\2/')
-if [ $pyv -lt 36 ]; then
-    printf "${RED}ERROR: Workbench with Python >= 3.6 enabled is required.${NC}\n"
-    printf "    Python version: `python --version`\n"
-    exit 1
-fi
-
-# ----------------------------------------------------------------------
 printf "${GREEN}Found Workbench:${NC} ${workbench_path}\n"
 printf "${GREEN}Activated Conda: ${NC} ${conda_path}\n"
 
-yes | python -m pip install watts
 
-printf "${GREEN}WATTS successfully installed in Workbench environment.\n"
-
-# -----------------------------------------------------------------------
-# Copying files between WATTS and Workbench
-printf "${GREEN}Transfering files between WATTS and Workbench.\n"
-
-script_path=$(cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P)
-
-cd ../src/watts_ui
-
-current_path=$(cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P)
-
-# Copy watts.py to Workbench/rte
-cp etc/watts.py $workbench_path/rte/
-
-# Check if bin directory already exists
-if [ -d "$current_path/bin" ]; then
-    printf "${RED}ERROR: bin directory already exists in $current_path.${NC}\n"
-    exit 1
+# ----------------------------------------------------------------------
+# Clone original workbench environment (if not already cloned) and
+# generate .yml copy (base_original.yml) if it is not already saved locally
+printf "${GREEN}Cloning original workbench environment to:${NC} ${CONDA_DEFAULT_ENV}_base\n"
+# "no" == do not overwrite environment if it already exists
+yes no | conda create --name ${CONDA_DEFAULT_ENV}_clone --clone ${CONDA_DEFAULT_ENV}
+if [ ! -f ${script_path}/${CONDA_DEFAULT_ENV}_original.yml ]; then
+    conda env export -n $CONDA_DEFAULT_ENV -f ${script_path}/${CONDA_DEFAULT_ENV}_original.yml
+    printf "${GREEN}Original workbench environment saved to:${NC} ${script_path}/${CONDA_DEFAULT_ENV}_original.yml\n"
 fi
 
-mkdir bin
-ln -s $workbench_path/bin/sonvalidxml bin/sonvalidxml
+# ----------------------------------------------------------------------
+# Install OpenMC into the conda environment
+printf "${GREEN}Installing OpenMC into Workbench conda environment${NC}\n"
+yes | conda install -c conda-forge openmc
 
-# Check if wasppy already exists
-if [ -d "$current_path/wasppy" ]; then
-    printf "${RED}ERROR: wasppy already exists in $current_path.${NC}\n"
-    exit 1
-fi
-ln -s $workbench_path/wasppy ./
-
-printf "${GREEN}Transfer complete.\n"
+printf "${GREEN}OpenMC successfully installed in Workbench environment.${NC}\n"
+printf "To complete the setup, add ${BLUE}OPENMC_CROSS_SECTIONS${NC} variable to Arc Workbench configuration.\n"
