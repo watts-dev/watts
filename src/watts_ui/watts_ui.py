@@ -7,6 +7,8 @@ import sys
 from typing import Optional
 import warnings
 
+import openmc
+
 from astropy.units import Quantity
 import numpy as np
 # this needs to be installed in Workbench
@@ -68,6 +70,8 @@ def create_plugins(plugins):
 
         # Initialize
         nested_plugins['exec_dir'] = None
+        nested_plugins['exec_name'] = None
+        nested_plugins['executable'] = None
         nested_plugins['extra_inputs'] = None
         nested_plugins['extra_template_inputs'] = None
         nested_plugins['show_stderr'] = False
@@ -81,6 +85,9 @@ def create_plugins(plugins):
             nested_plugins['exec_dir'] = str(plg.exec_dir.value).strip('\"')
         if plg.exec_name is not None:
             nested_plugins['exec_name'] = str(plg.exec_name.value).strip('\"')
+        if plg.executable is not None:
+            nested_plugins['executable'] = str(
+                plg.executable.value).strip('\"')
         if plg.auto_link_files is not None:
             nested_plugins['auto_link_files'] = str(
                 plg.auto_link_files.value).strip('\"')
@@ -305,20 +312,26 @@ def run_direct(watts_params, plugin):
     # to the directory of the application. If environment
     # variable is not set, provide the path to the directory
     # instead.
+
     if plugin['exec_dir'] is not None:
-        if plugin['exec_dir'] in os.environ:
-            app_dir = Path(os.environ[plugin['exec_dir']])
+        if plugin['exec_name'] is not None:
+            if plugin['exec_dir'] in os.environ:
+                exec = Path(os.environ[plugin['exec_dir']]
+                            ) / plugin['exec_name']
+            else:
+                raise RuntimeError(
+                    f"{plugin['exec_dir']} does not exist in environment.")
         else:
-            app_dir = Path(plugin['exec_dir'])
+            raise RuntimeError(
+                "Please specify executable name of the application.")
+    elif (plugin['executable'] is not None):
+        exec = plugin['executable']
 
     if plugin['code'].upper() == 'MOOSE':
-        if 'exec_name' not in plugin:
-            raise RuntimeError(
-                "Please specify executable name of the MOOSE application.")
 
         app_plugin = watts.PluginMOOSE(
             template_file=plugin['template'],
-            executable=app_dir / plugin['exec_name'],
+            executable=exec,
             extra_inputs=plugin['extra_inputs'],
             extra_template_inputs=plugin['extra_template_inputs'],
             show_stdout=plugin['show_stdout'],
@@ -327,6 +340,7 @@ def run_direct(watts_params, plugin):
     elif plugin['code'].upper() == 'PYARC':
         app_plugin = watts.PluginPyARC(
             template_file=plugin['template'],
+            executable=exec,
             extra_inputs=plugin['extra_inputs'],
             extra_template_inputs=plugin['extra_template_inputs'],
             show_stdout=plugin['show_stdout'],
@@ -335,6 +349,7 @@ def run_direct(watts_params, plugin):
     elif plugin['code'].upper() == 'RELAP5':
         app_plugin = watts.PluginRELAP5(
             template_file=plugin['template'],
+            executable=exec,
             extra_inputs=plugin['extra_inputs'],
             extra_template_inputs=plugin['extra_template_inputs'],
             plotfl_to_csv=plugin['plotfl_to_csv'],
@@ -344,6 +359,7 @@ def run_direct(watts_params, plugin):
     elif plugin['code'].upper() == 'SAS':
         app_plugin = watts.PluginSAS(
             template_file=plugin['template'],
+            executable=exec,
             extra_inputs=plugin['extra_inputs'],
             extra_template_inputs=plugin['extra_template_inputs'],
             show_stdout=plugin['show_stdout'],
@@ -357,6 +373,7 @@ def run_direct(watts_params, plugin):
     elif plugin['code'].upper() == 'SERPENT':
         app_plugin = watts.PluginSerpent(
             template_file=plugin['template'],
+            executable=exec,
             extra_inputs=plugin['extra_inputs'],
             extra_template_inputs=plugin['extra_template_inputs'],
             show_stdout=plugin['show_stdout'],
@@ -365,6 +382,7 @@ def run_direct(watts_params, plugin):
     elif plugin['code'].upper() == 'DAKOTA':
         app_plugin = watts.PluginDakota(
             template_file=plugin['template'],
+            executable=exec,
             extra_inputs=plugin['extra_inputs'],
             extra_template_inputs=plugin['extra_template_inputs'],
             auto_link_files=plugin['auto_link_files'],
@@ -374,6 +392,7 @@ def run_direct(watts_params, plugin):
     elif plugin['code'].upper() == 'ABCE':
         app_plugin = watts.PluginABCE(
             template_file=plugin['template'],
+            executable=exec,
             extra_inputs=plugin['extra_inputs'],
             extra_template_inputs=plugin['extra_template_inputs'],
             show_stdout=plugin['show_stdout'],
@@ -382,6 +401,7 @@ def run_direct(watts_params, plugin):
     elif plugin['code'].upper() == 'MCNP':
         app_plugin = watts.PluginMCNP(
             template_file=plugin['template'],
+            executable=exec,
             extra_inputs=plugin['extra_inputs'],
             extra_template_inputs=plugin['extra_template_inputs'],
             show_stdout=plugin['show_stdout'],

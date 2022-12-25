@@ -264,6 +264,11 @@ watts{
                 MaxOccurs=1
                 ValType=String
             }
+            executable{
+                MinOccurs=0
+                MaxOccurs=1
+                ValType=String
+            }
             extra_inputs{
                 Description = "[optional] List of extra (non-templated) input files that are needed"
                 InputTmpl="sonarray"
