@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   executable to be used ([#75](https://github.com/watts-dev/watts/pull/75))
 * A `verbose` argument has been added to `Plugin.__call__` that controls whether
   screen output is printed ([#82](https://github.com/watts-dev/watts/pull/82))
+* Develop capability to run WATTS with NEAMS Workbench.
 
 ## [0.4.0]
 
