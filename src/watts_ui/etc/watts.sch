@@ -118,7 +118,7 @@ watts{
         }
         plugin{
             Description = "[optional] plugin specification"
-            InputTmpl="flagtypes"
+            InputTmpl="wf_plugin"
             MinOccurs=0
             MaxOccurs=NoLimit
             ValType=String
@@ -126,13 +126,13 @@ watts{
         }
         variables{
             Description = "[optional] Variables definition"
-            InputTmpl="sonobject"
+            InputTmpl="variables"
             MinOccurs=0
             MaxOccurs=1
             ChildUniqueness = [ "param/id"]
             param{
                 Description = "[optional] Parameter definition"
-                InputTmpl="param"
+                InputVariants=[ "value" "func" "list" "bool" ]
                 MinOccurs=1
                 MaxOccurs=NoLimit
                 id{
@@ -154,17 +154,17 @@ watts{
                     MinOccurs=0
                     MaxOccurs=1
                 }
-                range{
-                    Description = "[optional] range of the value (for optimization)"
-                    InputTmpl="sonarray"
-                    MinOccurs=0
-                    MaxOccurs=1
-                    value{
-                        MinOccurs=2
-                        MaxOccurs=2
-                        ValType=Real
-                    }
-                }
+%               range{
+%                   Description = "[optional] range of the value (for optimization)"
+%                   InputTmpl="sonarray"
+%                   MinOccurs=0
+%                   MaxOccurs=1
+%                   value{
+%                       MinOccurs=2
+%                       MaxOccurs=2
+%                       ValType=Real
+%                   }
+%               }
                 bool{
                     Description = "[optional] boolean"
                     InputTmpl="flagtypes"
