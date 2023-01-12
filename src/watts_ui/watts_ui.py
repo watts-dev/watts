@@ -7,24 +7,10 @@ import sys
 from typing import Optional
 import warnings
 
-import openmc
-
 from astropy.units import Quantity
 import numpy as np
-# this needs to be installed in Workbench
-# environment (follow example from setup_openmc or setup_dassh)
 import watts
 from wasppy import xml2obj
-
-###
-# etc nstauff$ cp watts.py /Applications/Workbench-5.0.0.app/Contents/rte/
-# pywatts nstauff$ mkdir bin
-# pywatts nstauff$ ln -s /Applications/Workbench-5.0.0.app/Contents/bin/sonvalidxml bin/sonvalidxml
-# pywatts nstauff$ ln -s /Applications/Workbench-5.0.0.app/Contents/wasppy ./
-# if needed - change wasppy/xml2obj.py line 89 - if isinstance(src, (str,bytes)):
-# chmod 777 watts_ui.py
-# execute with command: `python watts_ui.py -i examples/watts_comprehensive.son`
-###
 
 
 def load_obj(input_path, watts_path):
@@ -409,6 +395,7 @@ def run_direct(watts_params, plugin):
 
     elif plugin['code'].upper() == 'OPENMC':
         sys.path.insert(0, os.getcwd())
+        import openmc
         from openmc_template import build_openmc_model
 
         app_plugin = watts.PluginOpenMC(
@@ -482,8 +469,8 @@ def run_iterate(watts_params, plugin, wf_level):
 
     """
     operation = wf_level.iteration
-    plugin_1 = str(operation.plugin_main.value).strip('\"')
-    plugin_2 = str(operation.plugin_sub.value).strip('\"')
+    plugin_1 = str(wf_level.plugin.value).strip('\"')
+    plugin_2 = str(operation.plugin.value).strip('\"')
     nmax = float(str(operation.nmax.value))
     tolerance = float(str(operation.convergence_criteria.value))
     convergence_params = str(operation.convergence_params.value).strip('\"')
@@ -564,9 +551,15 @@ def run_parametric(watts_params, plugin, wf_level):
     return (watts_params, app_result)
 
 
-# Need to update and get properly from workbench the executable path and the argument
-watts_path = "/Users/zhieejhiaooi/Documents/ANL/watts-devel/watts/src/watts_ui/"
+# Get WATTS_DIR from environment
+if "WATTS_DIR" in os.environ:
+    watts_path = os.environ["WATTS_DIR"]
+else:
+    raise RuntimeError(
+        "WATTS_DIR variable does not exist in environment. Please set WATTS_DIR to environment.")
+
 opts, args = getopt.getopt(sys.argv[1:], "hi:o:", ["ifile=", "ofile="])
+
 for opt, arg in opts:
     if opt == "-i":
         input_path = os.getcwd() + "/" + str(arg)
@@ -578,8 +571,7 @@ watts_wb = load_obj(input_path, watts_path).watts
 # the extra input files are stored. This is necessary
 # due to how WATTS copies extra input files to the
 # temporary working directory.
-if watts_wb.workflow_dir is not None:
-    os.chdir(str(watts_wb.workflow_dir.value).strip('\"'))
+os.chdir(os.getcwd())
 
 # Load plugins
 if watts_wb.plugins is not None:

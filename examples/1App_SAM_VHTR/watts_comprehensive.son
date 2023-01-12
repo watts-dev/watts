@@ -1,8 +1,4 @@
 watts{
-    % Change the working directory to the directory where the input files are stored. This is necessary
-    % due to how WATTS copies input files to the temporary working directory.
-    workflow_dir = "/Users/zhieejhiaooi/Documents/ANL/watts-devel/watts/examples/1App_SAM_VHTR"
-
     plugins{
         plugin(ID1){
             code = moose

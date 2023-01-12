@@ -175,4 +175,7 @@ where `plugin_main` and `plugin_sub` are the plugin IDs of the two applications,
 used for evaluating convergence, `convergence_criteria` is the tolerance for
 convergence, `to_sub_params` and `to_main_params` are lists of parameters whose
 values are iterated between the two applications where they each must have at least
-one parameter.
+one parameter. Note that the parameter supplied to `convergence_params` must be
+an output from the second plugin. For instance, in the above example, "keff" is
+an output produced by the plugin of "ID2". The same also applies for `to_sub_params`
+and `to_main_params`.

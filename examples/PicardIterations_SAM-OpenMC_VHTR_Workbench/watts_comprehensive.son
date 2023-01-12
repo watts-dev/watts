@@ -1,8 +1,4 @@
 watts{
-    % Change the working directory to the directory where the input files are stored. This is necessary
-    % due to how WATTS copies input files to the temporary working directory.
-    workflow_dir = "/Users/zhieejhiaooi/Documents/ANL/watts-devel/watts/examples/PicardIterations_SAM-OpenMC_VHTR_Workbench"
-
     plugins{
         plugin(ID1){
             code = moose
@@ -21,6 +17,7 @@ watts{
     }
 
     workflow_level1{
+        plugin = ID1
         variables{
             param(He_inlet_temp) {value = 873.15}
             param(He_outlet_temp) {value = 1023.15}
@@ -61,8 +58,7 @@ watts{
         }
         
         iteration{
-            plugin_main = ID1 
-            plugin_sub = ID2 
+            plugin = ID2 % ID of plugin to iterate with
             nmax = 10 
             convergence_params = "keff"
             convergence_criteria = 0.0001 

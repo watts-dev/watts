@@ -17,13 +17,7 @@ watts{
             InputTmpl="sonobject"
             MinOccurs=0
             MaxOccurs=1
-            plugin_main{
-                Description = "[required] ID of the first plugin"
-                MinOccurs=1
-                MaxOccurs=1
-                ValType=String
-            }
-            plugin_sub{
+            plugin{
                 Description = "[required] ID of the second plugin"
                 MinOccurs=1
                 MaxOccurs=1
@@ -360,11 +354,5 @@ watts{
                 ValType=String
             }
         }
-    }
-    workflow_dir{
-            Description = "[Required] Workflow directory: Dir where all files are located in. Necessary if have multiple input files."
-            InputTmpl="sonobject"
-            MinOccurs=1
-            MaxOccurs=1
     }
 }
