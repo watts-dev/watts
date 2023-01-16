@@ -27,4 +27,3 @@ print("Total reactor cost [$]: ", accert_result.total_cost)
 # print(accert_result.account_table.to_markdown())
 
 params.show_summary(show_metadata=True, sort_by='key')
-

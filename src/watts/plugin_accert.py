@@ -107,4 +107,3 @@ class ResultsACCERT(Results):
         else:
             raise Exception('ACCERT output file not found')
         return account_table
-        
