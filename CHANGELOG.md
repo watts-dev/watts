@@ -7,8 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-###Added
-ACCERT plugin via the `PluginACCERT` class
+### Added
+
+* ACCERT plugin via the `PluginACCERT` class
+
 ### Changes
 
 * All plugins now support an `executable` argument to explicitly specify the

@@ -375,11 +375,11 @@ strongly encouraged to visit the example case `Optimization_PyARC_DAKOTA` for
 detailed explanation on how to prepare the input files.
 
 ACCERT Plugin
-+++++++++++
++++++++++++++
 
 The :class:`~watts.PluginACCERT` class enables simulations with the Algorithm for the 
 Capital Cost Estimation of Reactor Technologies (ACCERT) code using a templated input 
-file that can be templated as follows:
+file such as the following:
 
 .. code-block:: jinja
 
@@ -388,7 +388,7 @@ file that can be templated as follows:
     l0COA(2){
         l1COA(21){
             l2COA(217){
-                total_cost{value =  {{cost_217}}  unit = dollar}       
+                total_cost{value =  {{ cost_217 }}  unit = dollar}       
             } 
         } 
     } 

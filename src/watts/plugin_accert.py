@@ -46,7 +46,10 @@ class PluginACCERT(PluginGeneric):
         except KeyError:
             raise OSError("ACCERT_DIR environment variable needs to be set which contains the Main.py")
         execute_command = [sys.executable, '{self.executable}', '-i','{self.input_name}']
-        super().__init__(executable, execute_command, template_file, extra_inputs, extra_template_inputs, show_stdout, show_stderr)
+        super().__init__(
+            executable, execute_command, template_file, extra_inputs,
+            extra_template_inputs, show_stdout, show_stderr
+        )
         self.input_name = "ACCERT_input.son"
 
 
@@ -65,6 +68,9 @@ class ResultsACCERT(Results):
         List of input files
     outputs
         List of output files
+
+    Attributes
+    ----------
     total_cost
         ACCERT results of total cost
     account_table
@@ -78,11 +84,9 @@ class ResultsACCERT(Results):
         self.total_cost = self.total_cost()
 
     def total_cost(self):
-        updated_accounts= self.account_table
-        total_cost = updated_accounts['total_cost'].values[0]
-        return total_cost
+        return self.account_table['total_cost'].values[0]
 
-    def _get_account_table(self)->pd.DataFrame:
+    def _get_account_table(self) -> pd.DataFrame:
         """Read ACCERT '.xlsx' file and return results' table
 
         Returns
