@@ -10,7 +10,7 @@ import pandas as pd
 
 from .fileutils import PathLike
 from .parameters import Parameters
-from .plugin import PluginGeneric
+from .plugin import PluginGeneric, _find_executable
 from .results import Results
 
 
@@ -38,19 +38,26 @@ class PluginACCERT(PluginGeneric):
     """
 
     def __init__(self, template_file: str,
+                 executable: PathLike = 'Main.py',
                  extra_inputs: Optional[List[str]] = None,
                  extra_template_inputs: Optional[List[PathLike]] = None,
                  show_stdout: bool = False, show_stderr: bool = False):
-        try:
-            executable = Path(os.environ['ACCERT_DIR']) / 'Main.py'
-        except KeyError:
-            raise OSError("ACCERT_DIR environment variable needs to be set which contains the Main.py")
+        executable = _find_executable(executable, 'ACCERT_DIR')
         execute_command = [sys.executable, '{self.executable}', '-i','{self.input_name}']
-        super().__init__(
-            executable, execute_command, template_file, extra_inputs,
-            extra_template_inputs, show_stdout, show_stderr
-        )
+        super().__init__(executable, execute_command, template_file, extra_inputs,
+                         extra_template_inputs, show_stdout, show_stderr)
         self.input_name = "ACCERT_input.son"
+
+    @PluginGeneric.executable.setter
+    def executable(self, exe: PathLike):
+        if not exe.is_file():
+            raise RuntimeError(
+                f"{self.plugin_name} module '{exe}' does not exist. The "
+                "ACCERT_DIR environment variable needs to be set to a directory "
+                "containing the Main.py module."
+            )
+        self._executable = Path(exe)
+
 
 
 class ResultsACCERT(Results):
@@ -97,6 +104,8 @@ class ResultsACCERT(Results):
         account_table = pd.DataFrame()
         if Path('output.out').exists():
             account_table = pd.read_excel('ACCERT_updated_account.xlsx')
+        else:
+            raise Exception('ACCERT output file not found')
         return account_table
             
 

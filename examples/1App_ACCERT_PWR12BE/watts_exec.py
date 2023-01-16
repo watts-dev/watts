@@ -21,7 +21,7 @@ accert_result = accert_plugin(params)
 
 print(accert_result.inputs)
 print(accert_result.outputs)
-print(accert_result.total_cost)
+print("Total reactor cost [$]: ", accert_result.total_cost)
 
 # ### uncomment below to see the ACCERT account table
 # print(accert_result.account_table.to_markdown())
