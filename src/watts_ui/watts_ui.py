@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
-from typing import Optional
+from typing import List, Optional
 import warnings
 
 from astropy.units import Quantity
@@ -63,6 +63,7 @@ def create_plugins(plugins):
         nested_plugins['show_stderr'] = False
         nested_plugins['show_stdout'] = False
         nested_plugins['plotfl_to_csv'] = False
+        nested_plugins['transfer_params'] = None
 
         # Save string plugin inputs
         nested_plugins['code'] = str(plg.code.value).strip('\"')
@@ -96,6 +97,9 @@ def create_plugins(plugins):
             nested_plugins['score_names'] = convert_to_list(plg.score_names)
         if plg.extra_args is not None:
             nested_plugins['extra_args'] = convert_to_list(plg.extra_args)
+        if plg.transfer_params is not None:
+            nested_plugins['transfer_params'] = convert_to_list(
+                plg.transfer_params)
 
         # Save bool plugin inputs
         if plg.show_stderr is not None and str(plg.show_stderr.value).capitalize() == 'True':
@@ -185,9 +189,9 @@ def convert_to_list(wb_list):
     return (convert_list)
 
 
-def get_last_value(watts_params, name_list):
+def get_last_value(watts_params, name_list: Optional[List[str]] = None):
     """Extract the value of the last index from the
-    results created by WATTS plugins for iteration workflow
+    results created by WATTS plugins for transfer between plugins
 
     Parameters
     ----------
@@ -229,7 +233,7 @@ def isfloat(num):
         return False
 
 
-def run_workflow(watts_params, wf_level, plugin_ID, watts_plugins):
+def run_workflow(watts_params, wf_level, watts_plugins):
     """Run workflow
 
     Parameters
@@ -238,8 +242,6 @@ def run_workflow(watts_params, wf_level, plugin_ID, watts_plugins):
         Watts params with stored user input parameters
     wf_level
         Level of workflow
-    plugin_ID
-        ID of plugin
     plugin
         Dictionary of plugin
 
@@ -260,6 +262,7 @@ def run_workflow(watts_params, wf_level, plugin_ID, watts_plugins):
         return (app_result, watts_params)
 
     elif wf_level.parametric is not None:
+        plugin_ID = 'ID1'
         watts_params, app_result = run_parametric(
             watts_params,  watts_plugins[plugin_ID], wf_level)
 
@@ -269,8 +272,18 @@ def run_workflow(watts_params, wf_level, plugin_ID, watts_plugins):
         operation = wf_level.optimization
         ...
     else:
-        watts_params, app_result = run_direct(
-            watts_params, watts_plugins[plugin_ID])
+        for n_plugin, plugin in enumerate(wf_level.plugin):
+            plugin_ID = str(plugin.value)
+            current_plugin = watts_plugins[plugin_ID]
+
+            print("AAAAA")
+            print(current_plugin['template'])
+
+            watts_params, app_result = run_direct(
+                watts_params, current_plugin)
+            if current_plugin['transfer_params'] is not None:
+                watts_params = get_last_value(
+                    watts_params, current_plugin['transfer_params'])
 
         return (app_result, watts_params)
 
@@ -541,8 +554,18 @@ def run_parametric(watts_params, plugin, wf_level):
         watts_params[parametric_name] = float(str(val))
         parametric_list.append(float(str(val)))
 
-        watts_params, app_result_parametric = run_direct(
-            watts_params, watts_plugins[plugin_ID])
+        # watts_params, app_result_parametric = run_direct(
+        #     watts_params, watts_plugins[plugin_ID])
+
+        for n_plugin, plugin in enumerate(wf_level.plugin):
+            plugin_ID = str(plugin.value)
+            current_plugin = watts_plugins[plugin_ID]
+            watts_params, app_result_parametric = run_direct(
+                watts_params, current_plugin)
+            if current_plugin['transfer_params'] is not None:
+                watts_params = get_last_value(
+                    watts_params, current_plugin['transfer_params'])
+
         # Store the results from each individual run to
         # the 'app_result' dictionary as individual tuple.
         app_result[f"run_{n}"] = app_result_parametric
@@ -551,12 +574,8 @@ def run_parametric(watts_params, plugin, wf_level):
     return (watts_params, app_result)
 
 
-# Get WATTS_DIR from environment
-if "WATTS_DIR" in os.environ:
-    watts_path = os.environ["WATTS_DIR"]
-else:
-    raise RuntimeError(
-        "WATTS_DIR variable does not exist in environment. Please set WATTS_DIR to environment.")
+# Set watts_path
+watts_path = os.path.join(os.path.dirname(__file__))
 
 opts, args = getopt.getopt(sys.argv[1:], "hi:o:", ["ifile=", "ofile="])
 
@@ -584,9 +603,9 @@ if watts_wb.workflow_level1 is not None:
 
     wf_level = watts_wb.workflow_level1
 
-    plugin_ID = None
-    if wf_level.plugin is not None:
-        plugin_ID = str(wf_level.plugin.value)
+    if wf_level.plugin is None:
+        raise RuntimeError(
+            "Please specify at least one plugin.")
 
     if wf_level.variables is not None:
         variables = wf_level.variables.param
@@ -597,6 +616,6 @@ if watts_wb.workflow_level1 is not None:
 
         # Run workflow
         app_result, watts_params = run_workflow(
-            watts_params, wf_level, plugin_ID, watts_plugins)
+            watts_params, wf_level, watts_plugins)
 
         watts_params.show_summary(show_metadata=False, sort_by='key')

@@ -1,0 +1,9 @@
+workflow_level1{
+    plugin = plugin_name                 % Name of plugin
+    variables{
+        param( id ){value = 0  unit= m}  % Param as a value (unit is optional) 
+        param( id ){func = 'a + b' }     % Param as a function (must include space between components and operators) 
+        param( id ){list = [ 0 ] }       % Param as a list (floats or strings are accepted) 
+        param( id ){bool = True}         % Param as a bool 
+    }
+}

@@ -11,11 +11,10 @@ watts{
         plugin(ID2){
             code = openmc
             template = "openmc_template.py"
-            scores = ["nu-fission"] % Name of scores for OpenMC tallies. This will be the base name used for saving the tallies.
+            scores = ["nu-fission"]  % Name of scores for OpenMC tallies. This will be the base name used for saving the tallies.
             score_names = ["Init_P"] % A more representative name for the scores
         }
     }
-
     workflow_level1{
         plugin = ID1
         variables{
@@ -56,7 +55,6 @@ watts{
             param(use_sab_BeO) = {bool = True}
             param(use_sab_YH2) = {bool = False}
         }
-        
         iteration{
             plugin = ID2 % ID of plugin to iterate with
             nmax = 10 

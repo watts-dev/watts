@@ -18,4 +18,4 @@ This example provides a demonstration on how to use WATTS for a simple SAS model
 
 - [__watts_exec.py__](watts_exec.py): This is the file to execute to run the problem described above.
 - [__sas_template__](sas_template): Templated SAS input.
-- [__watts_comprehensive.son__](watts_comprehensive.son): Workbench input file for this example.
+- [__watts_wb.son__](watts_wb.son): Workbench input file for this example.
