@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
+import sys
+
 import click
 from prettytable import PrettyTable
 
@@ -56,7 +58,11 @@ def dir(database, index):
 
     """
     db = Database(database) if database else Database()
-    result = db[index]
+    try:
+        result = db[index]
+    except IndexError:
+        click.echo(f"No result with index {index} in database at {db.path}", err=True)
+        sys.exit(1)
     click.echo(result.base_path)
 
 
@@ -71,7 +77,11 @@ def stdout(database, index):
 
     """
     db = Database(database) if database else Database()
-    result = db[index]
+    try:
+        result = db[index]
+    except IndexError:
+        click.echo(f"No result with index {index} in database at {db.path}", err=True)
+        sys.exit(1)
     click.echo(result.stdout)
 
 

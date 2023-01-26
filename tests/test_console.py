@@ -79,6 +79,10 @@ def test_console_dir(setup_results):
         result = runner.invoke(main, f'dir {index}')
         assert result.stdout.rstrip() == str(db[index].base_path)
 
+    # Check erroneous database
+    result = runner.invoke(main, 'dir --database giraffe 100')
+    assert result.exit_code == 1
+
 
 def test_console_stdout(setup_results):
     db = watts.Database()
@@ -86,3 +90,7 @@ def test_console_stdout(setup_results):
     for index in range(3):
         result = runner.invoke(main, f'stdout {index}')
         assert result.stdout.rstrip() == db[index].stdout
+
+    # Check erroneous database
+    result = runner.invoke(main, 'stdout --database giraffe 100')
+    assert result.exit_code == 1
