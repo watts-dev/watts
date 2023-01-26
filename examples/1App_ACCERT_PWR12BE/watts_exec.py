@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2022-2023 UChicago Argonne, LLC
+# SPDX-License-Identifier: MIT
 
 """
 This example demonstrates how to use WATTS to perform 
@@ -12,7 +14,7 @@ import watts
 params = watts.Parameters()
 params['thermal_power'] = 3200
 params['electric_power'] = 1300
-params['cost_217'] = 29000000
+params['cost_217'] = 29_000_000
 input_name = "ACCERT_input.tmpl"
 
 
