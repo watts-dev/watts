@@ -26,7 +26,7 @@ print(accert_result.outputs)
 print("Total reactor cost [$]: ", accert_result.total_cost)
 
 # ### uncomment below to see the ACCERT account table in markdown format
-# ### run `pip install tabulate` to install tabulate package
+# ### run `pip install -U pandas-profiling` to install pandas-profiling
 # print(accert_result.account_table.to_markdown())
 
 params.show_summary(show_metadata=True, sort_by='key')
