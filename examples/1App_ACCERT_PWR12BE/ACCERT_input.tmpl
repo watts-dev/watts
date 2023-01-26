@@ -1,0 +1,30 @@
+% ACCERT Test input file
+
+% This test input file is used to test the
+% assign costs functionality.
+
+
+accert{
+    ref_model = "PWR12-BE"
+    power(Thermal){ value = {{ thermal_power }}   unit = MW } 
+    power(Electric){ value = {{ electric_power }}   unit = MW } 
+    l0COA(2){
+        l1COA(21){
+            l2COA(217){
+                % Total cost of COA can be assigned here.
+                % If a total cost of level 2 is assigned, 
+                % level 1 account will be recalculated. 
+                total_cost{value = {{ cost_217 }} unit = dollar}
+            } 
+        }
+        l1COA(22){
+            l2COA("220A"){
+                l3COA("221.12"){
+                    % Total cost can use unit in dollar 
+                    % or in thousand, and million.
+                    total_cost{value = 1 unit = million}
+                }
+            }
+        }
+    }
+}
