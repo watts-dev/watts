@@ -23,7 +23,7 @@ def main():
 def results(job_id, last_job, plugin, name, database):
     """List results"""
     db = Database(database) if database else Database()
-    table = PrettyTable(field_names=['Job ID', 'Index', 'Plugin', 'Name', 'Time'], align='l')
+    table = PrettyTable(field_names=['Index', 'Job ID', 'Plugin', 'Name', 'Time'], align='l')
 
     # Determine most recent job
     if last_job:
@@ -43,7 +43,7 @@ def results(job_id, last_job, plugin, name, database):
         if name is not None and name != result.name:
             continue
 
-        table.add_row([result.job_id, i, result.plugin, result.name, result.time])
+        table.add_row([i, result.job_id, result.plugin, result.name, result.time])
     click.echo(table.get_string())
 
 
