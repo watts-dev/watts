@@ -12,6 +12,7 @@ Training on WATTS is enabled with a suite of simple examples:
 * [__1App_MOOSE-MultiApp_Simple__](1App_MOOSE-MultiApp_Simple/README.md) - Simple MOOSE MultiApp calculation
 ## Examples with Multi Applications
 * [__MultiApp_SAM-OpenMC_VHTR__](MultiApp_SAM-OpenMC_VHTR/README.md) - Workflow with MOOSE/SAM and OpenMC
+* [__MultiApp_SAM_SimpleJunction_Workbench__](MultiApp_SAM_SimpleJunction_Workbench/README.md) - Workflow on how to use Workbench to run a coupled simulation with multiple apps
 ## Multi-step workflow
 * [__MultiStep_Griffin-BISON-Sockeye_MR__](MultiStep_Griffin-BISON-Sockeye_MR/README.md) - Advance MOOSE MultiApp calculation with steady-state and transient calculations
 ## Examples with Picard Iterations

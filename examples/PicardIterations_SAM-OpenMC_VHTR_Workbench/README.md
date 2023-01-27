@@ -19,4 +19,4 @@ This example demonstrates how to use WATTS on Workbench to perform several itera
 - [__watts_exec.py__](watts_exec.py): WATTS workflow for this example. This is the file to execute to run the problem described above.
 - [__openmc_template__](openmc_template.py): Link to OpenMC templated model.
 - [__sam_template__](sam_template): Link to SAM templated model.
-- [__watts_comprehensive.son__](watts_comprehensive.son): Workbench input file for this example.
+- [__watts_wb.son__](watts_wb.son): Workbench input file for this example.

@@ -86,18 +86,17 @@ cp etc/watts.py $workbench_path/rte/
 
 # Check if bin directory already exists
 if [ -d "$current_path/bin" ]; then
-    printf "${RED}ERROR: bin directory already exists in $current_path.${NC}\n"
-    exit 1
+    printf "${RED}Warning: bin directory already exists in $current_path. Skipped.\n"
+else
+    mkdir bin
+    ln -s $workbench_path/bin/sonvalidxml bin/sonvalidxml
 fi
-
-mkdir bin
-ln -s $workbench_path/bin/sonvalidxml bin/sonvalidxml
 
 # Check if wasppy already exists
 if [ -d "$current_path/wasppy" ]; then
-    printf "${RED}ERROR: wasppy already exists in $current_path.${NC}\n"
-    exit 1
+    printf "${RED}Warning: wasppy already exists in $current_path. Skipped.\n"
+else
+    ln -s $workbench_path/wasppy ./
 fi
-ln -s $workbench_path/wasppy ./
 
 printf "${GREEN}Transfer complete.\n"

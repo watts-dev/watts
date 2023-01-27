@@ -25,4 +25,4 @@ This example provides a demonstration on how to use WATTS to perform a simulatio
 - [__PointKinetics__](PointKinetics): Extra templated SAS input.
 - [__PRIMAR4__](PRIMAR4): Extra templated SAS input.
 - [__Primary__](Primary): Extra templated SAS input.
-- [__watts_comprehensive.son__](watts_comprehensive.son): Workbench input file for this example.
+- [__watts_wb.son__](watts_wb.son): Workbench input file for this example.

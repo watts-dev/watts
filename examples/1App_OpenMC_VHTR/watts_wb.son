@@ -1,8 +1,4 @@
 watts{
-    % Change the working directory to the directory where the input files are stored. This is necessary
-    % due to how WATTS copies input files to the temporary working directory.
-    workflow_dir = "/Users/zhieejhiaooi/Documents/ANL/watts-devel/watts/examples/1App_OpenMC_VHTR"
-
     plugins{
         plugin(ID1){
             code = openmc
@@ -14,7 +10,7 @@ watts{
     }
 
     workflow_level1{
-        plugin = ID1
+        plugin = ID1  
         variables{
             param(ax_ref) {value = 2.0}
             param(num_cool_pins) {value = 24}

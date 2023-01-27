@@ -18,4 +18,4 @@ This example provides a demonstration on how to use WATTS to perform a single SA
 
 - [__watts_exec.py__](watts_exec.py): WATTS workflow for this example. This is the file to execute to run the problem described above.
 - [__sam_template__](sam_template): SAM templated input file.
-- [__watts_comprehensive.son__](watts_comprehensive.son): Workbench input file for this example.
+- [__watts_wb__.son__](watts_wb.son): Workbench input file for this example.

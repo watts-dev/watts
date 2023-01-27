@@ -1,8 +1,4 @@
 watts{
-    % Change the working directory to the directory where the input files are stored. This is necessary
-    % due to how WATTS copies input files to the temporary working directory.
-    workflow_dir = "/Users/zhieejhiaooi/Documents/ANL/watts-devel/watts/examples/ParamStudy_SAM_SimpleJunction_Workbench"
-
     plugins{
         plugin(ID1){
             code = moose
@@ -17,7 +13,7 @@ watts{
     workflow_level1{
         plugin = ID1
         variables{
-            param(temperature_inlet) {value = 2.0}
+            param(temperature_inlet) {value = 628.0}
             param(friction_factor) {value = 0.1}
             param(flow_area) {value = 3.14e-4}
             param(Dh) {value = 1 unit = m}
@@ -28,7 +24,6 @@ watts{
         parametric{
             changing_params = "heat_source"
             changing_values = [0, 1e5, 2e5, 3e5]
-            
         }
     }
 

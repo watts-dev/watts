@@ -4,27 +4,13 @@ import os
 from pathlib import Path
 import subprocess
 import sys
-from typing import Optional
+from typing import List, Optional
 import warnings
-
-import openmc
 
 from astropy.units import Quantity
 import numpy as np
-# this needs to be installed in Workbench
-# environment (follow example from setup_openmc or setup_dassh)
 import watts
 from wasppy import xml2obj
-
-###
-# etc nstauff$ cp watts.py /Applications/Workbench-5.0.0.app/Contents/rte/
-# pywatts nstauff$ mkdir bin
-# pywatts nstauff$ ln -s /Applications/Workbench-5.0.0.app/Contents/bin/sonvalidxml bin/sonvalidxml
-# pywatts nstauff$ ln -s /Applications/Workbench-5.0.0.app/Contents/wasppy ./
-# if needed - change wasppy/xml2obj.py line 89 - if isinstance(src, (str,bytes)):
-# chmod 777 watts_ui.py
-# execute with command: `python watts_ui.py -i examples/watts_comprehensive.son`
-###
 
 
 def load_obj(input_path, watts_path):
@@ -77,6 +63,7 @@ def create_plugins(plugins):
         nested_plugins['show_stderr'] = False
         nested_plugins['show_stdout'] = False
         nested_plugins['plotfl_to_csv'] = False
+        nested_plugins['transfer_params'] = None
 
         # Save string plugin inputs
         nested_plugins['code'] = str(plg.code.value).strip('\"')
@@ -110,6 +97,9 @@ def create_plugins(plugins):
             nested_plugins['score_names'] = convert_to_list(plg.score_names)
         if plg.extra_args is not None:
             nested_plugins['extra_args'] = convert_to_list(plg.extra_args)
+        if plg.transfer_params is not None:
+            nested_plugins['transfer_params'] = convert_to_list(
+                plg.transfer_params)
 
         # Save bool plugin inputs
         if plg.show_stderr is not None and str(plg.show_stderr.value).capitalize() == 'True':
@@ -199,9 +189,9 @@ def convert_to_list(wb_list):
     return (convert_list)
 
 
-def get_last_value(watts_params, name_list):
+def get_last_value(watts_params, name_list: Optional[List[str]] = None):
     """Extract the value of the last index from the
-    results created by WATTS plugins for iteration workflow
+    results created by WATTS plugins for transfer between plugins
 
     Parameters
     ----------
@@ -243,7 +233,7 @@ def isfloat(num):
         return False
 
 
-def run_workflow(watts_params, wf_level, plugin_ID, watts_plugins):
+def run_workflow(watts_params, wf_level, watts_plugins):
     """Run workflow
 
     Parameters
@@ -252,8 +242,6 @@ def run_workflow(watts_params, wf_level, plugin_ID, watts_plugins):
         Watts params with stored user input parameters
     wf_level
         Level of workflow
-    plugin_ID
-        ID of plugin
     plugin
         Dictionary of plugin
 
@@ -274,6 +262,7 @@ def run_workflow(watts_params, wf_level, plugin_ID, watts_plugins):
         return (app_result, watts_params)
 
     elif wf_level.parametric is not None:
+        plugin_ID = 'ID1'
         watts_params, app_result = run_parametric(
             watts_params,  watts_plugins[plugin_ID], wf_level)
 
@@ -283,8 +272,18 @@ def run_workflow(watts_params, wf_level, plugin_ID, watts_plugins):
         operation = wf_level.optimization
         ...
     else:
-        watts_params, app_result = run_direct(
-            watts_params, watts_plugins[plugin_ID])
+        for n_plugin, plugin in enumerate(wf_level.plugin):
+            plugin_ID = str(plugin.value)
+            current_plugin = watts_plugins[plugin_ID]
+
+            print("AAAAA")
+            print(current_plugin['template'])
+
+            watts_params, app_result = run_direct(
+                watts_params, current_plugin)
+            if current_plugin['transfer_params'] is not None:
+                watts_params = get_last_value(
+                    watts_params, current_plugin['transfer_params'])
 
         return (app_result, watts_params)
 
@@ -409,6 +408,7 @@ def run_direct(watts_params, plugin):
 
     elif plugin['code'].upper() == 'OPENMC':
         sys.path.insert(0, os.getcwd())
+        import openmc
         from openmc_template import build_openmc_model
 
         app_plugin = watts.PluginOpenMC(
@@ -482,8 +482,8 @@ def run_iterate(watts_params, plugin, wf_level):
 
     """
     operation = wf_level.iteration
-    plugin_1 = str(operation.plugin_main.value).strip('\"')
-    plugin_2 = str(operation.plugin_sub.value).strip('\"')
+    plugin_1 = str(wf_level.plugin.value).strip('\"')
+    plugin_2 = str(operation.plugin.value).strip('\"')
     nmax = float(str(operation.nmax.value))
     tolerance = float(str(operation.convergence_criteria.value))
     convergence_params = str(operation.convergence_params.value).strip('\"')
@@ -554,8 +554,18 @@ def run_parametric(watts_params, plugin, wf_level):
         watts_params[parametric_name] = float(str(val))
         parametric_list.append(float(str(val)))
 
-        watts_params, app_result_parametric = run_direct(
-            watts_params, watts_plugins[plugin_ID])
+        # watts_params, app_result_parametric = run_direct(
+        #     watts_params, watts_plugins[plugin_ID])
+
+        for n_plugin, plugin in enumerate(wf_level.plugin):
+            plugin_ID = str(plugin.value)
+            current_plugin = watts_plugins[plugin_ID]
+            watts_params, app_result_parametric = run_direct(
+                watts_params, current_plugin)
+            if current_plugin['transfer_params'] is not None:
+                watts_params = get_last_value(
+                    watts_params, current_plugin['transfer_params'])
+
         # Store the results from each individual run to
         # the 'app_result' dictionary as individual tuple.
         app_result[f"run_{n}"] = app_result_parametric
@@ -564,9 +574,11 @@ def run_parametric(watts_params, plugin, wf_level):
     return (watts_params, app_result)
 
 
-# Need to update and get properly from workbench the executable path and the argument
-watts_path = "/Users/zhieejhiaooi/Documents/ANL/watts-devel/watts/src/watts_ui/"
+# Set watts_path
+watts_path = os.path.join(os.path.dirname(__file__))
+
 opts, args = getopt.getopt(sys.argv[1:], "hi:o:", ["ifile=", "ofile="])
+
 for opt, arg in opts:
     if opt == "-i":
         input_path = os.getcwd() + "/" + str(arg)
@@ -578,8 +590,7 @@ watts_wb = load_obj(input_path, watts_path).watts
 # the extra input files are stored. This is necessary
 # due to how WATTS copies extra input files to the
 # temporary working directory.
-if watts_wb.workflow_dir is not None:
-    os.chdir(str(watts_wb.workflow_dir.value).strip('\"'))
+os.chdir(os.getcwd())
 
 # Load plugins
 if watts_wb.plugins is not None:
@@ -592,9 +603,9 @@ if watts_wb.workflow_level1 is not None:
 
     wf_level = watts_wb.workflow_level1
 
-    plugin_ID = None
-    if wf_level.plugin is not None:
-        plugin_ID = str(wf_level.plugin.value)
+    if wf_level.plugin is None:
+        raise RuntimeError(
+            "Please specify at least one plugin.")
 
     if wf_level.variables is not None:
         variables = wf_level.variables.param
@@ -605,6 +616,6 @@ if watts_wb.workflow_level1 is not None:
 
         # Run workflow
         app_result, watts_params = run_workflow(
-            watts_params, wf_level, plugin_ID, watts_plugins)
+            watts_params, wf_level, watts_plugins)
 
         watts_params.show_summary(show_metadata=False, sort_by='key')

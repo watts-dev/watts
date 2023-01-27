@@ -17,4 +17,4 @@ This example provides a demonstration on how to use WATTS to run RELAP5-3D.
 
 - [__watts_exec.py__](watts_exec.py): This is the file to execute to run the problem described above.
 - [__relap5_template__](relap5_template): Templated RELAP5-3D input.
-- [__watts_comprehensive.son__](watts_comprehensive.son): Workbench input file for this example.
+- [__watts_wb.son__](watts_wb.son): Workbench input file for this example.
