@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Added
 
 * ACCERT plugin via the `PluginACCERT` class ([#83](https://github.com/watts-dev/watts/pull/83))
+* Command-line tool for inspecting database ([#86](https://github.com/watts-dev/watts/pull/87))
 
 ### Changes
 
