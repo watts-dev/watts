@@ -125,10 +125,38 @@ Results Database
 ++++++++++++++++
 
 Results are automatically added to a database and persist between invocations of
-Python. For the example above, we may want to look at the last five results to
-see how :math:`k_\text{eff}` varies with the radius. The
-:class:`~watts.Database` class provides a list-like object that contains all
-previously generated :class:`~watts.Results` objects:
+Python. The ``watts`` command-line tool allows you to quickly get a list of
+results:
+
+.. code-block:: console
+
+    $ watts results
+    +-------+--------+--------+--------+----------------------------+
+    | Index | Job ID | Plugin | Name   | Time                       |
+    +-------+--------+--------+--------+----------------------------+
+    | 0     | 1      | MCNP   |        | 2022-06-01 13:21:44.713942 |
+    | 1     | 2      | MCNP   |        | 2022-06-01 13:23:12.410774 |
+    | 2     | 3      | MCNP   | r=2.0  | 2022-06-02 07:46:05.463723 |
+    | 3     | 3      | MCNP   | r=4.0  | 2022-06-02 07:46:10.996932 |
+    | 4     | 3      | MCNP   | r=6.0  | 2022-06-02 07:46:17.487411 |
+    | 5     | 3      | MCNP   | r=8.0  | 2022-06-02 07:46:24.964455 |
+    | 6     | 3      | MCNP   | r=10.0 | 2022-06-02 07:46:33.426781 |
+    +-------+--------+--------+--------+----------------------------+
+
+Each result listed can be referenced by its index, which is used in other
+subcommands. For example, to determine the directory where input/output files
+are stored for the result with index 2, you can run:
+
+.. code-block:: console
+
+    $ watts dir 2
+    /home/username/.local/share/watts/3c5674ae37094d74af7a7fc5562555a3
+
+The API also allows programmatic access to the database through the
+:class:`~watts.Database` class, which provides a list-like object that contains
+all previously generated :class:`~watts.Results` objects. For example, we may
+want to look at the last five results to see how :math:`k_\text{eff}` varies
+with the radius.
 
 .. code-block:: pycon
 
