@@ -78,7 +78,7 @@ class Database(Sequence):
             job_id = getattr(result, 'job_id', None)
             if job_id is not None:
                 used_job_ids.add(job_id)
-        self.job_id = max(used_job_ids, default=0) + 1
+        self.job_id = max(used_job_ids, default=-1) + 1
 
         # Add instance to class-wide dictionary
         Database._instances[path.resolve()] = self

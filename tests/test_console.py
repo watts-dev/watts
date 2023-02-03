@@ -62,7 +62,7 @@ def test_console_results(setup_results):
     result = runner.invoke(main, 'results --name var=20')
     assert len(result.stdout.split('\n')) == 6
 
-    result = runner.invoke(main, 'results --job-id 1')
+    result = runner.invoke(main, 'results --job-id 0')
     assert result.stdout == full_output
 
     result = runner.invoke(main, 'results --last-job')
