@@ -1,15 +1,15 @@
-# SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
+# SPDX-FileCopyrightText: 2022-2023 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
 """
-This example demonstrates how to use WATTS to perform 
-optimization study by running SAM followed by OpenMC workflow. 
+This example demonstrates how to use WATTS to perform
+optimization study by running SAM followed by OpenMC workflow.
 This example uses the same simple VHTR unit-cell as 1App examples
 model with 1 coolant channel surrounded by graphite and fuel.
 The SciPy library is used to drive the optimization. A single
 criteria (fitness function) for this optimization study
 to minimize both excess reactivity and peak fuel temperature.
-The fuel pin and coolant radius are being varied by the optimization 
+The fuel pin and coolant radius are being varied by the optimization
 algorithm. The best solution is being returned.
 """
 

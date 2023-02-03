@@ -18,7 +18,7 @@
 # -- Project information -----------------------------------------------------
 
 project = 'watts'
-copyright = '2021-2022, UChicago Argonne, LLC'
+copyright = '2021-2023, UChicago Argonne, LLC'
 author = 'UChicago Argonne, LLC'
 
 

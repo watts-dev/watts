@@ -1,20 +1,20 @@
-# SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
+# SPDX-FileCopyrightText: 2022-2023 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
 """
-Example problem of runing SAS4A/SASSY-1 with WATTS using the 
-SAS 'INCLUDE' directive that allows for multiple input files. 
-This example uses the same sodium loop model as in 
+Example problem of runing SAS4A/SASSY-1 with WATTS using the
+SAS 'INCLUDE' directive that allows for multiple input files.
+This example uses the same sodium loop model as in
 example '1App_SAS_SodiumLoop'. For details on the loop,
 please refer to the input file of '1App_SAS_SodiumLoop'.
 In this example, the SAS input file is broken into several
 input files, namely 'Channel', 'DecayPower', 'FuelCladding',
-'PointKinetics', 'PRIMAR4', and 'Primary', and the main 
+'PointKinetics', 'PRIMAR4', and 'Primary', and the main
 input file is known as 'sas_template'. The values of any
 parameters in the extra input files can be input/changed
-using the same approach as the parameters in the main input 
-file. To include the input files to the simulation, users 
-need to add 'INCLUDE "Extra_file_name"' in the main input file. 
+using the same approach as the parameters in the main input
+file. To include the input files to the simulation, users
+need to add 'INCLUDE "Extra_file_name"' in the main input file.
 """
 
 from math import cos, pi
