@@ -94,3 +94,15 @@ def test_console_stdout(setup_results):
     # Check erroneous database
     result = runner.invoke(main, 'stdout --database giraffe 100')
     assert result.exit_code == 1
+
+
+def test_console_rm(setup_results):
+    db = watts.Database()
+    assert len(db) == 3
+
+    runner = CliRunner()
+    runner.invoke(main, 'rm 1')
+    assert len(db) == 2
+
+    runner.invoke(main, 'rm --all')
+    assert len(db) == 0

@@ -85,6 +85,36 @@ def stdout(database, index):
     click.echo(result.stdout)
 
 
+@click.command()
+@click.option('--database', default=None, help='Path to database')
+@click.option('--all', is_flag=True, help='Remove all results')
+@click.argument('index', type=int, required=False)
+def rm(database, all, index):
+    """Remove a result from the database
+
+    The 'index' can be determined from the Index column when running 'watts
+    results'. Note that removing a result will delete all input and output files
+    associated with the result
+
+    """
+    db = Database(database) if database else Database()
+
+    if not all and index is None:
+        click.echo("Must either provide index argument or --all flag.", err=True)
+        sys.exit(1)
+
+    if all:
+        db.clear()
+    else:
+        try:
+            result = db[index]
+        except IndexError:
+            click.echo(f"No result with index {index} in database at {db.path}", err=True)
+            sys.exit(1)
+        db.remove(result)
+
+
 main.add_command(results)
 main.add_command(dir)
 main.add_command(stdout)
+main.add_command(rm)
