@@ -1,16 +1,13 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
-from datetime import datetime
-from pathlib import Path
-import os
 import sys
 from typing import List, Optional
 
 from .fileutils import PathLike
 from .parameters import Parameters
 from .plugin import PluginGeneric, _find_executable
-from .results import Results
+from .results import Results, ExecInfo
 
 
 class PluginABCE(PluginGeneric):
@@ -56,6 +53,7 @@ class PluginABCE(PluginGeneric):
             executable, execute_command, template_file, extra_inputs,
             extra_template_inputs, show_stdout, show_stderr)
         self.input_name = 'settings.yml'
+        self.plugin_name = 'ABCE'
 
 
 class ResultsABCE(Results):
@@ -65,10 +63,8 @@ class ResultsABCE(Results):
     ----------
     params
         Parameters used to generate inputs
-    name
-        Name of workflow producing results
-    time
-        Time at which workflow was run
+    exec_info
+        Execution information (job ID, plugin name, time, etc.)
     inputs
         List of input files
     outputs
@@ -79,6 +75,6 @@ class ResultsABCE(Results):
     stdout
         Standard output from ABCE run
     """
-    def __init__(self, params: Parameters, name: str, time: datetime,
+    def __init__(self, params: Parameters, exec_info: ExecInfo,
                  inputs: List[PathLike], outputs: List[PathLike]):
-        super().__init__(params, name, time, inputs, outputs)
+        super().__init__(params, exec_info, inputs, outputs)

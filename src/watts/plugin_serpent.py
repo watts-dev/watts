@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
-from pathlib import Path
 from typing import List, Optional
 
 from .fileutils import PathLike
@@ -16,10 +15,8 @@ class ResultsSerpent(Results):
     ----------
     params
         Parameters used to generate inputs
-    name
-        Name of workflow producing results
-    time
-        Time at which workflow was run
+    exec_info
+        Execution information (job ID, plugin name, time, etc.)
     inputs
         List of input files
     outputs
@@ -75,3 +72,4 @@ class PluginSerpent(PluginGeneric):
             show_stdout, show_stderr, unit_system='cgs'
         )
         self.input_name = "serpent_input"
+        self.plugin_name = "Serpent"

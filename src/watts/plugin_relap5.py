@@ -1,12 +1,9 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
-import os
-import subprocess
-import platform
-from datetime import datetime
 from pathlib import Path
 import shutil
+import subprocess
 from typing import List, Optional
 
 import numpy as np
@@ -15,7 +12,7 @@ import pandas as pd
 from .fileutils import PathLike
 from .parameters import Parameters
 from .plugin import PluginGeneric, _find_executable
-from .results import Results
+from .results import Results, ExecInfo
 
 
 class ResultsRELAP5(Results):
@@ -25,10 +22,8 @@ class ResultsRELAP5(Results):
     ----------
     params
         Parameters used to generate inputs
-    name
-        Name of workflow producing results
-    time
-        Time at which workflow was run
+    exec_info
+        Execution information (job ID, plugin name, time, etc.)
     inputs
         List of input files
     outputs
@@ -41,9 +36,9 @@ class ResultsRELAP5(Results):
     csv_data
         Dictionary with data from .csv files
     """
-    def __init__(self, params: Parameters, name: str, time: datetime,
+    def __init__(self, params: Parameters, exec_info: ExecInfo,
                  inputs: List[PathLike], outputs: List[PathLike]):
-        super().__init__(params, name, time, inputs, outputs)
+        super().__init__(params, exec_info, inputs, outputs)
         self.csv_data = self._get_relap5_csv_data()
 
     def _get_relap5_csv_data(self) -> dict:
@@ -99,6 +94,7 @@ class PluginRELAP5(PluginGeneric):
             executable, execute_command, template_file, extra_inputs,
             extra_template_inputs, show_stdout, show_stderr)
         self.input_name = "RELAP5.i"
+        self.plugin_name = "RELAP5"
         self.plotfl_to_csv = plotfl_to_csv
 
     def run(self, extra_args: Optional[List[str]] = None):
@@ -130,15 +126,15 @@ class PluginRELAP5(PluginGeneric):
         p = subprocess.Popen(command)
         stdout, stderr = p.communicate()
 
-    def postrun(self, params: Parameters, name: str) -> ResultsRELAP5:
+    def postrun(self, params: Parameters, exec_info: ExecInfo) -> ResultsRELAP5:
         """Read RELAP5 results and create results object
 
         Parameters
         ----------
         params
             Parameters used to create RELAP5 model
-        name
-            Name of the workflow
+        exec_info
+            Execution information
 
         Returns
         -------
@@ -156,7 +152,7 @@ class PluginRELAP5(PluginGeneric):
                     "file is named correctly."
                 )
 
-        return super().postrun(params, name)
+        return super().postrun(params, exec_info)
 
     # The RELAP5-3D version used here does not generate csv output files.
     # It generates a text file with a particular format that needs to

@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: 2022-2023 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
-from datetime import datetime
 from pathlib import Path
 import sys
 from typing import List, Optional
@@ -9,7 +8,6 @@ from typing import List, Optional
 import pandas as pd
 
 from .fileutils import PathLike
-from .parameters import Parameters
 from .plugin import PluginGeneric, _find_executable
 from .results import Results
 
@@ -49,6 +47,7 @@ class PluginACCERT(PluginGeneric):
         super().__init__(executable, execute_command, template_file, extra_inputs,
                          extra_template_inputs, show_stdout, show_stderr)
         self.input_name = "ACCERT_input.son"
+        self.plugin_name = "ACCERT"
 
     @PluginGeneric.executable.setter
     def executable(self, exe: PathLike):
@@ -68,10 +67,8 @@ class ResultsACCERT(Results):
     ----------
     params
         Parameters used to generate inputs
-    name
-        Name of workflow producing results
-    time
-        Time at which workflow was run
+    exec_info
+        Execution information (job ID, plugin name, time, etc.)
     inputs
         List of input files
     outputs
@@ -84,10 +81,6 @@ class ResultsACCERT(Results):
     account_table
         ACCERT results of account table
     """
-
-    def __init__(self, params: Parameters, name: str, time: datetime,
-                 inputs: List[Path], outputs: List[Path]):
-        super().__init__(params, name, time, inputs, outputs)
 
     @property
     def total_cost(self) -> float:

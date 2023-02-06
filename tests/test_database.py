@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
-from datetime import datetime
 from pathlib import Path
+import time
 from uuid import uuid4
 
 import pytest
@@ -17,10 +17,15 @@ def restore_database_path():
 
 
 def get_result():
+    exec_info = watts.ExecInfo(
+        job_id=1,
+        plugin='OpenMC',
+        name='Workflow',
+        timestamp=time.time_ns()
+    )
     res = watts.ResultsOpenMC(
         params=watts.Parameters(value=1, lab='Argonne'),
-        name='Workflow',
-        time=datetime.now(),
+        exec_info=exec_info,
         inputs=['geometry.xml'],
         outputs=['statepoint.50.h5'],
     )

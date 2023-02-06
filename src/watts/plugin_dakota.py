@@ -1,22 +1,21 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
+import csv
+import json
 import os
-from datetime import datetime
 from pathlib import Path
 import pickle
+import subprocess
 from typing import List, Optional
 
-import json
-import csv
 import numpy as np
 import pandas as pd
-import subprocess
 
 from .fileutils import PathLike
 from .parameters import Parameters
 from .plugin import PluginGeneric, _find_executable
-from .results import Results
+from .results import Results, ExecInfo
 
 
 class ResultsDakota(Results):
@@ -26,10 +25,8 @@ class ResultsDakota(Results):
     ----------
     params
         Parameters used to generate inputs
-    name
-        Name of workflow producing results
-    time
-        Time at which workflow was run
+    exec_info
+        Execution information (job ID, plugin name, time, etc.)
     inputs
         List of input files
     outputs
@@ -42,9 +39,9 @@ class ResultsDakota(Results):
     output_data
         Dictionary with data from .dat files
     """
-    def __init__(self, params: Parameters, name: str, time: datetime,
+    def __init__(self, params: Parameters, exec_info: ExecInfo,
                  inputs: List[PathLike], outputs: List[PathLike]):
-        super().__init__(params, name, time, inputs, outputs)
+        super().__init__(params, exec_info, inputs, outputs)
         self.output_data = self._get_Dakota_output(params)
 
     def _get_Dakota_output(self, params: Parameters) -> dict:
@@ -124,6 +121,7 @@ class PluginDakota(PluginGeneric):
             extra_template_inputs, show_stdout, show_stderr)
 
         self.input_name = template_file
+        self.plugin_name = "Dakota"
         self._auto_link_files = auto_link_files
 
         # Setup to automatically include all 'extra_inputs' and 'extra_template_inputs'

@@ -1,13 +1,11 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
-import os
 import glob
-import subprocess
-import platform
-from datetime import datetime
+import os
 from pathlib import Path
 import shutil
+import subprocess
 from typing import List, Optional
 
 import numpy as np
@@ -16,7 +14,7 @@ import pandas as pd
 from .fileutils import PathLike
 from .parameters import Parameters
 from .plugin import PluginGeneric, _find_executable
-from .results import Results
+from .results import Results, ExecInfo
 
 
 class ResultsSAS(Results):
@@ -26,10 +24,8 @@ class ResultsSAS(Results):
     ----------
     params
         Parameters used to generate inputs
-    name
-        Name of workflow producing results
-    time
-        Time at which workflow was run
+    exec_info
+        Execution information (job ID, plugin name, time, etc.)
     inputs
         List of input files
     outputs
@@ -42,9 +38,9 @@ class ResultsSAS(Results):
     csv_data
         Dictionary with data from .csv files
     """
-    def __init__(self, params: Parameters, name: str, time: datetime,
+    def __init__(self, params: Parameters, exec_info: ExecInfo,
                  inputs: List[PathLike], outputs: List[PathLike]):
-        super().__init__(params, name, time, inputs, outputs)
+        super().__init__(params, exec_info, inputs, outputs)
         self.csv_data = self._get_sas_csv_data()
 
     def _get_sas_csv_data(self) -> dict:
@@ -112,6 +108,7 @@ class PluginSAS(PluginGeneric):
         super().__init__(executable, execute_command, template_file, extra_inputs,
                          extra_template_inputs, show_stdout, show_stderr)
         self.input_name = "SAS.inp"
+        self.plugin_name = "SAS"
 
         # Set other executables based on the main SAS executable
         suffix = executable.suffix
@@ -142,7 +139,7 @@ class PluginSAS(PluginGeneric):
     def execute_command(self):
         return [str(self.executable), "-i", self.input_name, "-o", "out.txt"]
 
-    def postrun(self, params: Parameters, name: str) -> ResultsSAS:
+    def postrun(self, params: Parameters, exec_info: ExecInfo) -> ResultsSAS:
         """Read SAS results and create results object
 
         Parameters
@@ -168,4 +165,4 @@ class PluginSAS(PluginGeneric):
             with open("PRIMAR4.dat", "r") as file_in, open("PRIMAR4.csv", "w") as file_out:
                 subprocess.run(str(self.conv_primar4), stdin=file_in, stdout=file_out)
 
-        return super().postrun(params, name)
+        return super().postrun(params, exec_info)

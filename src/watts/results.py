@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
+from collections import namedtuple
 from datetime import datetime
 from pathlib import Path
 import shutil
@@ -12,6 +13,9 @@ from .fileutils import PathLike, open_file
 from .parameters import Parameters
 
 
+ExecInfo = namedtuple('ExecInfo', ['job_id', 'plugin', 'name', 'timestamp'])
+
+
 class Results:
     """Results from running a workflow
 
@@ -19,29 +23,57 @@ class Results:
     ----------
     params
         Parameters used to generate inputs
-    time
-        Time at which workflow was run
+    exec_info
+        Execution information (job ID, plugin name, time, etc.)
     inputs
         List of input files
     outputs
         List of output files
+
+    Attributes
+    ----------
+    base_path
+        Path to directory storing results
+    inputs
+        List of input files
+    job_id
+        Integer ID of job
+    outputs
+        List of output files
+    parameters
+        Parameters used to generate inputs
+    plugin
+        Name of plugin
+    stdout
+        Standard output from execution
+    time
+        Time at which plugin was executed
+
     """
 
-    def __init__(self, params: Parameters, name: str, time: datetime,
+    def __init__(self, params: Parameters, exec_info: ExecInfo,
                  inputs: List[PathLike], outputs: List[PathLike]):
         self.base_path = Path.cwd()
-        self.name = name
+        self.exec_info = exec_info
         self.parameters = Parameters(params)
-        self.time = time
         self.inputs = [Path(p) for p in inputs]
         self.outputs = [Path(p) for p in outputs]
 
     @property
-    def plugin(self):
-        if type(self) is Results:
-            return "Generic"
-        else:
-            return type(self).__name__[7:]
+    def plugin(self) -> str:
+        return self.exec_info.plugin
+
+    @property
+    def time(self) -> datetime:
+        return datetime.fromtimestamp(self.exec_info.timestamp * 1e-9)
+
+    @property
+    def job_id(self) -> int:
+        return self.exec_info.job_id
+
+    @property
+    def name(self) -> str:
+        return self.exec_info.name
 
     @property
     def stdout(self) -> str:
@@ -90,7 +122,21 @@ class Results:
             Path to load results from
         """
         with open(filename, 'rb') as fh:
-            return dill.loads(fh.read())
+            result =  dill.loads(fh.read())
+
+        # For older results objects, add in execution info tuple
+        if not hasattr(result, 'exec_info'):
+            job_id = None
+            if type(result) is Results:
+                plugin = 'Generic'
+            else:
+                plugin = type(result).__name__[7:]
+            name = result.__dict__['name']
+            dt = result.__dict__['time']
+            timestamp = int(dt.timestamp() * 1e6) * 1000
+            result.exec_info = ExecInfo(job_id, plugin, name, timestamp)
+
+        return result
 
     def open_folder(self):
         """Open folder containing results"""
@@ -98,7 +144,7 @@ class Results:
 
     def __repr__(self):
         if self.name:
-            return f"<Results{self.plugin}: {self.name}, {self.time})>"
+            return f"<Results: {self.plugin}, {self.name}, {self.time})>"
         else:
-            return f"<Results{self.plugin}: {self.time})>"
+            return f"<Results: {self.plugin}, {self.time})>"
 

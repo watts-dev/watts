@@ -1,15 +1,16 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
-from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
 from typing import Callable, Mapping, List, Optional
 
+from uncertainties import ufloat
+
 from .fileutils import PathLike
 from .parameters import Parameters
 from .plugin import Plugin
-from .results import Results
+from .results import Results, ExecInfo
 
 
 class ResultsOpenMC(Results):
@@ -19,10 +20,8 @@ class ResultsOpenMC(Results):
     ----------
     params
         Parameters used to generate inputs
-    name
-        Name of workflow producing results
-    time
-        Time at which workflow was run
+    exec_info
+        Execution information (job ID, plugin name, timestamp, etc.)
     inputs
         List of input files
     outputs
@@ -40,9 +39,9 @@ class ResultsOpenMC(Results):
         List of OpenMC tally objects
     """
 
-    def __init__(self, params: Parameters, name: str, time: datetime,
+    def __init__(self, params: Parameters, exec_info: ExecInfo,
                  inputs: List[Path], outputs: List[Path]):
-        super().__init__(params, name, time, inputs, outputs)
+        super().__init__(params, exec_info, inputs, outputs)
 
     @property
     def statepoints(self) -> List[Path]:
@@ -50,7 +49,7 @@ class ResultsOpenMC(Results):
 
     @property
     @lru_cache()
-    def keff(self):
+    def keff(self) -> ufloat:
         import openmc
         # Get k-effective from last statepoint
         last_statepoint = self.statepoints[-1]
@@ -92,6 +91,7 @@ class PluginOpenMC(Plugin):
         super().__init__(extra_inputs, show_stdout, show_stderr)
         self.model_builder = model_builder
         self.unit_system = 'cgs'
+        self.plugin_name = 'OpenMC'
 
     def prerun(self, params: Parameters) -> None:
         """Generate OpenMC input files
@@ -129,28 +129,28 @@ class PluginOpenMC(Plugin):
         else:
             openmc.run(**kwargs)
 
-    def postrun(self, params: Parameters, name: str) -> ResultsOpenMC:
+    def postrun(self, params: Parameters, exec_info: ExecInfo) -> ResultsOpenMC:
         """Collect information from OpenMC simulation and create results object
 
         Parameters
         ----------
         params
             Parameters used to create OpenMC model
-        name
-            Name of the workflow
+        exec_info
+            Execution information
 
         Returns
         -------
         OpenMC results object
         """
 
-        def files_since(pattern, time):
+        def files_since(pattern, timestamp):
             matches = []
             for p in Path.cwd().glob(pattern):
                 # Because of limited time resolution, we rely on access time to
                 # determine input files
                 mtime = p.stat().st_atime_ns
-                if mtime >= time:
+                if mtime >= timestamp:
                     matches.append(p)
             matches.sort(key=lambda x: x.stat().st_mtime_ns)
             return matches
@@ -159,19 +159,18 @@ class PluginOpenMC(Plugin):
         inputs = [Path.cwd() / p.name for p in self.extra_inputs]
 
         # Get generated input files
-        for path in files_since('*.xml', self._run_time):
+        for path in files_since('*.xml', exec_info.timestamp):
             if path not in inputs:
                 inputs.append(path)
 
         # Get list of all output files
         outputs = ['OpenMC_log.txt']
-        outputs.extend(files_since('tallies.out', self._run_time))
-        outputs.extend(files_since('source.*.h5', self._run_time))
-        outputs.extend(files_since('particle*.h5', self._run_time))
-        outputs.extend(files_since('statepoint.*.h5', self._run_time))
-        outputs.extend(files_since('volume*.h5', self._run_time))
-        outputs.extend(files_since('*.png', self._run_time))
-        outputs.extend(files_since('*.ppm', self._run_time))
+        outputs.extend(files_since('tallies.out', exec_info.timestamp))
+        outputs.extend(files_since('source.*.h5', exec_info.timestamp))
+        outputs.extend(files_since('particle*.h5', exec_info.timestamp))
+        outputs.extend(files_since('statepoint.*.h5', exec_info.timestamp))
+        outputs.extend(files_since('volume*.h5', exec_info.timestamp))
+        outputs.extend(files_since('*.png', exec_info.timestamp))
+        outputs.extend(files_since('*.ppm', exec_info.timestamp))
 
-        time = datetime.fromtimestamp(self._run_time * 1e-9)
-        return ResultsOpenMC(params, name, time, inputs, outputs)
+        return ResultsOpenMC(params, exec_info, inputs, outputs)

@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
-from datetime import datetime
 from pathlib import Path
 import os
 import sys
@@ -11,7 +10,7 @@ from typing import Mapping, List, Optional
 from .fileutils import PathLike
 from .parameters import Parameters
 from .plugin import PluginGeneric, _find_executable
-from .results import Results
+from .results import Results, ExecInfo
 
 
 class ResultsPyARC(Results):
@@ -21,10 +20,8 @@ class ResultsPyARC(Results):
     ----------
     params
         Parameters used to generate inputs
-    name
-        Name of workflow producing results
-    time
-        Time at which workflow was run
+    exec_info
+        Execution information (job ID, plugin name, time, etc.)
     inputs
         List of input files
     outputs
@@ -34,9 +31,9 @@ class ResultsPyARC(Results):
 
     """
 
-    def __init__(self, params: Parameters, name: str, time: datetime,
+    def __init__(self, params: Parameters, exec_info: ExecInfo,
                  inputs: List[Path], outputs: List[Path], results_data: dict):
-        super().__init__(params, name, time, inputs, outputs)
+        super().__init__(params, exec_info, inputs, outputs)
         self.results_data = results_data
 
 
@@ -78,6 +75,7 @@ class PluginPyARC(PluginGeneric):
         super().__init__(executable, None, template_file, extra_inputs,
                          extra_template_inputs, show_stdout, show_stderr)
         self.input_name = "pyarc_input.son"
+        self.plugin_name = "PyARC"
 
     @PluginGeneric.executable.setter
     def executable(self, exe: PathLike):
@@ -109,18 +107,18 @@ class PluginPyARC(PluginGeneric):
         sys.path.pop(0)  # Restore sys.path to original state
         os.chdir(od)  # TODO: I don't know why but I keep going to self.executable after execution - this is very wierd!
 
-    def postrun(self, params: Parameters, name: str) -> ResultsPyARC:
+    def postrun(self, params: Parameters, exec_info: ExecInfo) -> ResultsPyARC:
         """Collect information from PyARC and create results object
 
         Parameters
         ----------
         params
             Parameters used to create PyARC model
-        name
-            Name of the workflow
+        exec_info
+            Execution information
 
         Returns
         -------
         PyARC results object
         """
-        return super().postrun(params, name, results_data=self.pyarc.user_object.results)
+        return super().postrun(params, exec_info, results_data=self.pyarc.user_object.results)
