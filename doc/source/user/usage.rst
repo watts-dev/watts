@@ -385,6 +385,8 @@ dir
     Provides the directory for a specific result (referenced by index)
 stdout
     Shows the standard output from a specific result (referenced by index)
+rm
+    Remove a specific result (referenced by index)
 
 The ``results`` subcommand will produce a table such as the following:
 
@@ -394,13 +396,13 @@ The ``results`` subcommand will produce a table such as the following:
     +-------+--------+--------+--------+----------------------------+
     | Index | Job ID | Plugin | Name   | Time                       |
     +-------+--------+--------+--------+----------------------------+
-    | 0     | 1      | MCNP   |        | 2022-06-01 13:21:44.713942 |
-    | 1     | 2      | MCNP   |        | 2022-06-01 13:23:12.410774 |
-    | 2     | 3      | MCNP   | r=2.0  | 2022-06-02 07:46:05.463723 |
-    | 3     | 3      | MCNP   | r=4.0  | 2022-06-02 07:46:10.996932 |
-    | 4     | 3      | MCNP   | r=6.0  | 2022-06-02 07:46:17.487411 |
-    | 5     | 3      | MCNP   | r=8.0  | 2022-06-02 07:46:24.964455 |
-    | 6     | 3      | MCNP   | r=10.0 | 2022-06-02 07:46:33.426781 |
+    | 0     | 0      | MCNP   |        | 2022-06-01 13:21:44.713942 |
+    | 1     | 1      | MCNP   |        | 2022-06-01 13:23:12.410774 |
+    | 2     | 2      | MCNP   | r=2.0  | 2022-06-02 07:46:05.463723 |
+    | 3     | 2      | MCNP   | r=4.0  | 2022-06-02 07:46:10.996932 |
+    | 4     | 2      | MCNP   | r=6.0  | 2022-06-02 07:46:17.487411 |
+    | 5     | 2      | MCNP   | r=8.0  | 2022-06-02 07:46:24.964455 |
+    | 6     | 2      | MCNP   | r=10.0 | 2022-06-02 07:46:33.426781 |
     +-------+--------+--------+--------+----------------------------+
 
 For each result, you're given an index (used in other subcommands), a job ID,
@@ -408,22 +410,22 @@ the plugin name, the ``name`` that was used when calling the plugin, and a
 timestamp for when the plugin was called. The job ID is the same for each plugin
 execution from a single Python invocation. There are several optional flags that
 can be used to narrow down the list of results. For example, to only display
-results that have job ID 3:
+results that have job ID 2:
 
 .. code-block:: console
 
-    $ watts results --job-id 3
+    $ watts results --job-id 2
     +-------+--------+--------+--------+----------------------------+
     | Index | Job ID | Plugin | Name   | Time                       |
     +-------+--------+--------+--------+----------------------------+
-    | 2     | 3      | MCNP   | r=2.0  | 2022-06-02 07:46:05.463723 |
-    | 3     | 3      | MCNP   | r=4.0  | 2022-06-02 07:46:10.996932 |
-    | 4     | 3      | MCNP   | r=6.0  | 2022-06-02 07:46:17.487411 |
-    | 5     | 3      | MCNP   | r=8.0  | 2022-06-02 07:46:24.964455 |
-    | 6     | 3      | MCNP   | r=10.0 | 2022-06-02 07:46:33.426781 |
+    | 2     | 2      | MCNP   | r=2.0  | 2022-06-02 07:46:05.463723 |
+    | 3     | 2      | MCNP   | r=4.0  | 2022-06-02 07:46:10.996932 |
+    | 4     | 2      | MCNP   | r=6.0  | 2022-06-02 07:46:17.487411 |
+    | 5     | 2      | MCNP   | r=8.0  | 2022-06-02 07:46:24.964455 |
+    | 6     | 2      | MCNP   | r=10.0 | 2022-06-02 07:46:33.426781 |
     +-------+--------+--------+--------+----------------------------+
 
-The index of a results can be used to get more information. For example, to
+The index of a result can be used to get more information. For example, to
 determine the directory where input/output files are stored for the result with
 index 2, you can run:
 
@@ -431,3 +433,12 @@ index 2, you can run:
 
     $ watts dir 2
     /home/username/.local/share/watts/3c5674ae37094d74af7a7fc5562555a3
+
+Similarly, a result can be removed by referencing its index:
+
+.. code-block:: console
+
+    $ watts rm 5
+
+As with the :meth:`watts.Database.remove` method, the ``watts rm`` subcommand
+will delete the data directory associated with the result.
