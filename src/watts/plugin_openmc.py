@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
+# SPDX-FileCopyrightText: 2022-2023 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
 from functools import lru_cache

@@ -1,13 +1,13 @@
-# SPDX-FileCopyrightText: 2022 UChicago Argonne, LLC
+# SPDX-FileCopyrightText: 2022-2023 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
 """
-This example demonstrates how to use WATTS to perform 
-PyARC simulations. The PyARC model is very simple 
-unit-cell that uses lumped fission product defined 
-in other file. Both MCC3 and DIF3D are being executed. 
+This example demonstrates how to use WATTS to perform
+PyARC simulations. The PyARC model is very simple
+unit-cell that uses lumped fission product defined
+in other file. Both MCC3 and DIF3D are being executed.
 The example also applies unit-conversion
-capability of WATTS. Results from PyARC are extracted 
+capability of WATTS. Results from PyARC are extracted
 and stored in params.
 """
 
