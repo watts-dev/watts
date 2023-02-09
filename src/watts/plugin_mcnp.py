@@ -26,11 +26,17 @@ class ResultsMCNP(Results):
 
     Attributes
     ----------
+    input_file
+        Rendered MCNP input file
     keff
         K-effective value
     stdout
         Standard output from MCNP run
     """
+
+    @property
+    def input_file(self) -> str:
+        return self.inputs[0].read_text()
 
     @property
     def keff(self) -> ufloat:
