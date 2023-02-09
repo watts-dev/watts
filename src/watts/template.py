@@ -17,16 +17,28 @@ class TemplateRenderer:
     ----------
     template_file
         Path to template file
-    **template_kwargs
-        Keywork arguments passed to :class:`jinja2.Template`
+    **environment_kwargs
+        Keywork arguments passed to :class:`jinja2.Environment`
+
+    Attributes
+    ----------
+    environment : jinja2.Environment
+        Jinja environment used to manage templates
+    template_file : pathlib.Path
+        Path to template file to render
+    template : jinja2.Template
+        Template object used to render
+    suffix : str
+        Suffix added to filename when rendering a template
+
     """
-    def __init__(self, template_file: PathLike, suffix: str = '.rendered', **template_kwargs):
-        self.template_file = Path(template_file)
-        self.template = jinja2.Template(
-            self.template_file.read_text(),
+    def __init__(self, template_file: PathLike, suffix: str = '.rendered', **environment_kwargs):
+        self.environment = jinja2.Environment(
             undefined=jinja2.StrictUndefined,
-            **template_kwargs
+            **environment_kwargs
         )
+        self.template_file = Path(template_file)
+        self.template = self.environment.from_string(self.template_file.read_text())
         self.suffix = suffix
 
     def __call__(self, params: Parameters, filename: Optional[PathLike] = None):
