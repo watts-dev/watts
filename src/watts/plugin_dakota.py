@@ -61,7 +61,7 @@ class ResultsDakota(Results):
         if Path(dakota_out_file_name).exists():
             with open(dakota_out_file_name) as f:
                 col_names = f.readline().split()
-            df = pd.read_csv(dakota_out_file_name, sep="\s+", skiprows=1, names=col_names)
+            df = pd.read_csv(dakota_out_file_name, sep=r"\s+", skiprows=1, names=col_names)
 
             for name in col_names:
                 output_data[name] = np.array(df[name])
