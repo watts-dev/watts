@@ -26,8 +26,6 @@ class TemplateRenderer:
         Jinja environment used to manage templates
     template_file : pathlib.Path
         Path to template file to render
-    template : jinja2.Template
-        Template object used to render
     suffix : str
         Suffix added to filename when rendering a template
 
@@ -37,8 +35,7 @@ class TemplateRenderer:
             undefined=jinja2.StrictUndefined,
             **environment_kwargs
         )
-        self.template_file = Path(template_file)
-        self.template = self.environment.from_string(self.template_file.read_text())
+        self.template_file = Path(template_file).resolve()
         self.suffix = suffix
 
     def __call__(self, params: Parameters, filename: Optional[PathLike] = None):
@@ -61,4 +58,5 @@ class TemplateRenderer:
             out_path = Path(filename)
 
         # Render template and write to file
-        out_path.write_text(self.template.render(**params))
+        template = self.environment.from_string(self.template_file.read_text())
+        out_path.write_text(template.render(**params))
