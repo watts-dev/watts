@@ -118,10 +118,9 @@ class PluginDakota(PluginGeneric):
         execute_command = ['{self.executable}', '-i', '{self.input_name}']
         super().__init__(
             executable, execute_command, template_file, extra_inputs,
-            extra_template_inputs, show_stdout, show_stderr)
+            extra_template_inputs, "Dakota", show_stdout, show_stderr)
 
         self.input_name = template_file
-        self.plugin_name = "Dakota"
         self._auto_link_files = auto_link_files
 
         # Setup to automatically include all 'extra_inputs' and 'extra_template_inputs'

@@ -51,9 +51,8 @@ class PluginABCE(PluginGeneric):
         execute_command = [sys.executable, '{self.executable}', '--settings_file', '{self.input_name}']
         super().__init__(
             executable, execute_command, template_file, extra_inputs,
-            extra_template_inputs, show_stdout, show_stderr)
+            extra_template_inputs, 'ABCE', show_stdout, show_stderr)
         self.input_name = 'settings.yml'
-        self.plugin_name = 'ABCE'
 
 
 class ResultsABCE(Results):

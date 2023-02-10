@@ -92,9 +92,8 @@ class PluginRELAP5(PluginGeneric):
         execute_command = ['{self.executable}', '-i', '{self.input_name}']
         super().__init__(
             executable, execute_command, template_file, extra_inputs,
-            extra_template_inputs, show_stdout, show_stderr)
+            extra_template_inputs, "RELAP5", show_stdout, show_stderr)
         self.input_name = "RELAP5.i"
-        self.plugin_name = "RELAP5"
         self.plotfl_to_csv = plotfl_to_csv
 
     def run(self, extra_args: Optional[List[str]] = None):

@@ -45,9 +45,8 @@ class PluginACCERT(PluginGeneric):
         executable = _find_executable(executable, 'ACCERT_DIR')
         execute_command = [sys.executable, '{self.executable}', '-i', '{self.input_name}']
         super().__init__(executable, execute_command, template_file, extra_inputs,
-                         extra_template_inputs, show_stdout, show_stderr)
+                         extra_template_inputs, "ACCERT", show_stdout, show_stderr)
         self.input_name = "ACCERT_input.son"
-        self.plugin_name = "ACCERT"
 
     @PluginGeneric.executable.setter
     def executable(self, exe: PathLike):

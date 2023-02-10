@@ -91,7 +91,6 @@ class PluginMCNP(PluginGeneric):
         executable = _find_executable(executable, 'MCNP_DIR')
         super().__init__(
             executable, ['{self.executable}', 'i={self.input_name}'],
-            template_file, extra_inputs, extra_template_inputs,
+            template_file, extra_inputs, extra_template_inputs, "MCNP",
             show_stdout, show_stderr, unit_system='cgs')
         self.input_name = "mcnp_input"
-        self.plugin_name = "MCNP"

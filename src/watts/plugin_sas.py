@@ -106,9 +106,8 @@ class PluginSAS(PluginGeneric):
         execute_command = ['{self.executable}', '-i', '{self.input_name}',
                            '-o', 'out.txt']
         super().__init__(executable, execute_command, template_file, extra_inputs,
-                         extra_template_inputs, show_stdout, show_stderr)
+                         extra_template_inputs, "SAS", show_stdout, show_stderr)
         self.input_name = "SAS.inp"
-        self.plugin_name = "SAS"
 
         # Set other executables based on the main SAS executable
         suffix = executable.suffix
