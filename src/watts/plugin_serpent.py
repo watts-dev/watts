@@ -68,8 +68,7 @@ class PluginSerpent(PluginGeneric):
         executable = _find_executable(executable, 'SERPENT_DIR')
         super().__init__(
             executable, ['{self.executable}', '{self.input_name}'],
-            template_file, extra_inputs, extra_template_inputs,
+            template_file, extra_inputs, extra_template_inputs, "Serpent",
             show_stdout, show_stderr, unit_system='cgs'
         )
         self.input_name = "serpent_input"
-        self.plugin_name = "Serpent"

@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 * ACCERT plugin via the `PluginACCERT` class ([#83](https://github.com/watts-dev/watts/pull/83))
 * Command-line tool for inspecting database ([#86](https://github.com/watts-dev/watts/pull/87))
+* The `PluginMCNP` class now has an `input_file` property ([#88](https://github.com/watts-dev/watts/pull/88))
 
 ### Changes
 

@@ -61,7 +61,7 @@ class ResultsDakota(Results):
         if Path(dakota_out_file_name).exists():
             with open(dakota_out_file_name) as f:
                 col_names = f.readline().split()
-            df = pd.read_csv(dakota_out_file_name, sep="\s+", skiprows=1, names=col_names)
+            df = pd.read_csv(dakota_out_file_name, sep=r"\s+", skiprows=1, names=col_names)
 
             for name in col_names:
                 output_data[name] = np.array(df[name])
@@ -118,10 +118,9 @@ class PluginDakota(PluginGeneric):
         execute_command = ['{self.executable}', '-i', '{self.input_name}']
         super().__init__(
             executable, execute_command, template_file, extra_inputs,
-            extra_template_inputs, show_stdout, show_stderr)
+            extra_template_inputs, "Dakota", show_stdout, show_stderr)
 
         self.input_name = template_file
-        self.plugin_name = "Dakota"
         self._auto_link_files = auto_link_files
 
         # Setup to automatically include all 'extra_inputs' and 'extra_template_inputs'

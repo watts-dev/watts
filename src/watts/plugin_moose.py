@@ -113,6 +113,5 @@ class PluginMOOSE(PluginGeneric):
         execute_command = ['{self.executable}', '-i', '{self.input_name}']
         super().__init__(
             executable, execute_command, template_file, extra_inputs,
-            extra_template_inputs, show_stdout, show_stderr)
+            extra_template_inputs, "MOOSE", show_stdout, show_stderr)
         self.input_name = "MOOSE.i"
-        self.plugin_name = "MOOSE"
