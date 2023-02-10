@@ -4,10 +4,52 @@
 from typing import List, Optional
 
 from uncertainties import ufloat
+# TODO: Remove dependence on OpenMC
+import openmc.data
 
 from .fileutils import PathLike
 from .plugin import PluginGeneric, _find_executable
 from .results import Results
+
+
+def expand_element(value, default_suffix=None):
+    values = value.split()
+
+    # Determine whether filter block includes start of material card
+    # TODO: Use regex to break into multiple material blocks?
+    if len(values) % 2 == 1:
+        mat_num, *values = values
+        start = f"{mat_num}    "
+    else:
+        start = ""
+
+    lines = []
+    for zaid_with_suffix, conc in zip(values[::2], values[1::2]):
+        # Determine ZAID and suffix used
+        zaid, *original_suffix = zaid_with_suffix.split('.')
+        if original_suffix and default_suffix is None:
+            suffix = original_suffix[0]
+        else:
+            suffix = default_suffix
+
+        # Determine Z and A
+        if zaid.isalpha():
+            Z = openmc.data.ATOMIC_NUMBER[zaid]
+            A = 0
+        else:
+            Z, A = divmod(int(zaid), 1000)
+
+        # Split into isotopes if natural element is given
+        if A == 0:
+            conc = float(conc)
+            symbol = openmc.data.ATOMIC_SYMBOL[Z]
+            for isotope, fraction in openmc.data.isotopes(symbol):
+                _, iso_A, _ = openmc.data.zam(isotope)
+                lines.append(f"{Z}{iso_A:03}.{suffix} {conc * fraction}")
+        else:
+            lines.append(f"{zaid_with_suffix} {conc}")
+
+    return start + "\n     ".join(lines)
 
 
 class ResultsMCNP(Results):
@@ -94,3 +136,8 @@ class PluginMCNP(PluginGeneric):
             template_file, extra_inputs, extra_template_inputs, "MCNP",
             show_stdout, show_stderr, unit_system='cgs')
         self.input_name = "mcnp_input"
+
+        # Add custom 'expand_element' Jinja filter
+        self.render_template.environment.filters['expand_element'] = expand_element
+        for renderer in self.extra_render_templates:
+            renderer.environment.filters['expand_element'] = expand_element
