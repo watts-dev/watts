@@ -116,6 +116,15 @@ Calling the plugin class then executes the code::
 When you call a plugin, it will return an instance of a subclass of
 :class:`~watts.Results` (see :ref:`results` for further details).
 
+Note that when a plugin is called, a temporary directory with all necessary
+files is created and used while the underlying code is running. Once the call is
+complete, the input and output files are moved to the :ref:`database
+<usage_database>` and the temporary directory is removed. To retain the
+temporary directory for debugging purposes, the ``cleanup`` argument can be
+used::
+
+    result = plugin_mcnp(cleanup=False)
+
 .. _usage_templates:
 
 Templated Inputs
@@ -304,6 +313,8 @@ results stored in `PyARC.user_object`::
     for key in pyarc_result.results_data:
         print(key, pyarc_result.results_data[key])
 
+.. _usage_database:
+
 Database
 ++++++++
 
@@ -343,7 +354,7 @@ plugins. If you want to change the default database path used in plugins, the
     >>> db.path
     PosixPath('/opt/watts_db')
 
-To remove a result from the databse, you can call the
+To remove a result from the database, you can call the
 :meth:`~watts.Database.remove` method, passing a :class:`watts.Results` object::
 
     >>> db = watts.Database()
