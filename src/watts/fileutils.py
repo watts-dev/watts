@@ -6,6 +6,7 @@ import errno
 import os
 import platform
 import select
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -19,15 +20,23 @@ PathLike = Union[str, bytes, os.PathLike]
 
 
 @contextmanager
-def cd_tmpdir():
-    """Context manager to change to/return from a tmpdir."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        cwd = os.getcwd()
-        try:
-            os.chdir(tmpdir)
-            yield
-        finally:
-            os.chdir(cwd)
+def cd_tmpdir(cleanup: bool = True):
+    """Context manager to change to/return from a tmpdir.
+
+    Parameters
+    ----------
+    cleanup
+        Whether to clean up the temporary directory
+    """
+    tmpdir = tempfile.mkdtemp()
+    cwd = os.getcwd()
+    try:
+        os.chdir(tmpdir)
+        yield
+    finally:
+        os.chdir(cwd)
+        if cleanup:
+            shutil.rmtree(tmpdir)
 
 
 def open_file(path: PathLike):

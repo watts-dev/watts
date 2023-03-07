@@ -3,7 +3,6 @@
 
 from abc import ABC, abstractmethod
 from contextlib import redirect_stdout, redirect_stderr
-from datetime import datetime
 import os
 from pathlib import Path
 import shutil
@@ -68,7 +67,8 @@ class Plugin(ABC):
     def postrun(self, params: Parameters, exec_info: ExecInfo) -> Results:
         ...
 
-    def __call__(self, params: Parameters = None, name: str = '', verbose=True, **kwargs) -> Results:
+    def __call__(self, params: Parameters = None, name: str = '', verbose=True,
+                 cleanup: bool = True, **kwargs) -> Results:
         """Run the complete workflow for the plugin
 
         Parameters
@@ -79,6 +79,9 @@ class Plugin(ABC):
             Name associated with execution of plugin
         verbose
             Whether to print execution information
+        cleanup
+            Determines whether the temporary directory will be cleaned up after
+            execution.
         **kwargs
             Keyword arguments passed to the `run` method
 
@@ -102,8 +105,8 @@ class Plugin(ABC):
         timestamp = time.time_ns()
         exec_info = ExecInfo(db.job_id, plugin_name, name, timestamp)
 
-        with cd_tmpdir():
-            # Copy extra inputs to temporary directory
+        with cd_tmpdir(cleanup=cleanup):
+            # Copy extra inputs to execution directory
             cwd = Path.cwd()
             for path in self.extra_inputs:
                 shutil.copy(str(path), str(cwd))  # Remove str() for Python 3.8+
