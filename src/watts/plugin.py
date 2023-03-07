@@ -80,8 +80,8 @@ class Plugin(ABC):
         verbose
             Whether to print execution information
         cleanup
-            Determines whether the temporary directory will be cleaned up after
-            execution.
+            Determines whether the temporary directory will be cleaned up
+            immediately after execution.
         **kwargs
             Keyword arguments passed to the `run` method
 
