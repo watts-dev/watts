@@ -1,12 +1,12 @@
 # SPDX-FileCopyrightText: 2022-2023 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
+import re
 from typing import List, Optional
 
 from uncertainties import ufloat
-# TODO: Remove dependence on OpenMC
-import openmc.data
 
+from .data import ATOMIC_SYMBOL, ATOMIC_NUMBER, isotopes
 from .fileutils import PathLike
 from .plugin import PluginGeneric, _find_executable
 from .results import Results
@@ -34,7 +34,7 @@ def expand_element(value, default_suffix=None):
 
         # Determine Z and A
         if zaid.isalpha():
-            Z = openmc.data.ATOMIC_NUMBER[zaid]
+            Z = ATOMIC_NUMBER[zaid]
             A = 0
         else:
             Z, A = divmod(int(zaid), 1000)
@@ -42,9 +42,9 @@ def expand_element(value, default_suffix=None):
         # Split into isotopes if natural element is given
         if A == 0:
             conc = float(conc)
-            symbol = openmc.data.ATOMIC_SYMBOL[Z]
-            for isotope, fraction in openmc.data.isotopes(symbol):
-                _, iso_A, _ = openmc.data.zam(isotope)
+            symbol = ATOMIC_SYMBOL[Z]
+            for isotope, fraction in isotopes(symbol):
+                iso_A = int(*re.match(rf'{symbol}(\d+)', isotope).groups())
                 lines.append(f"{Z}{iso_A:03}.{suffix} {conc * fraction}")
         else:
             lines.append(f"{zaid_with_suffix} {conc}")
