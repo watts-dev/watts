@@ -243,8 +243,8 @@ class PluginMCNP(PluginGeneric):
         Path to MCNP executable
     xsdir
         Path to the xsdir file used for natural element expansion. Defaults to
-        the file named 'xsdir' under the :envvar:`DATAPATH` environment
-        variable.
+        the file named 'xsdir' under the directory specified by the
+        :envvar:`DATAPATH` environment variable.
     extra_inputs
         List of extra (non-templated) input files that are needed
     extra_template_inputs

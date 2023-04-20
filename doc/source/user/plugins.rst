@@ -226,10 +226,11 @@ this can be changed if needed::
 Natural Element Expansion
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The :class:`~watts.PluginMCNP` allows you to specify natural elements in MCNP
-material definitions that are automatically expanded based on what naturally
-occurring isotopes appear in your xsdir file. In your templated MCNP input file,
-this feature can be utilized by adding a filter section:
+The :class:`~watts.PluginMCNP` class allows you to specify natural elements in
+MCNP material definitions that are automatically expanded based on what
+naturally occurring isotopes appear in your ``xsdir`` file. In your templated
+MCNP input file, this feature can be utilized by adding a `filter section
+<https://jinja.palletsprojects.com/en/3.1.x/templates/#id11>`_:
 
 .. code-block:: jinja
 
@@ -241,7 +242,7 @@ this feature can be utilized by adding a filter section:
     {% endfilter %}
 
 Natural elements can be represented using the standard ZAID identifiers as above
-(e.g., 26000 = natural iron) or using their atomic symbol:
+(e.g., 26000 represents natural iron) or using their atomic symbol:
 
 .. code-block:: jinja
 
@@ -264,10 +265,11 @@ what cross section suffix to apply by default when one is missing:
           Mo 0.02
     {% endfilter %}
 
-By default, :class:`~watts.PluginMCNP` will look the ``xsdir`` file found under
-the path specified by the :envvar:`DATAPATH` environment variable to determine
-what nuclides are available. However, you can explicitly specify a different
-``xsdir`` file at the time :class:`~watts.PluginMCNP` is instantiated::
+By default, :class:`~watts.PluginMCNP` will look for the ``xsdir`` file found
+under the directory specified by the :envvar:`DATAPATH` environment variable to
+determine what nuclides are available. However, you can explicitly specify a
+different ``xsdir`` file at the time :class:`~watts.PluginMCNP` is
+instantiated::
 
     mcnp_plugin = watts.PluginMCNP('mcnp_input', xsdir='xsdir_jendl5')
 
