@@ -128,7 +128,7 @@ def expand_element(xsdir: Optional[PathLike] = None):
 
 
 def _get_nuclides_from_xsdir(path: Optional[PathLike] = None) -> Dict[Tuple[int, str], List[str]]:
-    """Determine available ZAID identifiers from an MCNP xsdir file.
+    """Determine available nuclides from an MCNP xsdir file.
 
     Parameters
     ----------
