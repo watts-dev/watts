@@ -223,6 +223,54 @@ this can be changed if needed::
 
     mcnp_plugin = watts.PluginMCNP('mcnp_input', executable='mcnp5')
 
+Natural Element Expansion
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The :class:`~watts.PluginMCNP` allows you to specify natural elements in MCNP
+material definitions that are automatically expanded based on what naturally
+occurring isotopes appear in your xsdir file. In your templated MCNP input file,
+this feature can be utilized by adding a filter section:
+
+.. code-block:: jinja
+
+    {% filter expand_element %}
+    m1    24000.70c  0.17
+          26000.70c  0.79
+          28000.70c  0.10
+          42000.70c  0.02
+    {% endfilter %}
+
+Natural elements can be represented using the standard ZAID identifiers as above
+(e.g., 26000 = natural iron) or using their atomic symbol:
+
+.. code-block:: jinja
+
+    {% filter expand_element %}
+    m1    Cr.70c  0.17
+          Fe.70c  0.79
+          Ni.70c  0.10
+          Mo.70c  0.02
+    {% endfilter %}
+
+The ``expand_element`` custom filter also accepts a single argument specifying
+what cross section suffix to apply by default when one is missing:
+
+.. code-block:: jinja
+
+    {% filter expand_element('70c') %}
+    m1    Cr 0.17
+          Fe 0.79
+          Ni 0.10
+          Mo 0.02
+    {% endfilter %}
+
+By default, :class:`~watts.PluginMCNP` will look the ``xsdir`` file found under
+the path specified by the :envvar:`DATAPATH` environment variable to determine
+what nuclides are available. However, you can explicitly specify a different
+``xsdir`` file at the time :class:`~watts.PluginMCNP` is instantiated::
+
+    mcnp_plugin = watts.PluginMCNP('mcnp_input', xsdir='xsdir_jendl5')
+
 Serpent Plugin
 ++++++++++++++
 
@@ -377,23 +425,23 @@ detailed explanation on how to prepare the input files.
 ACCERT Plugin
 +++++++++++++
 
-The :class:`~watts.PluginACCERT` class enables simulations with the Algorithm for the 
-Capital Cost Estimation of Reactor Technologies (ACCERT) code using a templated input 
+The :class:`~watts.PluginACCERT` class enables simulations with the Algorithm for the
+Capital Cost Estimation of Reactor Technologies (ACCERT) code using a templated input
 file such as the following:
 
 .. code-block:: jinja
 
-    power(Thermal){ value = {{ thermal_power }}   unit = MW } 
-    power(Electric){ value = {{ electric_power }}   unit = MW } 
+    power(Thermal){ value = {{ thermal_power }}   unit = MW }
+    power(Electric){ value = {{ electric_power }}   unit = MW }
     l0COA(2){
         l1COA(21){
             l2COA(217){
-                total_cost{value =  {{ cost_217 }}  unit = dollar}       
-            } 
-        } 
-    } 
+                total_cost{value =  {{ cost_217 }}  unit = dollar}
+            }
+        }
+    }
 
-Before running the ACCERT plugin, the directory that the executable 'Main.py' 
+Before running the ACCERT plugin, the directory that the executable 'Main.py'
 must be set. This can be done by adding the ``ACCERT_DIR``
 variable to the environment::
 
@@ -406,7 +454,7 @@ Or the path to the ACCERT module can be specified explicitly::
         executable="/path/to/accert/src/Main.py"
     )
 
-    
+
 As with other plugins, :class:`~watts.PluginACCERT` is used by::
 
     accert_plugin = watts.PluginACCERT('accert_template')
