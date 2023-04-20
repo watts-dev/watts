@@ -14,85 +14,116 @@ from .plugin import PluginGeneric, _find_executable
 from .results import Results
 
 
-def expand_element(value, default_suffix=None):
-    values = value.split()
+def expand_element(xsdir: Optional[PathLike] = None):
+    def expand_element_inner(material: str, default_suffix: str = None) -> str:
+        """Expand elements in an MCNP material definition
 
-    # TODO: Allow xsdir to be specified
-    available_tables = get_tables_from_xsdir()
+        Parameters
+        ----------
+        material
+            String representing material definition
+        default_suffix
+            Cross section suffix used by default if none is provided
 
-    # Determine whether filter block includes start of material card
-    # TODO: Use regex to break into multiple material blocks?
-    if len(values) % 2 == 1:
-        mat_num, *values = values
-        start = f"{mat_num}    "
-    else:
-        start = "     "
+        Returns
+        -------
+        str
+            Material definition string with elements expanded
 
-    lines = []
-    for zaid_with_suffix, conc in zip(values[::2], values[1::2]):
-        # Determine ZAID and suffix used
-        zaid, *original_suffix = zaid_with_suffix.split('.')
-        if original_suffix and default_suffix is None:
-            suffix = original_suffix[0]
+        """
+        words = material.split()
+
+        # Note that the 'xsdir' variable is in an enclosing scope -- it gets
+        # passed in by PluginMCNP so that each instance of the plugin can
+        # uniquely set its own xsdir
+        available_nuclides = _get_nuclides_from_xsdir(xsdir)
+
+        # Determine whether filter block includes start of material card
+        # TODO: Use regex to break into multiple material blocks?
+        if len(words) % 2 == 1:
+            mat_num, *words = words
+            start = f"{mat_num}    "
         else:
-            suffix = default_suffix
+            start = "     "
 
-        # Determine Z and A
-        if zaid.isalpha():
-            Z = ATOMIC_NUMBER[zaid]
-            A = 0
-        else:
-            Z, A = divmod(int(zaid), 1000)
-
-        # Split into isotopes if natural element is given
-        if A == 0:
-            conc = float(conc)
-            symbol = ATOMIC_SYMBOL[Z]
-
-            # Determine what isotopes to add
-            available_isotopes = available_tables[Z, suffix]
-            natural_isotope_fractions = isotopes(symbol)
-            natural_isotopes = [isotope for isotope, _ in natural_isotope_fractions]
-            missing_isotopes = set(natural_isotopes) - set(available_isotopes)
-            if len(available_isotopes) == 1:
-                # Case 1 -- only a single isotope available. In this case, all
-                # the concentration goes to that single isotope
-                isotope_fractions = [(available_isotopes[0], 1.0)]
-            elif len(missing_isotopes) == 0:
-                # Case 2 -- all isotopes are available, use as is!
-                isotope_fractions = natural_isotope_fractions
-            elif len(missing_isotopes) == 1:
-                # Case 3 -- one missing isotope. In this case, lump it into
-                # whatever natural isotope has the highest abundance
-
-                # Determine which isotope has highest abundance
-                highest_item = max(natural_isotope_fractions, key=lambda x: x[1])
-                highest_index = natural_isotope_fractions.index(highest_item)
-
-                # Determine index/fraction of missing isotope
-                missing_item, = missing_isotopes
-                missing_index = natural_isotopes.index(missing_item)
-                missing_fraction = natural_isotope_fractions[missing_index][1]
-
-                # Replace missing isotope with highest abundance one
-                natural_isotope_fractions[highest_index] = (
-                    highest_item[0], highest_item[1] + missing_fraction)
-                natural_isotope_fractions.pop(missing_index)
-                isotope_fractions = natural_isotope_fractions
+        lines = []
+        for zaid_with_suffix, conc in zip(words[::2], words[1::2]):
+            # Determine ZAID and suffix used
+            zaid, *original_suffix = zaid_with_suffix.split('.')
+            if original_suffix and default_suffix is None:
+                suffix = original_suffix[0]
             else:
-                raise ValueError(f"Could not expand {zaid}")
+                suffix = default_suffix
 
-            for isotope, fraction in isotope_fractions:
-                iso_A = int(*re.match(rf'{symbol}(\d+)', isotope).groups())
-                lines.append(f"{Z}{iso_A:03}.{suffix} {conc * fraction}")
-        else:
-            lines.append(f"{zaid_with_suffix} {conc}")
+            # Determine Z and A
+            if zaid.isalpha():
+                Z = ATOMIC_NUMBER[zaid]
+                A = 0
+            else:
+                Z, A = divmod(int(zaid), 1000)
 
-    return start + "\n     ".join(lines)
+            # Split into isotopes if natural element is given
+            if A == 0:
+                conc = float(conc)
+                symbol = ATOMIC_SYMBOL[Z]
+
+                # Determine what isotopes to add
+                available_isotopes = available_nuclides.get((Z, suffix), [])
+                natural_isotope_fractions = isotopes(symbol)
+                natural_isotopes = [isotope for isotope, _ in natural_isotope_fractions]
+                missing_isotopes = set(natural_isotopes) - set(available_isotopes)
+                if len(natural_isotopes) == 0:
+                    # No natural isotopes, can not expand
+                    raise ValueError(
+                        f"{zaid_with_suffix} cannot be expanded because it has "
+                        "no naturally occurring isotopes.")
+                if len(available_isotopes) == 1:
+                    # Case 1 -- only a single isotope available. In this case, all
+                    # the concentration goes to that single isotope
+                    isotope_fractions = [(available_isotopes[0], 1.0)]
+                elif len(missing_isotopes) == 0:
+                    # Case 2 -- all isotopes are available, use as is!
+                    isotope_fractions = natural_isotope_fractions
+                elif available_isotopes == ['C0', 'C13']:
+                    # Case 3 -- special case in JEFF 3.3 where both elemental C
+                    # and isotopic C13 are available
+                    isotope_fractions = [('C0', 1.0)]
+                elif len(missing_isotopes) == 1:
+                    # Case 4 -- one missing isotope. In this case, lump it into
+                    # whatever natural isotope has the highest abundance
+
+                    # Determine which isotope has highest abundance
+                    highest_item = max(natural_isotope_fractions, key=lambda x: x[1])
+                    highest_index = natural_isotope_fractions.index(highest_item)
+
+                    # Determine index/fraction of missing isotope
+                    missing_item, = missing_isotopes
+                    missing_index = natural_isotopes.index(missing_item)
+                    missing_fraction = natural_isotope_fractions[missing_index][1]
+
+                    # Replace missing isotope with highest abundance one
+                    natural_isotope_fractions[highest_index] = (
+                        highest_item[0], highest_item[1] + missing_fraction)
+                    natural_isotope_fractions.pop(missing_index)
+                    isotope_fractions = natural_isotope_fractions
+                else:
+                    raise ValueError(
+                        f"Could not expand {zaid}; no corresponding isotopes "
+                        f"found in xsdir file.")
+
+                for isotope, fraction in isotope_fractions:
+                    iso_A = int(*re.match(rf'{symbol}(\d+)', isotope).groups())
+                    lines.append(f"{Z}{iso_A:03}.{suffix} {conc * fraction}")
+            else:
+                lines.append(f"{zaid_with_suffix} {conc}")
+
+        return start + "\n     ".join(lines)
+
+    return expand_element_inner
 
 
-def get_tables_from_xsdir(path: Optional[PathLike] = None) -> Dict[Tuple[int, str], List[str]]:
-    """Determine paths to ACE files from an MCNP xsdir file.
+def _get_nuclides_from_xsdir(path: Optional[PathLike] = None) -> Dict[Tuple[int, str], List[str]]:
+    """Determine available ZAID identifiers from an MCNP xsdir file.
 
     Parameters
     ----------
@@ -102,7 +133,7 @@ def get_tables_from_xsdir(path: Optional[PathLike] = None) -> Dict[Tuple[int, st
     Returns
     -------
     dict
-        Dictionary mapping (Z, suffix) to a list of ZAID identifiers
+        Dictionary mapping (Z, suffix) to a list of available nuclides
     """
     if path is None:
         datapath = os.environ.get('DATAPATH')
@@ -199,6 +230,8 @@ class PluginMCNP(PluginGeneric):
         Templated MCNP input
     executable
         Path to MCNP executable
+    xsdir
+        Path to xsdir cross section directory file
     extra_inputs
         List of extra (non-templated) input files that are needed
     extra_template_inputs
@@ -221,6 +254,7 @@ class PluginMCNP(PluginGeneric):
         self,
         template_file: str,
         executable: PathLike = 'mcnp6',
+        xsdir: Optional[PathLike] = None,
         extra_inputs: Optional[List[str]] = None,
         extra_template_inputs: Optional[List[PathLike]] = None,
         show_stdout: bool = False,
@@ -234,6 +268,6 @@ class PluginMCNP(PluginGeneric):
         self.input_name = "mcnp_input"
 
         # Add custom 'expand_element' Jinja filter
-        self.render_template.environment.filters['expand_element'] = expand_element
+        self.render_template.environment.filters['expand_element'] = expand_element(xsdir)
         for renderer in self.extra_render_templates:
-            renderer.environment.filters['expand_element'] = expand_element
+            renderer.environment.filters['expand_element'] = expand_element(xsdir)
