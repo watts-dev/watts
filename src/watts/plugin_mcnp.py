@@ -50,10 +50,15 @@ def expand_element(xsdir: Optional[PathLike] = None):
         for zaid_with_suffix, conc in zip(words[::2], words[1::2]):
             # Determine ZAID and suffix used
             zaid, *original_suffix = zaid_with_suffix.split('.')
-            if original_suffix and default_suffix is None:
-                suffix = original_suffix[0]
-            else:
+
+            # If no '.' is present, original suffix is empty. If '.' is present
+            # but no suffix afterward, original_surffix has a single empty
+            # string. For either of these cases, use the default suffix
+            no_suffix = (not original_suffix or not original_suffix[0])
+            if no_suffix and default_suffix is not None:
                 suffix = default_suffix
+            else:
+                suffix = original_suffix[0]
 
             # Determine Z and A
             if zaid.isalpha():
@@ -224,6 +229,12 @@ class ResultsMCNP(Results):
 class PluginMCNP(PluginGeneric):
     """Plugin for running MCNP
 
+    In addition to the basic capability to use placeholders in MCNP input files,
+    this class also provides a custom Jinja filter called ``expand_element``
+    that allows you to specify natural elements in MCNP material definitions and
+    have them automatically expanded based on what isotopes appear in the xsdir
+    file.
+
     Parameters
     ----------
     template_file
@@ -231,7 +242,9 @@ class PluginMCNP(PluginGeneric):
     executable
         Path to MCNP executable
     xsdir
-        Path to xsdir cross section directory file
+        Path to the xsdir file used for natural element expansion. Defaults to
+        the file named 'xsdir' under the :envvar:`DATAPATH` environment
+        variable.
     extra_inputs
         List of extra (non-templated) input files that are needed
     extra_template_inputs

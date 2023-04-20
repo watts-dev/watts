@@ -76,18 +76,18 @@ def test_expand_element(run_in_tmpdir, suffix, element, iso_right, iso_wrong):
 
     for elem in element:
         # Expand element in material definition
-        expanded_mat = expand(f"{elem}.{suffix} 1.0")
+        mat = expand(f"{elem}.{suffix} 1.0")
 
         # Ensure isotopes that should be there actually are
         for iso in iso_right:
-            assert f'{iso}.{suffix}' in expanded_mat
+            assert f'{iso}.{suffix}' in mat
 
         # Ensure isotopes that shouldn't be there are not
         for iso in iso_wrong:
-            assert f'{iso}.{suffix}' not in expanded_mat
+            assert f'{iso}.{suffix}' not in mat
 
         # fraction should add up to 1.0
-        total = sum(float(x) for x in expanded_mat.split()[1::2])
+        total = sum(float(x) for x in mat.split()[1::2])
         assert total == pytest.approx(1.0)
 
 
@@ -102,38 +102,38 @@ def test_expand_material(temporary_xsdir):
     expand = expand_element('xsdir')
 
     # Expanding N should give N14 and N!5
-    expanded_mat = expand("7000.70c 1.0").split()
-    assert len(expanded_mat) == 4
-    assert expanded_mat[0] == '7014.70c'
-    assert expanded_mat[2] == '7015.70c'
+    mat = expand("7000.70c 1.0").split()
+    assert len(mat) == 4
+    assert mat[0] == '7014.70c'
+    assert mat[2] == '7015.70c'
 
     # Check that material card is handled correctly
-    expanded_mat = expand('m10   7000.70c 1.0').split()
-    assert len(expanded_mat) == 5
-    assert expanded_mat[1] == '7014.70c'
-    assert expanded_mat[3] == '7015.70c'
+    mat = expand('m10   7000.70c 1.0').split()
+    assert len(mat) == 5
+    assert mat[1] == '7014.70c'
+    assert mat[3] == '7015.70c'
 
 
 def test_expand_mix(temporary_xsdir):
     expand = expand_element('xsdir')
 
     # Expanding regular nuclide should do nothing
-    expanded_mat = expand('92235.70c 1.0').split()
-    assert expanded_mat == ['92235.70c', '1.0']
+    mat = expand('92235.70c 1.0').split()
+    assert mat == ['92235.70c', '1.0']
 
     # Expanding one isotope and one element should only expand element
-    expanded_mat = expand('92235.70c 1.0 7000.70c 1.0').split()
-    assert len(expanded_mat) == 6
-    assert expanded_mat[0] == '92235.70c'
-    assert expanded_mat[2] == '7014.70c'
-    assert expanded_mat[4] == '7015.70c'
+    mat = expand('92235.70c 1.0 7000.70c 1.0').split()
+    assert len(mat) == 6
+    assert mat[0] == '92235.70c'
+    assert mat[2] == '7014.70c'
+    assert mat[4] == '7015.70c'
 
     # Also check when material card is present
-    expanded_mat = expand('m5   92235.70c 1.0 7000.70c 1.0').split()
-    assert len(expanded_mat) == 7
-    assert expanded_mat[1] == '92235.70c'
-    assert expanded_mat[3] == '7014.70c'
-    assert expanded_mat[5] == '7015.70c'
+    mat = expand('m5   92235.70c 1.0 7000.70c 1.0').split()
+    assert len(mat) == 7
+    assert mat[1] == '92235.70c'
+    assert mat[3] == '7014.70c'
+    assert mat[5] == '7015.70c'
 
 
 def test_not_naturally_occurring(temporary_xsdir):
@@ -141,3 +141,18 @@ def test_not_naturally_occurring(temporary_xsdir):
 
     with pytest.raises(ValueError):
         expand('94000.70c 1.0')
+
+
+def test_default_suffix(temporary_xsdir):
+    expand = expand_element('xsdir')
+
+    for original in ('7000 1.0', '7000. 1.0', 'N. 1.0', 'N 1.0'):
+        mat = expand(original, '70c').split()
+        assert len(mat) == 4
+        assert mat[0] == '7014.70c'
+        assert mat[2] == '7015.70c'
+
+    # Default suffix shouldn't override existing
+    mat = expand('7000.70c 1.0', '80c').split()
+    assert mat[0] == '7014.70c'
+    assert mat[2] == '7015.70c'
