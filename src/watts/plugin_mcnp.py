@@ -70,6 +70,10 @@ def expand_element(xsdir: Optional[PathLike] = None):
             # Split into isotopes if natural element is given
             if A == 0:
                 conc = float(conc)
+                if conc < 0:
+                    raise ValueError("Expanding elements not yet supported for "
+                                     "materials with weight fractions.")
+
                 symbol = ATOMIC_SYMBOL[Z]
 
                 # Determine what isotopes to add

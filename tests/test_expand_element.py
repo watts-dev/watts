@@ -92,67 +92,65 @@ def test_expand_element(run_in_tmpdir, suffix, element, iso_right, iso_wrong):
 
 
 @pytest.fixture
-def temporary_xsdir(run_in_tmpdir):
+def expand_func(run_in_tmpdir):
     with open('xsdir', 'w') as fh:
         fh.write(xsdir['70c'])
-    yield
+    yield expand_element('xsdir')
 
 
-def test_expand_material(temporary_xsdir):
-    expand = expand_element('xsdir')
-
+def test_expand_material(expand_func):
     # Expanding N should give N14 and N!5
-    mat = expand("7000.70c 1.0").split()
+    mat = expand_func("7000.70c 1.0").split()
     assert len(mat) == 4
     assert mat[0] == '7014.70c'
     assert mat[2] == '7015.70c'
 
     # Check that material card is handled correctly
-    mat = expand('m10   7000.70c 1.0').split()
+    mat = expand_func('m10   7000.70c 1.0').split()
     assert len(mat) == 5
     assert mat[1] == '7014.70c'
     assert mat[3] == '7015.70c'
 
 
-def test_expand_mix(temporary_xsdir):
-    expand = expand_element('xsdir')
-
+def test_expand_mix(expand_func):
     # Expanding regular nuclide should do nothing
-    mat = expand('92235.70c 1.0').split()
+    mat = expand_func('92235.70c 1.0').split()
     assert mat == ['92235.70c', '1.0']
 
     # Expanding one isotope and one element should only expand element
-    mat = expand('92235.70c 1.0 7000.70c 1.0').split()
+    mat = expand_func('92235.70c 1.0 7000.70c 1.0').split()
     assert len(mat) == 6
     assert mat[0] == '92235.70c'
     assert mat[2] == '7014.70c'
     assert mat[4] == '7015.70c'
 
     # Also check when material card is present
-    mat = expand('m5   92235.70c 1.0 7000.70c 1.0').split()
+    mat = expand_func('m5   92235.70c 1.0 7000.70c 1.0').split()
     assert len(mat) == 7
     assert mat[1] == '92235.70c'
     assert mat[3] == '7014.70c'
     assert mat[5] == '7015.70c'
 
 
-def test_not_naturally_occurring(temporary_xsdir):
-    expand = expand_element('xsdir')
-
+def test_not_naturally_occurring(expand_func):
     with pytest.raises(ValueError):
-        expand('94000.70c 1.0')
+        expand_func('94000.70c 1.0')
 
 
-def test_default_suffix(temporary_xsdir):
-    expand = expand_element('xsdir')
-
+def test_default_suffix(expand_func):
     for original in ('7000 1.0', '7000. 1.0', 'N. 1.0', 'N 1.0'):
-        mat = expand(original, '70c').split()
+        mat = expand_func(original, '70c').split()
         assert len(mat) == 4
         assert mat[0] == '7014.70c'
         assert mat[2] == '7015.70c'
 
     # Default suffix shouldn't override existing
-    mat = expand('7000.70c 1.0', '80c').split()
+    mat = expand_func('7000.70c 1.0', '80c').split()
     assert mat[0] == '7014.70c'
     assert mat[2] == '7015.70c'
+
+
+def test_weight_fraction(expand_func):
+    # Weight fractions not yet supported
+    with pytest.raises(ValueError):
+        expand_func('6000.70c -0.50')
