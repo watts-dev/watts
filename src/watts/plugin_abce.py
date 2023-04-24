@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2022-2023 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
+from pathlib import Path
 import sys
 from typing import List, Optional
 
@@ -53,6 +54,16 @@ class PluginABCE(PluginGeneric):
             executable, execute_command, template_file, extra_inputs,
             extra_template_inputs, 'ABCE', show_stdout, show_stderr)
         self.input_name = 'settings.yml'
+
+    @PluginGeneric.executable.setter
+    def executable(self, exe: PathLike):
+        if not exe.is_file():
+            raise RuntimeError(
+                f"{self.plugin_name} script '{exe}' does not exist. The "
+                "ABCE_DIR environment variable needs to be set to a directory "
+                "containing the run.py script."
+            )
+        self._executable = Path(exe)
 
 
 class ResultsABCE(Results):
