@@ -154,3 +154,18 @@ def test_weight_fraction(expand_func):
     # Weight fractions not yet supported
     with pytest.raises(ValueError):
         expand_func('6000.70c -0.50')
+
+
+def test_comment(expand_func):
+    # Full line comment
+    mat = expand_func('C.70c 1.0\nc ignore\nN.70c 1.0').split()
+    assert mat[0] == '6000.70c'
+    assert mat[3] == 'ignore'
+    assert mat[4] == '7014.70c'
+    assert mat[6] == '7015.70c'
+
+    # End of line comment
+    mat = expand_func('C.70c 1.0 $ oxygen\nN.70c 1.0 $ nitrogen').split()
+    assert mat[0] == '6000.70c'
+    assert mat[2] == '7014.70c'
+    assert mat[4] == '7015.70c'

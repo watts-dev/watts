@@ -31,102 +31,120 @@ def expand_element(xsdir: Optional[PathLike] = None):
             Material definition string with elements expanded
 
         """
-        words = material.split()
+        lines_in = material.split('\n')
 
         # Note that the 'xsdir' variable is in an enclosing scope -- it gets
         # passed in by PluginMCNP so that each instance of the plugin can
         # uniquely set its own xsdir
         available_nuclides = _get_nuclides_from_xsdir(xsdir)
 
-        # Determine whether filter block includes start of material card
-        # TODO: Use regex to break into multiple material blocks?
-        if len(words) % 2 == 1:
-            mat_num, *words = words
-            start = f"{mat_num}    "
-        else:
-            start = "     "
+        lines_out = []
+        for line in lines_in:
+            # If the line is a comment, don't modify it
+            if re.match('^[ ]*[Cc] ', line):
+                lines_out.append(line)
+                continue
 
-        lines = []
-        for zaid_with_suffix, conc in zip(words[::2], words[1::2]):
-            # Determine ZAID and suffix used
-            zaid, *original_suffix = zaid_with_suffix.split('.')
+            # Ignore end-of-line comments
+            index_comment = line.find('$')
+            if index_comment != -1:
+                line = line[:index_comment]
 
-            # If no '.' is present, original suffix is empty. If '.' is present
-            # but no suffix afterward, original_surffix has a single empty
-            # string. For either of these cases, use the default suffix
-            no_suffix = (not original_suffix or not original_suffix[0])
-            if no_suffix and default_suffix is not None:
-                suffix = default_suffix
-            else:
-                suffix = original_suffix[0]
-
-            # Determine Z and A
-            if zaid.isalpha():
-                Z = ATOMIC_NUMBER[zaid]
-                A = 0
-            else:
-                Z, A = divmod(int(zaid), 1000)
-
-            # Split into isotopes if natural element is given
-            if A == 0:
-                conc = float(conc)
-                if conc < 0:
-                    raise ValueError("Expanding elements not yet supported for "
-                                     "materials with weight fractions.")
-
-                symbol = ATOMIC_SYMBOL[Z]
-
-                # Determine what isotopes to add
-                available_isotopes = available_nuclides.get((Z, suffix), [])
-                natural_isotope_fractions = isotopes(symbol)
-                natural_isotopes = [isotope for isotope, _ in natural_isotope_fractions]
-                missing_isotopes = set(natural_isotopes) - set(available_isotopes)
-                if len(natural_isotopes) == 0:
-                    # No natural isotopes, can not expand
-                    raise ValueError(
-                        f"{zaid_with_suffix} cannot be expanded because it has "
-                        "no naturally occurring isotopes.")
-                if len(available_isotopes) == 1:
-                    # Case 1 -- only a single isotope available. In this case, all
-                    # the concentration goes to that single isotope
-                    isotope_fractions = [(available_isotopes[0], 1.0)]
-                elif len(missing_isotopes) == 0:
-                    # Case 2 -- all isotopes are available, use as is!
-                    isotope_fractions = natural_isotope_fractions
-                elif available_isotopes == ['C0', 'C13']:
-                    # Case 3 -- special case in JEFF 3.3 where both elemental C
-                    # and isotopic C13 are available
-                    isotope_fractions = [('C0', 1.0)]
-                elif len(missing_isotopes) == 1:
-                    # Case 4 -- one missing isotope. In this case, lump it into
-                    # whatever natural isotope has the highest abundance
-
-                    # Determine which isotope has highest abundance
-                    highest_item = max(natural_isotope_fractions, key=lambda x: x[1])
-                    highest_index = natural_isotope_fractions.index(highest_item)
-
-                    # Determine index/fraction of missing isotope
-                    missing_item, = missing_isotopes
-                    missing_index = natural_isotopes.index(missing_item)
-                    missing_fraction = natural_isotope_fractions[missing_index][1]
-
-                    # Replace missing isotope with highest abundance one
-                    natural_isotope_fractions[highest_index] = (
-                        highest_item[0], highest_item[1] + missing_fraction)
-                    natural_isotope_fractions.pop(missing_index)
-                    isotope_fractions = natural_isotope_fractions
+            words = line.split()
+            i = 0
+            while i < len(words):
+                # Determine whether line includes start of material card
+                if re.match(r'[Mm]\d+', words[i]):
+                    start = f'{words[i]:<4} '
+                    i += 1
                 else:
-                    raise ValueError(
-                        f"Could not expand {zaid}; no corresponding isotopes "
-                        f"found in xsdir file.")
+                    start = '     '
 
-                for isotope, fraction in isotope_fractions:
-                    iso_A = int(*re.match(rf'{symbol}(\d+)', isotope).groups())
-                    lines.append(f"{Z}{iso_A:03}.{suffix} {conc * fraction}")
-            else:
-                lines.append(f"{zaid_with_suffix} {conc}")
+                zaid_with_suffix = words[i]
+                conc = words[i + 1]
+                i += 2
 
-        return start + "\n     ".join(lines)
+                # Determine ZAID and suffix used
+                zaid, *original_suffix = zaid_with_suffix.split('.')
+
+                # If no '.' is present, original suffix is empty. If '.' is present
+                # but no suffix afterward, original_surffix has a single empty
+                # string. For either of these cases, use the default suffix
+                no_suffix = (not original_suffix or not original_suffix[0])
+                if no_suffix and default_suffix is not None:
+                    suffix = default_suffix
+                else:
+                    suffix = original_suffix[0]
+
+                # Determine Z and A
+                if zaid.isalpha():
+                    Z = ATOMIC_NUMBER[zaid]
+                    A = 0
+                else:
+                    Z, A = divmod(int(zaid), 1000)
+
+                # Split into isotopes if natural element is given
+                if A == 0:
+                    conc = float(conc)
+                    if conc < 0:
+                        raise ValueError("Expanding elements not yet supported for "
+                                         "materials with weight fractions.")
+                    symbol = ATOMIC_SYMBOL[Z]
+
+                    # Determine what isotopes to add
+                    available_isotopes = available_nuclides.get((Z, suffix), [])
+                    natural_isotope_fractions = isotopes(symbol)
+                    natural_isotopes = [isotope for isotope, _ in natural_isotope_fractions]
+                    missing_isotopes = set(natural_isotopes) - set(available_isotopes)
+                    if len(natural_isotopes) == 0:
+                        # No natural isotopes, can not expand
+                        raise ValueError(
+                            f"{zaid_with_suffix} cannot be expanded because it has "
+                            "no naturally occurring isotopes.")
+                    if len(available_isotopes) == 1:
+                        # Case 1 -- only a single isotope available. In this case, all
+                        # the concentration goes to that single isotope
+                        isotope_fractions = [(available_isotopes[0], 1.0)]
+                    elif len(missing_isotopes) == 0:
+                        # Case 2 -- all isotopes are available, use as is!
+                        isotope_fractions = natural_isotope_fractions
+                    elif available_isotopes == ['C0', 'C13']:
+                        # Case 3 -- special case in JEFF 3.3 where both elemental C
+                        # and isotopic C13 are available
+                        isotope_fractions = [('C0', 1.0)]
+                    elif len(missing_isotopes) == 1:
+                        # Case 4 -- one missing isotope. In this case, lump it into
+                        # whatever natural isotope has the highest abundance
+
+                        # Determine which isotope has highest abundance
+                        highest_item = max(natural_isotope_fractions, key=lambda x: x[1])
+                        highest_index = natural_isotope_fractions.index(highest_item)
+
+                        # Determine index/fraction of missing isotope
+                        missing_item, = missing_isotopes
+                        missing_index = natural_isotopes.index(missing_item)
+                        missing_fraction = natural_isotope_fractions[missing_index][1]
+
+                        # Replace missing isotope with highest abundance one
+                        natural_isotope_fractions[highest_index] = (
+                            highest_item[0], highest_item[1] + missing_fraction)
+                        natural_isotope_fractions.pop(missing_index)
+                        isotope_fractions = natural_isotope_fractions
+                    else:
+                        raise ValueError(
+                            f"Could not expand {zaid}; no corresponding isotopes "
+                            f"found in xsdir file.")
+
+                    for isotope, fraction in isotope_fractions:
+                        iso_A = int(*re.match(rf'{symbol}(\d+)', isotope).groups())
+                        lines_out.append(f"{start}{Z}{iso_A:03}.{suffix} {conc * fraction}")
+
+                        # Prevent 'm#' from being written multiple times
+                        start = '     '
+                else:
+                    lines_out.append(f"{start}{zaid_with_suffix} {conc}")
+
+        return "\n".join(lines_out)
 
     return expand_element_inner
 
