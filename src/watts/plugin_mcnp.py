@@ -8,8 +8,8 @@ from typing import List, Optional, Dict, Tuple
 
 from uncertainties import ufloat
 
-from .data import ATOMIC_SYMBOL, ATOMIC_NUMBER, isotopes
 from .fileutils import PathLike
+from .fundamental_data import ATOMIC_SYMBOL, ATOMIC_NUMBER, isotopes
 from .plugin import PluginGeneric, _find_executable
 from .results import Results
 
