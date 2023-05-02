@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 * Support for natural element expansion in `PluginMCNP`
   ([#93](https://github.com/watts-dev/watts/pull/93))
 
+### Fixed
+
+* Fix setting of executable for `PluginABCE` ([#94](https://github.com/watts-dev/watts/pull/94))
+
 ## [0.5.0]
 
 ### Added
