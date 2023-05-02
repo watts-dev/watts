@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 * The `Plugin.__call__` method now supports a `cleanup` argument
   ([#92](https://github.com/watts-dev/watts/pull/92))
+* Support for natural element expansion in `PluginMCNP`
+  ([#93](https://github.com/watts-dev/watts/pull/93))
 
 ## [0.5.0]
 

@@ -4,10 +4,11 @@ Bare Pu-239 Jezebel
 
 1    so   {{ radius }}
 
+{% filter expand_element %}
 m1   94239.70c 0.037047
      94240.70c 0.0017512
      94241.70c 0.00011674
-     31069.70c 8.26605216e-4
-     31071.70c 5.48594784e-4
+     Ga.70c    1.3752e-3
+{% endfilter %}
 kcode 10000 1.0 20 220
 ksrc 0 0 0
