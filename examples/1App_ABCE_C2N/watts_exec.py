@@ -25,8 +25,8 @@ watts.Database.set_default_path(results_path)
 params = watts.Parameters()
 
 # Set up parameter lists
-PTC_qty_list = np.linspace(start=0, stop=30, num=2) # $/MWh
-peak_demand_list = np.linspace(start=76000, stop=80000, num=2)
+PTC_qty_list = np.linspace(start=0, stop=30, num=2)  # $/MWh
+peak_demand_list = np.linspace(start=76000, stop=80000, num=2)  # MWh
 
 
 # Start the runs
@@ -40,7 +40,9 @@ for PTC_qty in PTC_qty_list:
 
         params.show_summary(show_metadata=True, sort_by="key")
 
-        abce_plugin = watts.PluginABCE(template_name, show_stdout=True, show_stderr=True)
+        abce_plugin = watts.PluginABCE(
+            template_name, show_stdout=True, show_stderr=True
+        )
 
         abce_result = abce_plugin(params, extra_args=["-f"])
 
