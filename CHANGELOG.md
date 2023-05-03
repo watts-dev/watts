@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 
 * Fix setting of executable for `PluginABCE` ([#94](https://github.com/watts-dev/watts/pull/94))
+* Updated example case for `PluginABCE` ([#97](https://github.com/watts-dev/watts/pull/97))
 
 ## [0.5.0]
 
