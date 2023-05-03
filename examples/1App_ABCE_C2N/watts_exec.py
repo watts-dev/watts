@@ -11,41 +11,39 @@ import watts
 from pathlib import Path
 import numpy as np
 import time
+import logging
 
 
-n_steps = 2
-
-params = watts.Parameters()
-params['NFOM_VALUE'] = "ATB"
-params['N_STEPS'] = n_steps
-params['run_ALEAF'] = "False"
-
+# Initialize settings
 template_name = "abce_template.txt"
-results_path = Path.cwd() / 'results' / f"{n_steps}_periods_ALEAF_{params['run_ALEAF']}_99"
+results_path = Path.cwd() / "results" / "ABCE_C2N_example"
 results_path.mkdir(exist_ok=True, parents=True)
 
 watts.Database.set_default_path(results_path)
 
-average_ngp = 5  # $/mmbtu
-variance_ngp = 2
-n_samples = 12
+# Initialize parameterization
+params = watts.Parameters()
 
+# Set up parameter lists
+PTC_qty_list = np.linspace(start=0, stop=30, num=2) # $/MWh
+peak_demand_list = np.linspace(start=76000, stop=80000, num=2)
+
+
+# Start the runs
 start = time.perf_counter()
 
-np.random.seed(12345)
-ngp_list = np.array([2.0, 3.5, 5.5, 8.5]) # $/mmbtu
-# nfom_list = np.linspace(start=40, stop=500, num=n_samples) # $/MWh
-ptc_list = np.linspace(start=0, stop=30, num=n_samples) # $/MWh
+for PTC_qty in PTC_qty_list:
+    params["PTC_qty"] = PTC_qty
 
-for i, n in enumerate(ngp_list): # loop through all of the natural gas prices
-    params['NATURAL_GAS_PRICE'] = n
-    for j, p in enumerate(ptc_list):
-        params['PTC_VALUE'] = p
-        params['DATABASE_NAME'] = f'NG_PTC_run_4{i}{j}_pd{n_steps}.db'
-        params.show_summary(show_metadata=True, sort_by='key')
-        abce_plugin = watts.PluginABCE(f'{template_name}', show_stdout=True, show_stderr=True)
-        abce_result = abce_plugin(params, extra_args=['-f'])
+    for peak_demand in peak_demand_list:
+        params["peak_demand"] = peak_demand
+
+        params.show_summary(show_metadata=True, sort_by="key")
+
+        abce_plugin = watts.PluginABCE(template_name, show_stdout=True, show_stderr=True)
+
+        abce_result = abce_plugin(params, extra_args=["-f"])
 
 end = time.perf_counter()
 
-print(f'TOTAL SIMULATION TIME: {np.round(end-start)/60} minutes')
+logging.info(f"TOTAL SIMULATION TIME: {np.round(end-start)/60} minutes")
