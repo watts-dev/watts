@@ -156,8 +156,8 @@ prop1,prop2
 
     # Other attributes
     assert results.stdout == 'SAS standard out\n'
-    np.testing.assert_equal(results.csv_data['prop1'], [3.5, 4.0, 5.0])
-    np.testing.assert_equal(results.csv_data['prop2'], [1, 2, 3])
+    np.testing.assert_equal(results.csv_data['SAS_csv']['prop1'], [3.5, 4.0, 5.0])
+    np.testing.assert_equal(results.csv_data['SAS_csv']['prop2'], [1, 2, 3])
 
     # Saving
     p = Path('myresults.pkl')

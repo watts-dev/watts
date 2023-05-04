@@ -56,9 +56,15 @@ class ResultsSAS(Results):
         csv_data = {}
         for file in csv_files:
             if os.path.getsize(file) > 0: # Check if file is empty
+                csv_data_sub = {}
                 csv_file_df = pd.read_csv(file)
+
                 for column_name in csv_file_df.columns:
-                    csv_data[column_name] =  np.array(csv_file_df[column_name])
+                    csv_data_sub[column_name] =  np.array(csv_file_df[column_name])
+
+                csv_data[file[:-4]] = csv_data_sub # Save sub dictionary as csv file name
+                                                   # Removed .csv extension from file name
+
         return csv_data
 
 
