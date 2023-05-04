@@ -162,6 +162,13 @@ By default, the plugin will try to find these utilities based on the location of
 the SAS executable. To execute SAS, the :meth:`~watts.PluginSAS` instance is
 called directly in the same way as other plugins.
 
+The SAS plugin can sometimes generates multiple ".csv" files. The data from each ".csv"
+file are saved into an individual dictionary named after the file, and these
+individual dictionaries are saved under `csv_data`. To access a specific data, you
+can do::
+
+    sas_result.csv_data['name_of_csv_file']['name_of_specific_data']
+
 RELAP5-3D Plugin
 ++++++++++++++++
 
