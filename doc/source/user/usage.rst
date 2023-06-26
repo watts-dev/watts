@@ -37,10 +37,7 @@ object::
         values=[10.0, 20.0, 0.05]
     )
 
-Most native Python datatypes (:class:`int`, :class:`float`, :class:`bool`,
-:class:`str`, :class:`list`, :class:`set`, :class:`tuple`, :class:`dict`) are
-supported along with :class:`NumPy arrays <numpy.ndarray>` as well. Parameters
-can be saved to a pickle file::
+Parameters can be saved to a pickle file::
 
     params.save('parameters.pkl')
 
