@@ -4,6 +4,8 @@ from watts.plugin_mcnp import expand_element
 
 endf70_xsdir = """
 directory
+3006.70c 5.963400 endf70a
+3007.70c 6.955732 endf70a
 6000.70c 11.898000 endf70a
 7014.70c 13.882780 endf70a
 7015.70c 14.871000 endf70a
@@ -151,9 +153,16 @@ def test_default_suffix(expand_func):
 
 
 def test_weight_fraction(expand_func):
-    # Weight fractions not yet supported
-    with pytest.raises(ValueError):
-        expand_func('6000.70c -0.50')
+    mat = expand_func('3000.70c -0.50').split()
+
+    # Expanded weight fractions should sum to original
+    li6 = float(mat[1])
+    li7 = float(mat[3])
+    assert li6 + li7 == pytest.approx(-0.5)
+
+    # Compare to reference values
+    assert li6 == pytest.approx(-0.032887940211919174)
+    assert li7 == pytest.approx(-0.46711205978808085)
 
 
 def test_comment(expand_func):
