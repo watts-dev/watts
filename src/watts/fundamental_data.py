@@ -26,8 +26,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
+import itertools
 import re
-from typing import List, Tuple
+from pathlib import Path
+from typing import List, Tuple, Dict
 
 
 ATOMIC_SYMBOL = {
@@ -188,3 +190,42 @@ def isotopes(element: str) -> List[Tuple[str, float]]:
         if re.match(r'{}\d+'.format(element), kv[0]):
             result.append(kv)
     return result
+
+
+# Used in atomic_mass function as a cache
+_ATOMIC_MASS: Dict[str, float] = {}
+
+
+def atomic_mass(nuclide):
+    """Return atomic mass of isotope in atomic mass units.
+
+    Atomic mass data comes from the `Atomic Mass Evaluation 2020
+    <https://doi.org/10.1088/1674-1137/abddaf>`_.
+
+    Parameters
+    ----------
+    nuclide : str
+        Name of nuclide, e.g., 'Pu239'
+
+    Returns
+    -------
+    float
+        Atomic mass of nuclide in [amu]
+
+    """
+    if not _ATOMIC_MASS:
+        # Load data from AME2020 file
+        mass_file = Path(__file__).with_name('mass_1.mas20.txt')
+        with mass_file.open('r') as ame:
+            # Read lines in file starting at line 37
+            for line in itertools.islice(ame, 36, None):
+                name = f'{line[20:22].strip()}{int(line[16:19])}'
+                mass = float(line[106:109]) + 1e-6*float(
+                    line[110:116] + '.' + line[117:123])
+                _ATOMIC_MASS[name.lower()] = mass
+
+    # Get rid of metastable information
+    if '_' in nuclide:
+        nuclide = nuclide[:nuclide.find('_')]
+
+    return _ATOMIC_MASS[nuclide.lower()]
