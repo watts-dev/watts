@@ -242,10 +242,10 @@ MCNP input file, this feature can be utilized by adding a `filter section
 .. code-block:: jinja
 
     {% filter expand_element %}
-    m1    24000.70c  0.17
-          26000.70c  0.79
-          28000.70c  0.10
-          42000.70c  0.02
+    m1    24000.70c  -0.17
+          26000.70c  -0.79
+          28000.70c  -0.10
+          42000.70c  -0.02
     {% endfilter %}
 
 Natural elements can be represented using the standard ZAID identifiers as above
@@ -254,10 +254,10 @@ Natural elements can be represented using the standard ZAID identifiers as above
 .. code-block:: jinja
 
     {% filter expand_element %}
-    m1    Cr.70c  0.17
-          Fe.70c  0.79
-          Ni.70c  0.10
-          Mo.70c  0.02
+    m1    Cr.70c  -0.17
+          Fe.70c  -0.79
+          Ni.70c  -0.10
+          Mo.70c  -0.02
     {% endfilter %}
 
 The ``expand_element`` custom filter also accepts a single argument specifying
@@ -266,10 +266,10 @@ what cross section suffix to apply by default when one is missing:
 .. code-block:: jinja
 
     {% filter expand_element('70c') %}
-    m1    Cr 0.17
-          Fe 0.79
-          Ni 0.10
-          Mo 0.02
+    m1    Cr  -0.17
+          Fe  -0.79
+          Ni  -0.10
+          Mo  -0.02
     {% endfilter %}
 
 By default, :class:`~watts.PluginMCNP` will look for the ``xsdir`` file found
