@@ -9,7 +9,7 @@ from typing import List, Optional, Dict, Tuple
 from uncertainties import ufloat
 
 from .fileutils import PathLike
-from .fundamental_data import ATOMIC_SYMBOL, ATOMIC_NUMBER, isotopes
+from .fundamental_data import ATOMIC_SYMBOL, ATOMIC_NUMBER, isotopes, atomic_mass
 from .plugin import PluginGeneric, _find_executable
 from .results import Results
 
@@ -86,9 +86,7 @@ def expand_element(xsdir: Optional[PathLike] = None):
                 # Split into isotopes if natural element is given
                 if A == 0:
                     conc = float(conc)
-                    if conc < 0:
-                        raise ValueError("Expanding elements not yet supported for "
-                                         "materials with weight fractions.")
+                    weight_percent = conc < 0
                     symbol = ATOMIC_SYMBOL[Z]
 
                     # Determine what isotopes to add
@@ -134,6 +132,15 @@ def expand_element(xsdir: Optional[PathLike] = None):
                         raise ValueError(
                             f"Could not expand {zaid}; no corresponding isotopes "
                             f"found in xsdir file.")
+
+                    if weight_percent:
+                        # Convert molar fractions to mass fractions
+                        total = sum([fraction*atomic_mass(isotope)
+                                     for isotope, fraction in isotope_fractions])
+                        isotope_fractions = [
+                            (isotope, fraction/total*atomic_mass(isotope))
+                            for isotope, fraction in isotope_fractions
+                        ]
 
                     for isotope, fraction in isotope_fractions:
                         iso_A = int(*re.match(rf'{symbol}(\d+)', isotope).groups())
