@@ -12,10 +12,12 @@ Training on WATTS is enabled with a suite of simple examples:
 * [__1App_MOOSE-MultiApp_Simple__](1App_MOOSE-MultiApp_Simple/README.md) - Simple MOOSE MultiApp calculation
 ## Examples with Multi Applications
 * [__MultiApp_SAM-OpenMC_VHTR__](MultiApp_SAM-OpenMC_VHTR/README.md) - Workflow with MOOSE/SAM and OpenMC
+* [__MultiApp_SAM_SimpleJunction_Workbench__](MultiApp_SAM_SimpleJunction_Workbench/README.md) - Workflow on how to use Workbench to run a coupled simulation with multiple apps
 ## Multi-step workflow
 * [__MultiStep_Griffin-BISON-Sockeye_MR__](MultiStep_Griffin-BISON-Sockeye_MR/README.md) - Advance MOOSE MultiApp calculation with steady-state and transient calculations
 ## Examples with Picard Iterations
 * [__PicardIterations_SAM-OpenMC_VHTR__](PicardIterations_SAM-OpenMC_VHTR/README.md) - Workflow with iterative MOOSE/SAM and OpenMC
+* * [__PicardIterations_SAM-OpenMC_VHTR_Workbench__](PicardIterations_SAM-OpenMC_VHTR_Workbench/README.md) - Workflow with iterative MOOSE/SAM and OpenMC using Workbench
 ## Examples with Optimization
 * [__Optimization_SAM-OpenMC_VHTR-scipy__](Optimization_SAM-OpenMC_VHTR-scipy/README.md) - 1-criteria optimization of SAM/OpenMC workflow using scipy
 * [__Optimization_SAM-OpenMC_VHTR-pymoo__](Optimization_SAM-OpenMC_VHTR-pymoo/README.md) - Multi-criteria optimization of SAM/OpenMC workflow using pymoo
@@ -25,3 +27,4 @@ Training on WATTS is enabled with a suite of simple examples:
 * [__Sensitivity_SAM-OpenMC_VHTR-scipy-LHS__](Sensitivity_SAM-OpenMC_VHTR-scipy-LHS/README.md) - Sampling with LHS of SAM/OpenMC workflow using scipy
 ## Examples with Parameteric studies
 * [__ParamStudy_SAM_VHTR__](ParamStudy_SAM_VHTR/README.md) - Showcasing SAM with parametric study
+* [__ParamStudy_SAM_SimpleJunction_Workbench__](ParamStudy_SAM_SimpleJunction_Workbench/README.md) - Showcasing SAM with parametric study using Workbench

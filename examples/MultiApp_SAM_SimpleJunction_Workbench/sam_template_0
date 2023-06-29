@@ -1,0 +1,149 @@
+[GlobalParams]
+    global_init_P = 1.2e5
+    global_init_V = 1
+    global_init_T = 628.15
+    scaling_factor_var = '1 1e-3 1e-6'
+[]
+
+[EOS]
+  [./eos]
+  	type = PBSodiumEquationOfState
+  [../]
+[]
+
+[Functions]
+  [./time_stepper]
+    type = PiecewiseLinear
+    x = '  0   20   21  100  101   1e5'
+    y = '0.1  0.1  0.5  0.5    1     1'
+  [../]
+[]
+
+[Components]
+  [./pipe1]
+    type = PBOneDFluidComponent
+    eos = eos
+    position = '0 0 0'
+    orientation = '0 0 1'
+	  heat_source = {{ heat_source }}
+	  f= {{ friction_factor }}
+    Dh = {{ Dh }}
+    length = 1
+    # A = 3.14e-4
+    A = {{ flow_area }}
+    n_elems = 10
+  [../]
+
+  [./pipe2]
+    type = PBOneDFluidComponent
+    eos = eos
+    position = '0 0 1'
+    orientation = '0 0 1'
+  	f=0.1
+    Dh = 0.01
+    length = 1
+    heat_source = 1e7
+    A = 3.14e-4
+    n_elems = 10
+  [../]
+
+  [./joint]
+    type = PBSingleJunction
+    eos = eos
+	  inputs='pipe1(out)'
+	  outputs='pipe2(in)'
+    weak_constraint = true
+  [../]
+  [./inlet]
+  	type = PBTDJ
+	input = 'pipe1(in)'
+    eos = eos
+  	v_bc = {{ velocity_inlet }}
+  	T_bc = {{ temperature_inlet }}
+  [../]
+
+  [./outlet]
+  	type = PBTDV
+  	input = 'pipe2(out)'
+    eos = eos
+  	p_bc = '1.0e5'
+  	T_bc = 728.15
+  [../]
+[]
+
+[Postprocessors]
+  [./TotalMassFlowRateInlet_2]
+      type = ComponentBoundaryFlow
+      input = 'pipe2(out)'
+  [../]
+  [./Inlet_Temperature_1]
+      type = ComponentBoundaryVariableValue
+      variable = temperature
+      input = 'pipe1(in)'
+  [../]
+  [./T_out_sam_template_0]
+      type = ComponentBoundaryVariableValue
+      variable = temperature
+      input = 'pipe2(out)'
+  [../]
+[]
+
+[Preconditioning]
+   active = 'SMP_PJFNK'
+
+  [./SMP_PJFNK]
+    type = SMP
+    full = true
+    solve_type = 'PJFNK'
+    petsc_options_iname = '-pc_type'
+    petsc_options_value = 'lu'
+  [../]
+[] # End preconditioning block
+
+
+[Executioner]
+  type = Transient
+
+  dt = 1e-1
+  dtmin = 1e-5
+
+  # setting time step range
+  [./TimeStepper]
+    type = FunctionDT
+    function = time_stepper
+  [../]
+
+  petsc_options_iname = '-ksp_gmres_restart'
+  petsc_options_value = '100'
+
+  nl_rel_tol = 1e-8
+  nl_abs_tol = 1e-7
+  nl_max_its = 20
+
+  l_tol = 1e-5 # Relative linear tolerance for each Krylov solve
+  l_max_its = 100 # Number of linear iterations for each Krylov solve
+
+  start_time = 0.0
+  end_time = 100.
+
+   [./Quadrature]
+      type = TRAP
+      order = FIRST
+   [../]
+[] # close Executioner section
+
+[Outputs]
+  perf_graph = true
+  [./out_displaced]
+    type = Exodus
+    use_displaced = true
+    execute_on = 'initial timestep_end'
+    sequence = false
+  [../]
+  [./csv]
+      type = CSV
+  [../]
+  [./console]
+    type = Console
+  [../]
+[]

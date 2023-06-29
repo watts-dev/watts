@@ -1,0 +1,9 @@
+% Define input for iteration
+iteration{
+    plugin = plugin_name                     % ID of plugin to iterate with
+    nmax = max_number_of_iterations          % Max number of iterations
+    convergence_params = "name_of_param"     % Name of parameter for checking convergence
+    convergence_criteria = 0.0001            % Convergence criteria
+    to_sub_params = ["main_param_1" "main_param_2" "main_param_3"] % List of parameters to send to the sub app
+    to_main_params = ["sub_param_1" "sub_param_2" "sub_param_3"]   % List of parameters to send to the main app
+}

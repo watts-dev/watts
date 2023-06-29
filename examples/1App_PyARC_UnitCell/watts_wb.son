@@ -1,0 +1,22 @@
+watts{
+    plugins{
+        plugin(ID1){
+            code = "PyARC"
+            template = "pyarc_template"
+            extra_inputs = ["lumped.son"]
+            executable = "path/to/pyarc/executable"
+            show_stderr = False
+            show_stdout = True
+        }
+    }
+
+    workflow_level1{
+        plugin = ID1
+        variables{
+            param(assembly_pitch) {value = 20 unit = cm}
+            param(assembly_length) {value = 13 unit = cm}
+            param(temp) {value = 26.85 unit = Celsius}
+        }
+    }
+
+}
