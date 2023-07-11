@@ -20,4 +20,4 @@ from .database import *
 # This allows a user to write watts.Quantity
 from astropy.units import Quantity
 
-__version__ = '0.5.1-dev'
+__version__ = '0.5.1'
