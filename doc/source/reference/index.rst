@@ -13,6 +13,7 @@ API Reference
    watts.Plugin
    watts.PluginGeneric
    watts.PluginABCE
+   watts.PluginACCERT
    watts.PluginMCNP
    watts.PluginMOOSE
    watts.PluginOpenMC
