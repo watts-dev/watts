@@ -381,6 +381,21 @@ delete all the corresponding results on disk, including copies of the input and
 output files from the workflow stored in the data directory. Original input
 files stored outside the database directory will be unaffected.
 
+Directory names
+~~~~~~~~~~~~~~~
+
+Within the database, each result is stored in a uniquely named directory. By
+default, the directory name is generated using Python's :mod:`uuid` module.
+However, you can manually specify the directory name when a plugin is executed
+by passing the ``output_dir`` argument::
+
+    >>> result = plugin(params, output_dir='iteration_5')
+    >>> result.base_path
+    PosixPath('/home/username/.local/share/watts/iteration_5')
+
+Note that if you try to use the same ``output_dir`` twice, an exception will be
+raised.
+
 Command-line Tool
 ~~~~~~~~~~~~~~~~~
 
