@@ -67,8 +67,15 @@ class Plugin(ABC):
     def postrun(self, params: Parameters, exec_info: ExecInfo) -> Results:
         ...
 
-    def __call__(self, params: Parameters = None, name: str = '', verbose=True,
-                 cleanup: bool = True, **kwargs) -> Results:
+    def __call__(
+        self,
+        params: Parameters = None,
+        name: str = '',
+        output_dir: Optional[PathLike] = None,
+        verbose: bool = True,
+        cleanup: bool = True,
+        **kwargs
+    ) -> Results:
         """Run the complete workflow for the plugin
 
         Parameters
@@ -77,6 +84,9 @@ class Plugin(ABC):
             Parameters used in generating inputs
         name
             Name associated with execution of plugin
+        output_dir
+            Relative path of the directory created in the database. If None, a
+            unique directory name is created using the uuid module.
         verbose
             Whether to print execution information
         cleanup
@@ -125,7 +135,9 @@ class Plugin(ABC):
             result = self.postrun(params, exec_info)
 
             # Create new directory for results and move files there
-            workflow_path = db.path / uuid.uuid4().hex
+            if output_dir is None:
+                output_dir = uuid.uuid4().hex
+            workflow_path = db.path / output_dir
             workflow_path.mkdir()
             try:
                 result.move_files(workflow_path)
