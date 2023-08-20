@@ -53,7 +53,7 @@ class TemplateRenderer:
         # Default rendered template filename
         if filename is None:
             name = self.template_file.name
-            out_path = self.template_file.with_name(f'{name}{self.suffix}')
+            out_path = Path(f'{name}{self.suffix}')
         else:
             out_path = Path(filename)
 

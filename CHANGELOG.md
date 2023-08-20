@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   specifies the directory created in the database
   ([#107](https://github.com/watts-dev/watts/pull/107))
 
+### Fixed
+
+* Fixed path for templates rendered from the `extra_template_inputs` argument in
+  `PluginGeneric` and subclasses
+  ([#109](https://github.com/watts-dev/watts/pull/109))
+
 ## [0.5.1]
 
 ### Added
