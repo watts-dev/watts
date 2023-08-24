@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 
+* Fixed path to system python executable in dakota plugin
 * Fixed path for templates rendered from the `extra_template_inputs` argument in
   `PluginGeneric` and subclasses
   ([#109](https://github.com/watts-dev/watts/pull/109))
