@@ -3,6 +3,7 @@
 
 import csv
 import json
+import sys
 import os
 from pathlib import Path
 import pickle
@@ -215,7 +216,7 @@ def _run_coupled_code(coupled_code_exec: str) -> dict:
     if not os.path.exists(coupled_code_exec):
         raise FileNotFoundError("Coupled-code script missing.")
 
-    subprocess.check_output(["python", coupled_code_exec])
+    subprocess.check_output([sys.executable, coupled_code_exec])
 
     # Read the 'opt_res.out' pickle file and
     # store the results to 'res_output' for data
