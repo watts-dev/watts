@@ -431,6 +431,10 @@ The setup of WATTS-Dakota coupling is more involved than other codes. Users are
 strongly encouraged to visit the example case `Optimization_PyARC_DAKOTA` for
 detailed explanation on how to prepare the input files.
 
+Note: Users are advised to use Dakota v6.9, as alternative versions may potentially
+lead to complications or issues with WATTS.
+
+
 ACCERT Plugin
 +++++++++++++
 
