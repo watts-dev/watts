@@ -121,7 +121,7 @@ class PluginCyclus(PluginGeneric):
     
 
 class CyclusOutput:
-    def __init__(self, path):
+    def __init__(self, path, by_proto=True):
         '''
         Class to access and browse an output file from Cyclus.
         Output file MUST be an SQLite database (.sqlite)
@@ -143,7 +143,7 @@ class CyclusOutput:
         self.nucids = self.get_nucids()
         self.agent_dict = self.get_facility_agents()
 
-        self.flows, self.stocks = self.get_agent_flow_and_stock_dict()
+        self.flows, self.stocks = self.get_agent_flow_and_stock_dict(by_proto)
         self.products = self.get_products()
 
 
@@ -285,37 +285,99 @@ class CyclusOutput:
                 product_dict[key][agentid] = self.get_yearly_sum(self.query_to_array(query, self.duration, nucids=[], time_label='time', value_label='sum(value)'))
         return product_dict
 
+    def process_prototype(self, proto, get_isotopics):
+        print(f'\tProcessing prototype: {proto}')
+        flow_dict = {}
+        for c in ['receiverid', 'senderid']:
+            key = c.replace('erid', 'ing')
+            flow_dict[key] = {}
+            # get ids
+            query = self.cur.execute(f'SELECT agentid FROM agententry WHERE prototype == "{proto}"').fetchall()
+            ids = [q['agentid'] for q in query]
+            id_str = ', '.join([str(q) for q in ids])
+            query = self.cur.execute(f'SELECT distinct(commodity) FROM transactions WHERE {c} IN ({id_str})').fetchall()
+            trade_commods = [q['commodity'] for q in query]
+
+            for commod in trade_commods:
+                if not get_isotopics:
+                    query = self.cur.execute(f'''SELECT sum(quantity), time FROM transactions INNER JOIN resources
+                                              ON transactions.resourceid = resources.resourceid WHERE {c} in ({id_str})
+                                             AND commodity=="{commod}" GROUP BY time''').fetchall()
+                    flow_dict[key][commod] = self.get_yearly_sum(self.query_to_array(
+                        query, self.duration, nucids=[], time_label='time', value_label='sum(quantity)'))
+                else:
+                    # isotopics
+                    query = self.cur.execute(f'''SELECT time, nucid, sum(quantity * massfrac) AS nucmass FROM transactions
+                                         JOIN resources ON transactions.resourceid = resources.resourceid
+                                         JOIN compositions on resources.qualid = compositions.qualid
+                                         WHERE {c} in ({id_str}) AND commodity=="{commod}"
+                                         GROUP BY time, nucid''').fetchall()
+                    flow_dict[key][commod] = self.get_yearly_sum(self.query_to_array(
+                        query, self.duration, nucids=self.nucids, time_label='time', value_label='nucmass'))
         
-    def get_agent_flow_and_stock_dict(self, get_isotopics=False):
+        # Calculate the stock for this prototype
+        agent_stock = np.cumsum(sum(flow_dict['receiving'].values()) - sum(flow_dict['sending'].values()))
+        
+        return proto, flow_dict, agent_stock
+
+
+    def process_agent(self, id, proto, get_isotopics):
+        print(f'\tProcessing agent: {proto}')
+        
+        flow_dict = {}
+        for c in ['receiverid', 'senderid']:
+            key = c.replace('erid', 'ing')
+            flow_dict[key] = {}
+            query = self.cur.execute(f'SELECT distinct(commodity) FROM transactions WHERE {c}=={id}').fetchall()
+            trade_commods = [q['commodity'] for q in query]
+            
+            for commod in trade_commods:
+                if not get_isotopics:
+                    query = self.cur.execute(f'''SELECT sum(quantity), time FROM transactions INNER JOIN resources
+                                              ON transactions.resourceid = resources.resourceid WHERE {c}=={id}
+                                             AND commodity=="{commod}" GROUP BY time''').fetchall()
+                    flow_dict[key][commod] = self.get_yearly_sum(self.query_to_array(
+                        query, self.duration, nucids=[], time_label='time', value_label='sum(quantity)'))
+                else:
+                    # isotopics
+                    query = self.cur.execute(f'''SELECT time, nucid, sum(quantity * massfrac) AS nucmass FROM transactions
+                                         JOIN resources ON transactions.resourceid = resources.resourceid
+                                         JOIN compositions on resources.qualid = compositions.qualid
+                                         WHERE {c}=={id} AND commodity=="{commod}"
+                                         GROUP BY time, nucid''').fetchall()
+                    flow_dict[key][commod] = self.get_yearly_sum(self.query_to_array(
+                        query, self.duration, nucids=self.nucids, time_label='time', value_label='nucmass'))
+        
+        # Calculate the stock for this agent
+        agent_stock = np.cumsum(sum(flow_dict['receiving'].values()) - sum(flow_dict['sending'].values()))
+        
+        return id, flow_dict, agent_stock
+
+
+    def get_agent_flow_and_stock_dict(self, by_proto, get_isotopics=False):
         agent_flow_dict = {}
         agent_stock_dict = {}
-        print(f'Going through {len(self.agent_dict)} agents.')
+    
         cnt = 1
-        for id, proto in self.agent_dict.items():
-            print(f'\tProcessing agent {cnt}/{len(self.agent_dict)}: {proto}')
-            cnt += 1
-            flow_dict = {}
-            for c in ['receiverid', 'senderid']:
-                key = c.replace('erid', 'ing')
-                flow_dict[key] = {}
-                query = self.cur.execute(f'SELECT distinct(commodity) FROM transactions WHERE {c}=={id}').fetchall()
-                trade_commods = [q['commodity'] for q in query]
-                for commod in trade_commods:
-                    if not get_isotopics:
-                        query = self.cur.execute(f'''SELECT sum(quantity), time FROM transactions INNER JOIN resources 
-                                                ON transactions.resourceid = resources.resourceid WHERE {c}=={id}
-                                                AND commodity=="{commod}" GROUP BY time''').fetchall()
-                        flow_dict[key][commod] = self.get_yearly_sum(self.query_to_array(query, self.duration, nucids=[], time_label='time', value_label='sum(quantity)'))
-                    else:
-                        # isotopics
-                        query = self.cur.execute('''SELECT time, nucid, sum(quantity * massfrac) AS nucmass FROM transactions
-                                            JOIN resources ON transactions.resourceid = resources.resourceid
-                                            JOIN compositions on resources.qualid = compositions.qualid
-                                            GROUP BY time, nucid''').fetchall()
-                        flow_dict[key][commod] = self.get_yearly_sum(self.query_to_array(query, self.duration,
-                                                                     nucids=self.nucids, time_label='time', value_label='nucmass'))
-            agent_flow_dict[id] = flow_dict
-            agent_stock_dict[id] = np.cumsum(sum(flow_dict['receiving'].values()) - sum(flow_dict['sending'].values()))
+        uniq_protos = set(self.agent_dict.values())
+
+        if by_proto:
+            print(f'Going through {len(uniq_protos)} prototypes.')
+            for proto in uniq_protos:
+                proto, flow_dict, agent_stock = self.process_prototype(proto, get_isotopics)
+                agent_flow_dict[proto] = flow_dict
+                agent_stock_dict[proto] = flow_dict
+                print(f"\tCompleted prototype {cnt}/{len(uniq_protos)}")
+                cnt += 1
+        else:
+            print(f'Going through {len(self.agent_dict)} agents.')
+            for id, proto in self.agent_dict.items():
+                id, flow_dict, agent_stock = self.process_agent(id, proto, get_isotopics)
+                agent_flow_dict[id] = flow_dict
+                agent_stock_dict[id] = flow_dict
+                print(f"\tCompleted agent {cnt}/{len(self.agent_dict)}")
+                cnt += 1
+
         return agent_flow_dict, agent_stock_dict
 
 
