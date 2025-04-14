@@ -5,20 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.5.2]
 
 ### Added
 
 * The `Plugin.__call__` method now accepts an `output_dir` argument that
   specifies the directory created in the database
   ([#107](https://github.com/watts-dev/watts/pull/107))
-* GCMAT plugin via the `PluginGCMAT` class ([114](https://github.com/watts-dev/watts/pull/114))
+* GCMAT plugin via the `PluginGCMAT` class
+  ([#114](https://github.com/watts-dev/watts/pull/114))
 
 ### Changes
 
 * Update recommendations for Dakota version
   ([#111](https://github.com/watts-dev/watts/pull/111))
-* Update GitHub Actions workflows ([#112](https://github.com/watts-dev/watts/pull/112))
+* Update GitHub Actions workflows
+  ([#112](https://github.com/watts-dev/watts/pull/112))
+* SAS plugin modifications to handle MFUEL output
+  ([#113](https://github.com/watts-dev/watts/pull/113))
 
 ### Fixed
 
