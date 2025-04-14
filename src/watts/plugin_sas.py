@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2022-2023 UChicago Argonne, LLC
+# SPDX-FileCopyrightText: 2022-2025 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
 import glob
@@ -184,8 +184,8 @@ class PluginSAS(PluginGeneric):
             with open("PRIMAR4.dat", "r") as file_in, open("PRIMAR4.csv", "w") as file_out:
                 subprocess.run(str(self.conv_primar4), stdin=file_in, stdout=file_out)
 
-        if Path("MFUELss_C000001.dat").is_file(): 
-            with open("MFUELss_C000001.dat", "r") as file_in: 
-                subprocess.run(str(self.conv_mfuel), stdin=file_in) 
-   
+        if Path("MFUELss_C000001.dat").is_file():
+            with open("MFUELss_C000001.dat", "r") as file_in:
+                subprocess.run(str(self.conv_mfuel), stdin=file_in)
+
         return super().postrun(params, exec_info)
