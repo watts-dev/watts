@@ -16,8 +16,8 @@ description: |
 language: Python
 
 release:
-  version: 0.5.1
-  date: 2023-07-11
+  version: 0.5.2
+  date: 2025-04-14
 
 documentation:
   general: https://watts.readthedocs.io
