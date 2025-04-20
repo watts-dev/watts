@@ -76,7 +76,7 @@
           "core size": 129880,
           "fuel fab": "recipe",
           "fuel lead time": 0,
-          "fuel": [{"haleu": 0.2357, "depu":0.7643}],
+          "fuel": {"haleu": 0.2357, "depu":0.7643},
           "first core": [{"haleu":0.1292,"depu":0.8707},
                          {"haleu":0.1938,"depu":0.8062},
                          {"haleu":0.2584, "depu":0.7415}],
