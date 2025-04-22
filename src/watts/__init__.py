@@ -14,7 +14,6 @@ from .plugin_serpent import *
 from .plugin_abce import *
 from .plugin_dakota import *
 from .plugin_gcmat import *
-from .plugin_aleaf import *
 from .results import *
 from .template import *
 from .parameters import *
