@@ -13,9 +13,10 @@ This example provides a demonstration for using WATTS to run and analyze simulat
 ## Keywords
 
 - Energy Market
+- Capacity Expansion
 - Economic Modeling 
 
 ## File descriptions
 
 - [__watts_exec.py__](watts_exec.py): WATTS workflow for this example. This is the file to execute to run the problem described above.
-- [__gcmat_template__](Fuel.txt): Fuel price for this example
+- [__A-LEAF_fuel_template__](Fuel.txt): Fuel price for this example

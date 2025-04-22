@@ -14,6 +14,7 @@ API Reference
    watts.PluginGeneric
    watts.PluginABCE
    watts.PluginACCERT
+   watts.PluginALEAF
    watts.PluginGCMat
    watts.PluginMCNP
    watts.PluginMOOSE
