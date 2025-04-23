@@ -90,7 +90,8 @@ class PluginALEAF(Plugin):
         shutil.copy(original_input_path, modified_input_path)
 
         # Load the Excel file and modify the 'Fuel' sheet
-        fuel_data = self.renderer(params)
+        self.renderer(params = params, filename = self.template_file)
+        fuel_data = pd.read_csv("Fuel.txt", sep="\t")
 
         with pd.ExcelWriter(modified_input_path, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
             fuel_sheet = pd.read_excel(writer, sheet_name='Fuel')
