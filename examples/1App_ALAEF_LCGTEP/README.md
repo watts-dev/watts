@@ -8,7 +8,6 @@ This example provides a demonstration for using WATTS to run and analyze simulat
 ## Code(s)
 
 - A-LEAF
-- Julia (A-LEAF dependency)
 
 ## Keywords
 
