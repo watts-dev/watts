@@ -4,7 +4,7 @@ import pandas as pd
 from typing import List, Optional, Dict
 import os
 
-from .plugin import Plugin
+from .plugin import Plugin, _find_executable
 from .results import Results, ExecInfo
 from .fileutils import PathLike
 from .parameters import Parameters
@@ -63,9 +63,12 @@ class PluginALEAF(Plugin):
         Whether to show standard error during execution.
     """
 
-    def __init__(self, template_file: PathLike, extra_templates: Optional[Dict[str, PathLike]] = None,
+    def __init__(self, template_file: PathLike, 
+                 executable: PathLike = 'execute_ALEAF.jl',
+                 extra_templates: Optional[Dict[str, PathLike]] = None,
                  show_stdout: bool = False, show_stderr: bool = False):
-        super().__init__(extra_inputs=[], show_stdout=show_stdout, show_stderr=show_stderr)
+        executable =_find_executable(executable, 'ALEAF_DIR')
+        super().__init__(executable, extra_inputs=[], show_stdout=show_stdout, show_stderr=show_stderr)
         self.template_file = template_file
         self.extra_templates = extra_templates or {}
         self.plugin_name = 'ALEAF'
@@ -74,6 +77,16 @@ class PluginALEAF(Plugin):
         if not self.aleaf_dir:
             raise EnvironmentError("ALEAF_DIR environment variable is not set.")
         self.output_folder = None
+
+    @PluginGeneric.executable.setter
+    def executable(self, exe: PathLike):
+        if not exe.is_file():
+            raise RuntimeError(
+                f"{self.plugin_name} module '{exe}' does not exist. The "
+                "ALEAF_DIR environment variable needs to be set to a directory "
+                "containing the execute_ALEAF.jl module."
+            )
+        self._executable = Path(exe)
 
     def prerun(self, params: Parameters) -> None:
         """Generate ALEAF input files and check for pre-existing output.
