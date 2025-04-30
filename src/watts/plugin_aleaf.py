@@ -4,7 +4,7 @@ import pandas as pd
 from typing import List, Optional, Dict
 import os
 
-from .plugin import Plugin, _find_executable
+from .plugin import Plugin, PluginGeneric, _find_executable
 from .results import Results, ExecInfo
 from .fileutils import PathLike
 from .parameters import Parameters
