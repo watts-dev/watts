@@ -49,6 +49,7 @@ docs = [
     "pydata_sphinx_theme",
     "sphinx_design",
     "sphinx-autodoc-typehints",
+    "sphinx-favicon",
 ]
 
 [project.urls]

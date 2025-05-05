@@ -337,12 +337,12 @@ As with other plugins, :class:`~watts.PluginABCE` is easily used by::
 
 A-LEAF Plugin
 +++++++++++++
-The :class:`~watts.PluginALEAF` class enables simulations with the Argonne 
-Low-carbon Electricity Analysis Framework (A-LEAF) code using a text based 
-input file for fuel price modification. The A-LEAF code using an excel based
-input file, and the A-LEAF plugin will only modify the fuel price under the
-``Fuel`` section of the input file. Since A-LEAF code is still under
-active development, the plugin will be updated as the code is updated.
+The :class:`~watts.PluginALEAF` class enables simulations with the Argonne
+Low-carbon Electricity Analysis Framework (A-LEAF) code using a text-based input
+file for fuel price modification. The A-LEAF code uses an Excel-based input
+file, and the A-LEAF plugin will only modify the fuel price under the ``Fuel``
+section of the input file. Since the A-LEAF code is still under active
+development, the plugin will be updated as the code is updated.
 
 The A-LEAF fuel price input file can be templated as follows:
 
@@ -357,10 +357,10 @@ The A-LEAF fuel price input file can be templated as follows:
     Base	Biomass	Real	2020 $/MMBTU	5.00	5.11	5.22	5.34	5.45	...
     ...
     Low	OGS	Real	2020 $/MMBTU	3.30	3.00	2.73	2.58	2.56	...
-        
+
 Before running the A-LEAF plugin, you need to specify the directory that the
 executable and the license key are in (they must be in the same directory). This
-can be done by adding the ``A-LEAF_DIR`` variable to the environment or by
+can be done by adding the ``ALEAF_DIR`` variable to the environment or by
 explicitly specifying the path in the Python script as::
 
     aleaf_plugin = watts.PluginALEAF(
@@ -370,7 +370,8 @@ explicitly specifying the path in the Python script as::
     )
 
 As with other plugins, :class:`~watts.PluginALEAF` can be used by calling the
-:meth:`~watts.PluginALEAF` instance directly the same way as other plugins.
+:meth:`~watts.PluginALEAF` instance directly the same way as other plugins::
+
     aleaf_plugin = watts.PluginALEAF('aleaf_template')
     aleaf_result = aleaf_plugin(params)
 
@@ -515,7 +516,7 @@ As with other plugins, :class:`~watts.PluginACCERT` is used by::
 GCMat Plugin
 ++++++++++++
 
-The :class:`~watts.PluginGCMat` class enables simulations with Argonne's global
+The :class:`~watts.PluginGCMAT` class enables simulations with Argonne's global
 critical materials agent-based model (GCMat). This code simulates dynamic
 economic markets that are composed of agents who have complex decision-making
 behaviors, and interact with and influence each other, possibly indirectly
@@ -539,7 +540,7 @@ The GCMat plugin requires a template input file that can be templated as follows
 
 The GCMat plugin can be instantiated with the following command line::
 
-    gcmat_plugin = watts.PluginGCMat('gcmat_template')
+    gcmat_plugin = watts.PluginGCMAT('gcmat_template')
 
 Before running the GCMat plugin, the directory that contains the executable
 'run_repast.sh' must be set. This can be done by setting the ``GCMAT_DIR``
@@ -547,7 +548,7 @@ environment variable::
 
     export GCMAT_DIR='/path/to/gcmat/output'
 
-As with other plugins, :class:`~watts.PluginGCMat` is used by::
+As with other plugins, :class:`~watts.PluginGCMAT` is used by::
 
-    gcmat_plugin = watts.PluginGCMat('gcmat_template')
+    gcmat_plugin = watts.PluginGCMAT('gcmat_template')
     gcmat_result = gcmat_plugin(params)
