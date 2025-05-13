@@ -325,4 +325,20 @@ def _find_executable(path: PathLike, environment_variable: str) -> Path:
 
     # Check for environment variable
     base_dir = os.environ.get(environment_variable)
-    return base_dir / exe if base_dir is not None else exe
+    if ':' in base_dir:
+        candidates = []
+        dirs = base_dir.split(':')
+        for p in dirs:
+            exe_path = p / exe
+            if exe_path.exists():
+                candidates.append(exe_path)
+        candidates = list(set(candidates)) # remove overlap
+        if len(candidates) == 0:
+            raise ValueError(f'Exe not found, check environment variable:\n{base_dir}')
+        elif len(candidates) > 1:
+            exe_paths = '\n'.join([str(q.resolve()) for q in candidates])
+            raise ValueError(f'Found multiple exe paths:\n{exe_paths}')
+        else: # len == 1
+            return candidates[0]
+    else:
+        return base_dir / exe if base_dir is not None else exe
