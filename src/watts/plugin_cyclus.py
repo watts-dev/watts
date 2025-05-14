@@ -41,8 +41,12 @@ class ResultsCyclus(Results):
     def __init__(self, params: Parameters, exec_info: ExecInfo,
                  inputs: List[Path], outputs: List[Path]):
         super().__init__(params, exec_info, inputs, outputs)
+        self.obj = self.get_object()
         #! can't do this because sqlite cursors can't be pickled
         # self.obj = CyclusOutput(self.sqlite_file)
+
+    def get_object(self):
+        return CyclusOutput(self.sqlite_file)
 
     @property
     def sqlite_file(self) -> Path:
@@ -51,20 +55,28 @@ class ResultsCyclus(Results):
         return l[0]
 
     @property
+    def prototypes(self):
+        return list(set(self.obj.agent_dict.values()))
+
+    @property
+    def reactors(self):
+        return self.obj.get_facility_agents('reactor')
+
+    @property
     def commodities(self) -> List[str]:
-        obj = CyclusOutput(self.sqlite_file)
-        q = obj.cur.execute('SELECT distinct(commodity) FROM transactions').fetchall()
+        # obj = CyclusOutput(self.sqlite_file)
+        q = self.obj.cur.execute('SELECT distinct(commodity) FROM transactions').fetchall()
         return [x['commodity'] for x in q]
 
     @property
     def time_dict(self) -> dict:
-        obj = CyclusOutput(self.sqlite_file)
-        return obj.get_times()
+        # obj = CyclusOutput(self.sqlite_file)
+        return self.obj.get_times()
     
     @property
     def mass_flow_dict(self) -> dict:
-        obj = CyclusOutput(self.sqlite_file)
-        arr = obj.get_fuel_demands(self.commodities)
+        # obj = CyclusOutput(self.sqlite_file)
+        arr = self.obj.get_fuel_demands(self.commodities)
         d = {}
         for indx in range(len(arr)):
             d[self.commodities[indx]] = arr[indx,:]
@@ -147,8 +159,6 @@ class CyclusOutput:
         self.products = self.get_products()
 
 
-
-
     def get_times(self):
         '''
         Gets different time-related data from a simulation
@@ -220,6 +230,10 @@ class CyclusOutput:
             power_dict[key][t0-1:t0+t1-1] += row['value'] * 1e-3
         return power_dict
     
+    def get_proto_ids(self, proto_name):
+        query = self.cur.execute(f'SELECT agentid FROM agententry WHERE prototype=="{proto_name}"').fetchall()
+        return [x['agentid'] for x in query]
+
 
     def get_commodities(self):
         query = self.cur.execute('SELECT distinct(commodity) FROM transactions').fetchall()
@@ -254,13 +268,32 @@ class CyclusOutput:
         return nucids
 
 
-    def get_facility_agents(self):
+    def get_commodity_into(self, proto_name=None, agentid=None):
+        # there can only be one
+        assert((proto_name is not None) != (agentid is not None))
+        if proto_name:
+            # get the agentids
+            agentid = self.get_proto_ids(proto_name)
+        else:
+            if not isinstance(agentid, list):
+                agentid = [agentid]
+        assert(len(agentid) > 0), 'No agentid found'
+        commods = []
+        csv = ','.join([str(q) for q in agentid])
+        query = self.cur.execute(f'SELECT distinct(commodity) FROM transactions WHERE receiverid IN ({csv})').fetchall()
+        return [q['commodity'] for q in query]
+
+
+    def get_facility_agents(self, spec_keywords=None):
         """Returns all facility agents in the simulation
 
         Returns:
             dict: key: int(id), value: str(prototype)
         """
-        query = self.cur.execute('SELECT distinct(agentid), prototype FROM agententry WHERE kind=="Facility"').fetchall()
+        if not spec_keywords:
+            query = self.cur.execute('SELECT distinct(agentid), prototype FROM agententry WHERE kind=="Facility"').fetchall()
+        else:
+            query = self.cur.execute(f'SELECT distinct(agentid), prototype FROM agententry WHERE kind=="Facility" and spec LIKE "%{spec_keywords}%" --case-insensitive').fetchall()
         agents = {q['agentid']:q['prototype'] for q in query}
         return agents
 
@@ -284,6 +317,7 @@ class CyclusOutput:
                 query = self.cur.execute(f'SELECT sum(value), time FROM {table} WHERE agentid=={agentid} GROUP BY time').fetchall()
                 product_dict[key][agentid] = self.get_yearly_sum(self.query_to_array(query, self.duration, nucids=[], time_label='time', value_label='sum(value)'))
         return product_dict
+
 
     def process_prototype(self, proto, get_isotopics):
         print(f'\tProcessing prototype: {proto}')
@@ -352,6 +386,7 @@ class CyclusOutput:
         agent_stock = np.cumsum(sum(flow_dict['receiving'].values()) - sum(flow_dict['sending'].values()))
         
         return id, flow_dict, agent_stock
+        
 
 
     def get_agent_flow_and_stock_dict(self, by_proto, get_isotopics=False):
@@ -380,6 +415,31 @@ class CyclusOutput:
 
         return agent_flow_dict, agent_stock_dict
 
+    def get_fuel_mass_and_enrichment(self, prototype:str):
+        flow_into = self.process_prototype(prototype, False)[1]['receiving']
+        assert(len(flow_into) == 1), 'Make sure only one type of fuel goes in'
+        commod = list(flow_into.keys())[0]
+        agentids = self.get_proto_ids(prototype)
+        fuel_mass_flow = list(flow_into.values())[0]
+        enr = self.get_enrichments(commod, receiver_agentids=agentids)
+        return fuel_mass_flow, enr
+
+    def stock_fuel_natu(self, prototype:str,
+                        natu_assay:float,
+                        tails_assay:float):
+        fuel_mass_flow, enr = self.get_fuel_mass_and_enrichment(prototype)
+        return fuel_mass_flow*(enr-tails_assay)/(natu_assay-tails_assay)
+    
+    def stock_fuel_swu(self, prototype:str,
+                       natu_assay:float,
+                       tails_assay:float):
+        fuel_mass_flow, enr = self.get_fuel_mass_and_enrichment(prototype)
+        natu = fuel_mass_flow*(enr-tails_assay)/(natu_assay-tails_assay)
+        def v(x:float):
+            return (2*x-1)*np.log(x/(1-x))
+        tails = natu - fuel_mass_flow
+        return fuel_mass_flow * v(enr) + tails * v(tails_assay) - natu * v(natu_assay)
+    
 
     def get_fuel_demands(self, fuel_forms=[]):
         '''
@@ -405,8 +465,30 @@ class CyclusOutput:
             query = self.cur.execute('''SELECT sum(quantity), time FROM transactions INNER JOIN resources
                         ON transactions.resourceid = resources.resourceid WHERE Commodity="%s"
                         GROUP BY time''' %ff).fetchall()
-            fuel_flow_array[indx, :] = np.array(self.get_yearly_sum(self.query_to_array(query, self.duration, 'time', 'sum(quantity)')))
+            fuel_flow_array[indx, :] = np.array(self.get_yearly_sum(self.query_to_array(query, self.duration, time_label='time', value_label='sum(quantity)')))
         return fuel_flow_array
+
+
+    def get_enrichments(self, commod, receiver_agentids=None):
+        # get u235 flow
+        if receiver_agentids:
+            csv = ','.join([str(q) for q in receiver_agentids])
+            query = self.cur.execute(f'''SELECT time, nucid, sum(quantity), sum(quantity * massfrac) AS nucmass FROM transactions
+                                            JOIN resources ON transactions.resourceid = resources.resourceid
+                                            JOIN compositions on resources.qualid = compositions.qualid
+                                            WHERE commodity=="{commod}" AND nucid==922350000 AND receiverid IN ({csv})
+                                            GROUP BY time, nucid''').fetchall()
+        else:
+            query = self.cur.execute(f'''SELECT time, nucid, sum(quantity), sum(quantity * massfrac) AS nucmass FROM transactions
+                                            JOIN resources ON transactions.resourceid = resources.resourceid
+                                            JOIN compositions on resources.qualid = compositions.qualid
+                                            WHERE commodity=="{commod}" AND nucid==922350000
+                                            GROUP BY time, nucid''').fetchall()
+        u235_mass = self.query_to_array(query, self.duration, time_label='time', value_label='nucmass')
+        u235_mass_annual = np.array(self.get_yearly_sum(u235_mass))
+        all_mass = self.query_to_array(query, self.duration, time_label='time', value_label='sum(quantity)')
+        all_mass_annual = np.array(self.get_yearly_sum(all_mass))
+        return np.nan_to_num(u235_mass_annual / all_mass_annual, nan=0)
 
 
     @staticmethod
