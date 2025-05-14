@@ -155,8 +155,8 @@ class CyclusOutput:
         self.nucids = self.get_nucids()
         self.agent_dict = self.get_facility_agents()
 
-        self.flows, self.stocks = self.get_agent_flow_and_stock_dict(by_proto)
-        self.products = self.get_products()
+        # self.flows, self.stocks = self.get_agent_flow_and_stock_dict(by_proto)
+        # self.products = self.get_products()
 
 
     def get_times(self):
@@ -231,7 +231,11 @@ class CyclusOutput:
         return power_dict
     
     def get_proto_ids(self, proto_name):
-        query = self.cur.execute(f'SELECT agentid FROM agententry WHERE prototype=="{proto_name}"').fetchall()
+        if isinstance(proto_name, list):
+            ps = ', '.join([f'"{str(q)}"' for q in proto_name])
+            query = self.cur.execute(f'SELECT agentid FROM agententry WHERE prototype IN ({ps})').fetchall()
+        else:
+            query = self.cur.execute(f'SELECT agentid FROM agententry WHERE prototype=="{proto_name}"').fetchall()
         return [x['agentid'] for x in query]
 
 
@@ -326,7 +330,11 @@ class CyclusOutput:
             key = c.replace('erid', 'ing')
             flow_dict[key] = {}
             # get ids
-            query = self.cur.execute(f'SELECT agentid FROM agententry WHERE prototype == "{proto}"').fetchall()
+            if isinstance(proto, list):
+                ps = ', '.join([f'"{str(q)}"' for q in proto])
+                query = self.cur.execute(f'SELECT agentid FROM agententry WHERE prototype IN ({ps})').fetchall()
+            else:
+                query = self.cur.execute(f'SELECT agentid FROM agententry WHERE prototype == "{proto}"').fetchall()
             ids = [q['agentid'] for q in query]
             id_str = ', '.join([str(q) for q in ids])
             query = self.cur.execute(f'SELECT distinct(commodity) FROM transactions WHERE {c} IN ({id_str})').fetchall()
@@ -355,8 +363,7 @@ class CyclusOutput:
         return proto, flow_dict, agent_stock
 
 
-    def process_agent(self, id, proto, get_isotopics):
-        print(f'\tProcessing agent: {proto}')
+    def process_agent(self, id, get_isotopics):
         
         flow_dict = {}
         for c in ['receiverid', 'senderid']:
@@ -417,19 +424,24 @@ class CyclusOutput:
 
     def get_fuel_mass_and_enrichment(self, prototype:str):
         flow_into = self.process_prototype(prototype, False)[1]['receiving']
-        assert(len(flow_into) == 1), 'Make sure only one type of fuel goes in'
-        commod = list(flow_into.keys())[0]
-        agentids = self.get_proto_ids(prototype)
-        fuel_mass_flow = list(flow_into.values())[0]
-        enr = self.get_enrichments(commod, receiver_agentids=agentids)
-        return fuel_mass_flow, enr
+        tot_u235 = self.get_yearly_sum(np.zeros(self.duration))
+        for commod, fuel_mass_flow in flow_into.items():
+            # commod = list(flow_into.keys())[0]
+            agentids = self.get_proto_ids(prototype)
+            # fuel_mass_flow = list(flow_into.values())[0]
+            enr = self.get_enrichments(commod, receiver_agentids=agentids)
+            tot_u235 += enr * fuel_mass_flow
+
+        return sum(flow_into.values()), np.nan_to_num(tot_u235 / sum(flow_into.values()), nan=0)
+
 
     def stock_fuel_natu(self, prototype:str,
                         natu_assay:float,
                         tails_assay:float):
         fuel_mass_flow, enr = self.get_fuel_mass_and_enrichment(prototype)
         return fuel_mass_flow*(enr-tails_assay)/(natu_assay-tails_assay)
-    
+
+
     def stock_fuel_swu(self, prototype:str,
                        natu_assay:float,
                        tails_assay:float):
@@ -439,7 +451,7 @@ class CyclusOutput:
             return (2*x-1)*np.log(x/(1-x))
         tails = natu - fuel_mass_flow
         return fuel_mass_flow * v(enr) + tails * v(tails_assay) - natu * v(natu_assay)
-    
+
 
     def get_fuel_demands(self, fuel_forms=[]):
         '''
