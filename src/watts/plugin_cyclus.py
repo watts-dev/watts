@@ -444,13 +444,22 @@ class CyclusOutput:
 
     def stock_fuel_swu(self, prototype:str,
                        natu_assay:float,
-                       tails_assay:float):
+                       tails_assay:float,
+                       split_cat:bool=False):
         fuel_mass_flow, enr = self.get_fuel_mass_and_enrichment(prototype)
-        natu = fuel_mass_flow*(enr-tails_assay)/(natu_assay-tails_assay)
-        def v(x:float):
-            return (2*x-1)*np.log(x/(1-x))
-        tails = natu - fuel_mass_flow
-        return fuel_mass_flow * v(enr) + tails * v(tails_assay) - natu * v(natu_assay)
+        if split_cat:
+            from .enr_utils import calculate_swu_split_cats
+            swu = calculate_swu_split_cats(natu_assay, tails_assay, enr)
+            swu = fuel_mass_flow * swu[:,None]
+            print('Returning 2D array of shape ', swu.shape)
+            return swu
+        else:
+            from .enr_utils import calculate_swu
+            swu = calculate_swu(natu_assay, tails_assay, enr)
+            return fuel_mass_flow * swu
+    
+
+
 
 
     def get_fuel_demands(self, fuel_forms=[]):
@@ -565,4 +574,3 @@ class CyclusOutput:
                 c = 0
             c += val
         return np.array(newarr[:])
-
