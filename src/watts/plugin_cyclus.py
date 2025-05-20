@@ -1046,7 +1046,8 @@ class CyclusOutput:
     def stock_fuel_swu(self, prototype:str | list[str],
                        natu_assay:float,
                        tails_assay:float,
-                       return_sum: bool = True):
+                       return_sum: bool = True,
+                       split_cat:bool=False):
         """
         Calculate the separative work unit (SWU) for a given prototype or list of prototypes.
         This function computes the SWU based on the enrichment levels of the specified prototypes.
@@ -1077,12 +1078,17 @@ class CyclusOutput:
         swu = {}
         for p in prototype:
             # Calculate the SWU-to-product ratio for the current prototype
-            swu_per_product = self.SWU_to_product_ratio(natu_assay, enr[p], tails_assay)
-            # Multiply the ratio by the product (fuel demand)
-            swu[p] = fuel_mass[p] * swu_per_product
+            if not split_cat:
+                swu_per_product = self.SWU_to_product_ratio(natu_assay, enr[p], tails_assay)
+                # Multiply the ratio by the product (fuel demand)
+                swu[p] = fuel_mass[p] * swu_per_product
+            else:
+                from .enr_utils import calculate_swu_split_cats
+                multistage_swu = np.array([calculate_swu_split_cats(natu_assay, tails_assay, e) for e in enr[p]])
+                swu[p] = fuel_mass[p] * multistage_swu.T
 
         # Sum over all prototypes if requested
         if return_sum:
-            swu = np.sum(list(swu.values()), axis=0)
+            swu = sum(swu.values())
         return swu
     
