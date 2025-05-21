@@ -778,28 +778,32 @@ class CyclusOutput:
 
         # SQL: sum total quantity and U-235 mass per receiver and time
         rows = self.sql_query(f'''
-            SELECT receiverid, time,
-            SUM(quantity) AS q,
-            SUM(CASE WHEN nucid = 922350000 THEN quantity * massfrac ELSE 0 END) AS u235
+            SELECT receiverid,
+                time,
+                SUM(CASE WHEN nucid BETWEEN 922000000 AND 922999999
+                            THEN quantity * massfrac ELSE 0 END) AS u_mass,
+                SUM(CASE WHEN nucid = 922350000
+                            THEN quantity * massfrac ELSE 0 END) AS u235
             FROM transactions
-            JOIN resources     USING (resourceid)
-            JOIN compositions  ON resources.qualid = compositions.qualid
+            JOIN resources    USING (resourceid)
+            JOIN compositions ON resources.qualid = compositions.qualid
             WHERE receiverid IN ({id_csv})
-            AND commodity IN ({commod_csv})
+            AND commodity  IN ({commod_csv})
             GROUP BY receiverid, time
         ''')
+
 
         # Accumulate monthly quantities
         u235_by_proto = {p: np.zeros(self.duration) for p in prototype}
         mass_by_proto = {p: np.zeros(self.duration) for p in prototype}
         for row in rows:
-            rid, t, q, u = row["receiverid"], row["time"], row["q"], row["u235"]
+            rid, t, u_mass, u235 = row["receiverid"], row["time"], row["u_mass"], row["u235"]
             if t >= self.duration:
                 continue
             for p, ids in ids_by_proto.items():
                 if rid in ids:
-                    mass_by_proto[p][t] += q
-                    u235_by_proto[p][t] += u
+                    mass_by_proto[p][t] += u_mass
+                    u235_by_proto[p][t] += u235
                     break
 
         # Convert to yearly total
