@@ -95,6 +95,9 @@ class ResultsDYMOND(Results):
 
         for r in input_dict["types"]["reactor"]:
             if(r["name"] == reactor):
+                if 'fuel' not in r.keys():
+                    print(f'Reactor {reactor} does not take traditional fuel, most likely reprocessed fuel. So it does not use uranium. Returning zeros.')
+                    return np.zeros_like(flows_dict['TOTAL'][reactor])
                 fuel_material_recipe = r["fuel"]
 
         fuel_composition = {}
@@ -210,9 +213,12 @@ class ResultsDYMOND(Results):
 
         flows_dict = self.flows
 
-
+        assert(len(feed_assays) == len(tails_assays)), 'Length of feed and tails arrays must be the same'
         for r in input_dict["types"]["reactor"]:
             if(r["name"] == reactor):
+                if 'fuel' not in r.keys():
+                    print(f'Reactor {reactor} does not take traditional fuel, most likely reprocessed fuel. So it does not use uranium. Returning zeros.')
+                    return np.zeros((len(flows_dict['TOTAL'][reactor]), len(feed_assays)))
                 fuel_material_recipe = r["fuel"]
 
         fuel_composition = {}
