@@ -208,7 +208,7 @@
         "input connections": ["drivers"],
         "output connections": ["waste"]},
       "vogtle":{                        
-        "type name": "AP1000",
+        "type name": "ALWR",
         "deployment dates": [2023, 2024],
         "deployment quantity": [1, 1],
         "deployment method": "step-wise",

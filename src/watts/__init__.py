@@ -12,6 +12,7 @@ from .plugin_mcnp import *
 from .plugin_serpent import *
 from .plugin_abce import *
 from .plugin_dakota import *
+from .plugin_dymond import *
 from .plugin_gcmat import *
 from .results import *
 from .template import *
