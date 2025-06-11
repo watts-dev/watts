@@ -383,28 +383,29 @@ class CyclusOutput:
 
     @staticmethod
     def get_yearly_sum(arr):
-        '''
-        Parameters:
-        -----------
-        arr: numpy array
-            1D array of length that typically corresponds to the number
-            of time steps in a simulation, with data for each time step.
+        """
+        Convert monthly time series data into yearly sums, with initial alignment.
 
-        Returns:
-        --------
-        newarr: numpy array
-            length is the number of years in a simulations (i.e.,
-            length of arr/12) with the data from arr summed up for each
-            year
-        '''
-        newarr = []
-        c = 0
-        for indx, val in enumerate(arr):
-            if indx%12 == 0:
-                newarr.append(c)
-                c = 0
-            c += val
-        return np.array(newarr[:])
+        This function:
+        - Sums values over consecutive 12-month periods
+        - Prepends an initial 0.0 as a placeholder for the year before data begins
+        - Returns one value per year, excluding the final year of data
+
+        Parameters
+        ----------
+        arr : array-like
+            1D array of monthly values
+
+        Returns
+        -------
+        np.ndarray
+            1D array of yearly sums, length = floor(len(arr) / 12), plus one initial 0
+        """
+        arr = np.asarray(arr)
+        n = (len(arr) // 12) * 12             # truncate to full years
+        yearly = arr[:n].reshape(-1, 12).sum(axis=1)
+        return np.insert(yearly[:-1], 0, 0.0) # remove last year, prepend 0
+
 
 
 
@@ -515,18 +516,37 @@ class CyclusOutput:
         return [q['commodity'] for q in query]
 
 
-    def get_proto_ids(self, proto_name):
-        if isinstance(proto_name, list):
-            ps = ', '.join([f'"{str(q)}"' for q in proto_name])
-            query = self.sql_query(f'''SELECT agentid
-                                   FROM agententry
-                                   WHERE prototype
-                                   IN ({ps})''')
-        else:
-            query = self.sql_query(f'''SELECT agentid
-                                   FROM agententry
-                                   WHERE prototype=="{proto_name}"''')
-        return [x['agentid'] for x in query]
+    def get_proto_ids(
+        self,
+        proto_name):
+        """If **proto_name** is a str, return a flat list of agent IDs.
+        If it is a sequence, return a dict {prototype: [agent IDs]}. """
+
+        want_flat = isinstance(proto_name, str)
+        prototypes = [proto_name] if want_flat else list(proto_name)
+
+        if not prototypes:                       # handles None, "", empty list
+            return [] if want_flat else {}
+
+        # Build a CSV of quoted prototype names:  "rx1", "rx2", …
+        proto_csv = ", ".join(f'"{p}"' for p in prototypes)
+
+        # Query the database for agent IDs associated with the prototypes
+        rows = self.sql_query(f'''
+            SELECT prototype, agentid
+            FROM agententry
+            WHERE prototype IN ({proto_csv})
+        ''')
+
+        # If we want a flat list, return it directly
+        if want_flat:
+            return [r["agentid"] for r in rows]
+
+        # Otherwise, return a dict mapping prototypes to lists of agent IDs
+        out = {p: [] for p in prototypes}
+        for r in rows:
+            out[r["prototype"]].append(r["agentid"])
+        return out
 
 
     def get_commodities(self):
@@ -639,7 +659,7 @@ class CyclusOutput:
         prototype = np.atleast_1d(prototype)
 
         # Get agent IDs for the specified prototypes (flat list)
-        ids_by_proto = {p: self.get_proto_ids(p) for p in prototype}
+        ids_by_proto = self.get_proto_ids(prototype)
         all_ids = [aid for ids in ids_by_proto.values() for aid in ids] # flatten
         id_csv = ",".join(map(str, all_ids))
 
@@ -702,7 +722,7 @@ class CyclusOutput:
         prototype = np.atleast_1d(prototype)
 
         # Get agent IDs for the specified prototypes (flat list)
-        ids_by_proto = {p: self.get_proto_ids(p) for p in prototype}
+        ids_by_proto = self.get_proto_ids(prototype)
         all_ids = [aid for ids in ids_by_proto.values() for aid in ids] # flatten
         id_csv = ",".join(map(str, all_ids))
 
@@ -764,7 +784,7 @@ class CyclusOutput:
         prototype = np.atleast_1d(prototype)
 
         # Get agent IDs for the specified prototypes (flat list)
-        ids_by_proto = {p: self.get_proto_ids(p) for p in prototype}
+        ids_by_proto = self.get_proto_ids(prototype)
         all_ids = [aid for ids in ids_by_proto.values() for aid in ids] # flatten
         id_csv = ",".join(map(str, all_ids))
 
@@ -1051,7 +1071,8 @@ class CyclusOutput:
                        natu_assay:float,
                        tails_assay:float,
                        return_sum: bool = True,
-                       split_cat:bool=False):
+                       split_cat:bool=False,
+                       cascade_splits:list[float]=[0.1, 0.2],):
         """
         Calculate the separative work unit (SWU) for a given prototype or list of prototypes.
         This function computes the SWU based on the enrichment levels of the specified prototypes.
@@ -1077,22 +1098,40 @@ class CyclusOutput:
 
         # Get fuel mass and enrichment for the specified prototypes, separately for each
         fuel_mass, enr = self.get_fuel_mass_and_enrichment(prototype, return_sum=False)
+        uniq_enr = {round(float(e), 8) for p in prototype for e in enr[p] if e > 0} # unique enrichments, rounded to avoid truncation errors
 
-        # Construct a dictionary per prototype
+        # Calculate the SWU split for each category for unique enrichments if needed
+        if split_cat:
+            from .enr_utils import calculate_swu_split
+            SWU_splits = {}
+            for e in uniq_enr:
+                SWU_splits[e] = np.asarray(
+                    calculate_swu_split(
+                        e,
+                        tailing_enr=tails_assay,
+                        feed_enr=natu_assay,
+                        cascade_splits=cascade_splits,
+                    ),
+                    dtype=float,
+                )
         swu = {}
+        zeros = np.zeros(len(cascade_splits) + 1)
+
         for p in prototype:
-            # Calculate the SWU-to-product ratio for the current prototype
             if not split_cat:
-                swu_per_product = self.SWU_to_product_ratio(natu_assay, enr[p], tails_assay)
-                # Multiply the ratio by the product (fuel demand)
-                swu[p] = fuel_mass[p] * swu_per_product
+                ratio = self.SWU_to_product_ratio(natu_assay, enr[p], tails_assay)
+                swu[p] = fuel_mass[p] * ratio
             else:
-                from .enr_utils import calculate_swu_split_cats
-                multistage_swu = np.array([calculate_swu_split_cats(natu_assay, tails_assay, e) for e in enr[p]])
+                # map each enrichment to its cached split
+                multistage_swu = np.array(
+                    [
+                        SWU_splits.get(round(float(e), 8), zeros) # Return zeros if enrichment not found
+                        if e > 0 else zeros
+                        for e in enr[p]
+                    ],
+                    dtype=float,
+                )
                 swu[p] = fuel_mass[p] * multistage_swu.T
 
-        # Sum over all prototypes if requested
-        if return_sum:
-            swu = sum(swu.values())
-        return swu
+        return sum(swu.values()) if return_sum else swu
     
