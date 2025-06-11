@@ -69,8 +69,11 @@ def calculate_swu(e_feed, e_tail, e_prod):
     return p * v(e_prod) + t * v(e_tail) - f * v(e_feed)
 
 
-def v(x:float):
-    return (2*x-1)*np.log(x/(1-x))
+def v(x: float):
+    if x <= 0 or x >= 1:
+        return 0.0
+    return (2*x - 1) * np.log(x / (1 - x))
+
 
 
 def calculate_swu_split_cats(e_feed:float, e_tail:float, e_prod:float):
@@ -111,7 +114,7 @@ def calculate_swu_split_cats(e_feed:float, e_tail:float, e_prod:float):
     return swus
 
 
-def calculate_swu_split(prod_enr, tailing_enr, feed_enr=0.00711, cascade_splits=[0.1,0.2]):
+def calculate_swu_split(prod_enr, tailing_enr, feed_enr=0.00711, cascade_splits=[0.1,0.2], printing=False):
     '''
     Calculate the SWU distribution across different stages of enrichment.
 
@@ -152,7 +155,7 @@ def calculate_swu_split(prod_enr, tailing_enr, feed_enr=0.00711, cascade_splits=
         stage_tail_enrichments = np.full_like(stage_product_enrichments, stage_tail_enrichments[0])
 
     # Calculate values
-    multistage_dict = multistage_enr(stage_feed_enrichments, stage_product_enrichments, stage_tail_enrichments, printing=False)
+    multistage_dict = multistage_enr(stage_feed_enrichments, stage_product_enrichments, stage_tail_enrichments, printing=printing)
     stage_swus = multistage_dict['swu']
     while len(stage_swus) < len(cascade_splits)+1: # Add zeros for higher enrichment categories
         stage_swus.append(0)
@@ -188,6 +191,11 @@ def multistage_enr(feed_enrs, prod_enrs, tailing_enrs, printing=True):
         Dictionary containing lists of SWU, feed, and tailing quantities 
         for each stage
     '''
+    if printing:
+        print('Calculating SWU for multi-stage enrichment process:')
+        print('\tFeed Enrichments:', feed_enrs)
+        print('\tProduct Enrichments:', prod_enrs)
+        print('\tTailing Enrichments:', tailing_enrs)
     if type(feed_enrs) == float: feed_enrs = [feed_enrs]
     if type(tailing_enrs) == float: tailing_enrs = [tailing_enrs]
     if type(prod_enrs) == float:
@@ -206,8 +214,8 @@ def multistage_enr(feed_enrs, prod_enrs, tailing_enrs, printing=True):
         feed_enrs = feed_enrs[:indx]
         tailing_enrs = tailing_enrs[:indx]
 
-    assert(len(feed_enrs) == len(prod_enrs) == len(tailing_enrs))
-    assert(prod_enrs[0] > feed_enrs[0] > tailing_enrs[0])
+    assert len(feed_enrs) == len(prod_enrs) == len(tailing_enrs), f"Mismatch in number of stages: lengths of feed={len(feed_enrs)}, prod={len(prod_enrs)}, tailing={len(tailing_enrs)}." 
+    assert prod_enrs[0] > feed_enrs[0] > tailing_enrs[0], f"Enrichment levels must satisfy prod > feed > tailing for the first stage: prod={prod_enrs[0]}, feed={feed_enrs[0]}, tailing={tailing_enrs[0]}."
     n_stages = len(feed_enrs)
     # check connectivity
     for n in range(n_stages-2):
@@ -231,10 +239,10 @@ def multistage_enr(feed_enrs, prod_enrs, tailing_enrs, printing=True):
         swu = qty_prod[n] * calculate_swu(feed_enrs[n], tailing_enrs[n], prod_enrs[n])
         feed = qty_prod[n] * calculate_feed(feed_enrs[n], tailing_enrs[n], prod_enrs[n])
         qty_tailing = feed - qty_prod[n]
-        if tailing_enrs[n] in feed_enrs:
+        matches = np.isclose(feed_enrs, tailing_enrs[n], atol=1e-8)
+        if np.any(matches):
             # goes to feed to a higher category
-            indx = feed_enrs.index(tailing_enrs[n])
-            print('Subtracting %s from stage %s' %(qty_tailing, indx))
+            indx = np.where(matches)[0][0]
             feed_list[indx] -= qty_tailing
             if indx != 0:
                 qty_prod[indx-1] -= qty_tailing
@@ -243,11 +251,13 @@ def multistage_enr(feed_enrs, prod_enrs, tailing_enrs, printing=True):
             tailing_list[n] += qty_tailing
 
         if printing:
-            print('Stage ', n)
-            print('\tProd qty:', qty_prod)
-            print('\tFeed qty:', feed)
-            print('\tTailing qty:', qty_tailing)
-
+            print(f'\tStage {n}:')
+            print(f'\t\tProd qty: {qty_prod[n]:.6f} (enr: {prod_enrs[n]: .4%})')
+            print(f'\t\tFeed qty: {feed:.6f} (enr: {feed_enrs[n]: .4%})')
+            print(f'\t\tTailing qty: {qty_tailing:.6f} (enr: {tailing_enrs[n]: .4%})')
+            if np.any(matches):
+                print(f'\t\tSubtracting {qty_tailing:.6f} from stage {indx}')
+            
         if n != 0:  
             qty_prod[n-1] += feed
         swu_list[n] += swu
