@@ -85,7 +85,7 @@ class ResultsDYMOND(Results):
         return {'init_year': init_year, 'init_month': init_month,
                 'duration': duration, 'years': years}
 
-    def get_deployment_dict(self, reactors=None):
+    def get_deployment_dict(self, reactors=None, return_sum=True) -> dict[str, np.ndarray] | np.ndarray:
         '''
         Determines the amount of deployed power for each time step for
         each reactor
@@ -112,6 +112,8 @@ class ResultsDYMOND(Results):
             if reactor not in self.operations["reactors"]:
                 raise ValueError(f"Reactor '{reactor}' not found in operations data.")
             power_dict[reactor] = np.array(self.operations["reactors"][reactor])/1e3
+        if return_sum:
+            return np.sum(list(power_dict.values()), axis=0)
         return power_dict
 
     def get_fuel_mass_and_enrichment(self, reactors: str | list[str] | None = None, return_sum: bool = True) -> tuple[np.ndarray, np.ndarray] | dict[str, tuple[np.ndarray, np.ndarray]]:

@@ -580,7 +580,7 @@ class CyclusOutput:
 
     # ----------------------------- Direct fuel-related functions -----------------------------
 
-    def get_deployment_dict(self, reactors, misc_key='legacy'):
+    def get_deployment_dict(self, reactors, misc_key='legacy', return_sum=True):
         '''
         Determines the amount of deployed power for each time step for
         each reactor prototype
@@ -591,6 +591,8 @@ class CyclusOutput:
             names of reactor prototypes in the simulation
         misc_key: str
             prototype name to skip over in database
+        return_sum: bool
+            if True, returns a single array summed over all reactors,
 
         Returns:
         --------
@@ -632,6 +634,10 @@ class CyclusOutput:
                 key = misc_key
 
             power_dict[key][t0-1:t0+t1-1] += row['value'] * 1e-3
+        
+        # If return_sum is True, sum the power across all reactors
+        if return_sum:
+            power_dict = np.sum(list(power_dict.values()), axis=0)
         return power_dict
 
     def get_fuel_mass_and_enrichment(self, prototype: str | list[str], return_sum: bool = True) -> tuple[np.ndarray, np.ndarray] | dict[str, tuple[np.ndarray, np.ndarray]]:
