@@ -48,7 +48,7 @@ class ResultsDYMOND(Results):
     def __init__(self, params: Parameters, exec_info: ExecInfo,
                  inputs: List[Path], outputs: List[Path]):
         super().__init__(params, exec_info, inputs, outputs)
-        self.stocks, self.flows, self.operations, self.output_data = self._get_dymond_json_data()
+        self.reactors, self.stocks, self.flows, self.operations, self.output_data = self._get_dymond_json_data()
 
     def _get_dymond_json_data(self) -> dict:
         """Read abbreviated DYMOND output JSON files and return it as dictionaries"""
@@ -59,194 +59,294 @@ class ResultsDYMOND(Results):
                 flows_dict = json.loads(oup.read_text())
             elif "operations" in str(oup):
                 operations_dict = json.loads(oup.read_text())
+                reactors = list([k for  k in operations_dict["reactors"] if k != "TOTAL"])
             elif "output" in str(oup):
                 output_data_dict = json.loads(oup.read_text())
         
-        return(stocks_dict, flows_dict, operations_dict, output_data_dict)
+        return(reactors, stocks_dict, flows_dict, operations_dict, output_data_dict)
 
-    def stock_fuel_natu(self, reactor: str,
-                              natu_assay: float,
-                              tails_assay: float):
-        """
-        calculate the amount of natural uranium to fabricate the loaded fuel based on the input 
-        definition and the mass flow in the json flows output. This function is only to be used
-        when the fuel is fabricated from some initial stock.
+    def get_times(self):
+        '''
+        Gets different time-related data from a simulation
 
         Parameters:
         -----------
-        reactor: str
-            the name of the reactor type to calculate the natural uranium for
-        natu_assay: float
-            the fraction of u235 in natural uranium
-        tails_assay: float
-            the fraction of u235 in the enrichment tails
+
+        Returns:
+        --------
+        dict
+            {'init_year':int, 'init_month':int,
+             'duration':int, 'time': int, 'years':int}
+        '''
+        years = self.output_data['times'] # Get years from output data
+        init_year = min(years) # First year of simulation
+        init_month = 1 # DYMOND outputs yearly
+        duration = int((max(years) - min(years) + 1) * 12) # duration in months
+        return {'init_year': init_year, 'init_month': init_month,
+                'duration': duration, 'years': years}
+
+    def get_deployment_dict(self, reactors=None):
+        '''
+        Determines the amount of deployed power for each time step for
+        each reactor
+
+        Parameters:
+        -----------
+        reactors: list of str
+            names of reactors in the simulation
+
+        Returns:
+        --------
+        power_dict: dictionary
+            keys are strings, the reactor names
+            the values are a numpy array with one element for
+            each time step in the scenario, indicating how
+            much power is deployed for each key during the
+            smulation.
+        '''
+        if reactors is None:
+            reactors = self.reactors
+        reactors = np.atleast_1d(reactors)
+        power_dict = {}
+        for reactor in reactors:
+            if reactor not in self.operations["reactors"]:
+                raise ValueError(f"Reactor '{reactor}' not found in operations data.")
+            power_dict[reactor] = np.array(self.operations["reactors"][reactor])/1e3
+        return power_dict
+
+    def get_fuel_mass_and_enrichment(self, reactors: str | list[str] | None = None, return_sum: bool = True) -> tuple[np.ndarray, np.ndarray] | dict[str, tuple[np.ndarray, np.ndarray]]:
+        fuel_mass = self.stock_fuel_demand(reactors, return_sum=return_sum)
+        enrichment = self.get_enrichments(reactors)
+        return fuel_mass, enrichment
+
+    def stock_fuel_demand(self, reactors: str | list[str] | None = None, return_sum: bool = True) -> np.ndarray | dict[str, np.ndarray]:
+        """
+        Annual fuel mass demand from one or more reactors.
+
+        Parameters
+        ----------
+        reactors : str or list of str
+            Reactor(s) to calculate fuel demand for.
+        return_sum : bool
+            If True, returns a single array summed over all reactors.
+
+        Returns
+        -------
+        fuel_mass : np.ndarray or dict[str, np.ndarray]
+            Yearly fuel mass per reactor, or total if return_sum=True.
+        """
+        if reactors is None:
+            reactors = self.reactors
+        reactors = np.atleast_1d(reactors)
+        flows_dict = self.flows
+
+        fuel_mass_dict = {}
+        for inp in self.inputs:
+            if ".input" in str(inp):
+                input_dict = json.loads(inp.read_text())
+
+        for reactor in reactors:
+            if reactor not in flows_dict["TOTAL"]:
+                raise ValueError(f"Reactor '{reactor}' not found in flows data.")
+            fuel_mass_dict[reactor] = np.array(flows_dict["TOTAL"][reactor])
+
+        if return_sum:
+            return np.sum(list(fuel_mass_dict.values()), axis=0)
+        return fuel_mass_dict
+
+    def stock_fuel_discharged(self, reactors: str | list[str] | None = None, return_sum: bool = True) -> np.ndarray | dict[str, np.ndarray]:
+        """
+        Annual discharged fuel mass from one or more reactors.
+
+        Parameters
+        ----------
+        reactors : str or list of str
+            Reactor(s) to calculate discharged fuel for.
+        return_sum : bool
+            If True, returns a single array summed over all reactors.
+
+        Returns
+        -------
+        discharged_mass : np.ndarray or dict[str, np.ndarray]
+            Yearly discharged fuel mass per reactor, or total if return_sum=True.
+        """
+        # TODO: TO FILL, LIKE stock_fuel_demand, but for discharged fuel
         
-        Returns:
-        ----------
-        natu: numpy array<float>
-            array of annual natural uranium equivalent inputs
-        """
 
+    def get_enrichments(self, reactors: str | list[str] | None = None) -> np.ndarray | dict[str, np.ndarray]:
+        """
+        Annual enrichment (U-235 mass fraction) for fuel delivered to one or more reactors.
+        Always returns one array per reactor.
+
+        Parameters
+        ----------
+        reactors : str or list of str
+            Name(s) of the reactors to analyze.
+
+        Returns
+        -------
+        enrichment : dict[str, np.ndarray]
+            Annual enrichment time series for each reactor, or a total array.
+        """
+        # Convert reactor to a numpy array
+        if reactors is None:
+            reactors = self.reactors
+        reactors = np.atleast_1d(reactors)
+        flows_dict = self.flows
+        enrichments = {}
         for inp in self.inputs:
             if ".input" in str(inp):
                 input_dict = json.loads(inp.read_text())
+        for reactor in reactors:
+            # Find the reactor spec in input_dict
+            match = next((r for r in input_dict["types"]["reactor"] if r["name"] == reactor), None)
+            if match is None:
+                raise ValueError(f"Reactor '{reactor}' not found in input.")
 
-        flows_dict = self.flows
+            if 'fuel' not in match:
+                print(f"Reactor {reactor} does not take traditional fuel. Returning zeros.")
+                enrichments[reactor] = np.zeros_like(flows_dict["TOTAL"][reactor])
+                continue
 
-        for r in input_dict["types"]["reactor"]:
-            if(r["name"] == reactor):
-                if 'fuel' not in r.keys():
-                    print(f'Reactor {reactor} does not take traditional fuel, most likely reprocessed fuel. So it does not use uranium. Returning zeros.')
-                    return np.zeros_like(flows_dict['TOTAL'][reactor])
-                fuel_material_recipe = r["fuel"]
+            fuel_material_recipe = match["fuel"]
 
-        fuel_composition = {}
-        for fuel_mat in fuel_material_recipe:
-            for event in input_dict["events"]:
-                if fuel_mat in event["parameters"].keys():
-                    for nuclide, mass in event["parameters"][fuel_mat].items():
-                        comp_mass = fuel_material_recipe[fuel_mat]*mass
-                        if nuclide in fuel_composition:
-                            fuel_composition[nuclide] += comp_mass
-                        else:
-                            fuel_composition[nuclide] = comp_mass
-                        
-        u235_mass = fuel_composition["u235"]
-        u_mass = 0.0
-        for nuclide in fuel_composition:
-            if nuclide.startswith("u"):
-                u_mass += fuel_composition[nuclide]
+            # Build composition
+            fuel_composition = {}
+            for fuel_mat in fuel_material_recipe:
+                for event in input_dict["events"]:
+                    if fuel_mat in event["parameters"]:
+                        for nuclide, mass in event["parameters"][fuel_mat].items():
+                            comp_mass = fuel_material_recipe[fuel_mat] * mass
+                            fuel_composition[nuclide] = fuel_composition.get(nuclide, 0.0) + comp_mass
 
-        enrichment = u235_mass/u_mass
+            u235_mass = fuel_composition.get("u235", 0.0)
+            u_mass = sum(m for n, m in fuel_composition.items() if n.startswith("u"))
+            enrichment = u235_mass / u_mass if u_mass > 0 else 0.0
 
-        fuel_mass_flow = np.array(flows_dict["TOTAL"][reactor])
-        natu = fuel_mass_flow*(enrichment-tails_assay)/(natu_assay-tails_assay)
-        
-        return(natu)
+            enrichments[reactor] = np.full_like(flows_dict["TOTAL"][reactor], enrichment)
+        return enrichments
 
-    def stock_fuel_swu(self, reactor: str,
-                             feed_assay:float,
-                             tails_assay:float):
+    def stock_fuel_natu(self, reactors=None, natu_assay=None, tails_assay=None, return_sum=True):
         """
-        calculate the amount of total swu to fabricate the loaded fuel based on the input 
-        definition and the mass flow in the json flows output. This function is only to be used
-        when the fuel is fabricated from some initial stock.
+        Compute natural-uranium demand for one or more reactors.
 
-        Parameters:
-        -----------
-        reactor: str
-            the name of the reactor type to calculate the natural uranium for
-        natu_assay: float
-            the fraction of u235 in natural uranium
-        tails_assay: float
-            the fraction of u235 in the enrichment tails
-
-        Returns:
+        Parameters
         ----------
-        natu: numpy array<float>
-            array of annual total swu for equivalent fuel
+        reactors : str or list[str]
+            Reactor name(s) to evaluate.
+        natu_assay : float
+            U-235 fraction in natural uranium (feed).
+        tails_assay : float
+            U-235 fraction in enrichment tails.
+        return_sum : bool, default True
+            If True, return the total across reactors; otherwise return a dict.
+
+        Returns
+        -------
+        np.ndarray or dict[str, np.ndarray]
+            Natural-uranium mass per time step (total or per reactor).
         """
+        from .enr_utils import feed_to_product_ratio
+        if reactors is None:
+            reactors = self.reactors
+        reactors = np.atleast_1d(reactors)
 
-        for inp in self.inputs:
-            if ".input" in str(inp):
-                input_dict = json.loads(inp.read_text())
+        # Mass flow (product) and enrichment for each reactor
+        prod_flows = self.flows["TOTAL"]          # product mass arrays
+        prod_enrs  = self.get_enrichments(reactors)
 
-        flows_dict = self.flows
+        natu = {}
+        for r in reactors:
+            # Feed-to-product ratio with natural feed
+            ratio = feed_to_product_ratio(natu_assay, prod_enrs[r], tails_assay)
+            natu[r] = np.asarray(prod_flows[r], dtype=float) * ratio
 
+        return np.sum(list(natu.values()), axis=0) if return_sum else natu
 
-        for r in input_dict["types"]["reactor"]:
-            if(r["name"] == reactor):
-                fuel_material_recipe = r["fuel"]
-
-        fuel_composition = {}
-        for fuel_mat in fuel_material_recipe:
-            for event in input_dict["events"]:
-                if fuel_mat in event["parameters"].keys():
-                    for nuclide, mass in event["parameters"][fuel_mat].items():
-                        comp_mass = fuel_material_recipe[fuel_mat]*mass
-                        if nuclide in fuel_composition:
-                            fuel_composition[nuclide] += comp_mass
-                        else:
-                            fuel_composition[nuclide] = comp_mass
-                        
-        u235_mass = fuel_composition["u235"]
-        u_mass = 0.0
-        for nuclide in fuel_composition:
-            if nuclide.startswith("u"):
-                u_mass += fuel_composition[nuclide]
-
-        enrichment = u235_mass/u_mass
-
-        fuel_mass_flow = np.array(flows_dict["TOTAL"][reactor])
-        swu = np.array([swu_calc(fuel_mass_flow[i], enrichment, tails_assay, feed_assay)[2] for i in range(len(fuel_mass_flow))])
-
-        return(swu)    
-
-
-
-    def stock_fuel_swu_2stage(self, reactor: str,
-                                    feed_assays:np.array, 
-                                    tails_assays:np.array):
+    def stock_fuel_swu(
+        self,
+        reactors = None,
+        natu_assay = None,
+        tails_assay = None,
+        return_sum=True,
+        split_cat=False,
+        cascade_splits=None,
+    ):
         """
-        calculate the amount of total swu to fabricate the loaded fuel based on the input 
-        definition and the mass flow in the json flows output. This function is only to be used
-        when the fuel is fabricated from some initial stock.
+        Compute SWU requirements for one or more reactors.
 
-        Parameters:
-        -----------
-        reactor: str
-            the name of the reactor type to calculate the natural uranium for
-        natu_assays: np.array<float>
-            the fraction of u235 in natural uranium
-        tails_assays: np.array<float>
-            the fraction of u235 in the enrichment tails
-
-        Returns:
+        Parameters
         ----------
-        natu: np.array<np.array<float>>
-            array of annual swu required for each stage
+        reactors : str or list[str]
+            Reactor name(s).
+        natu_assay : float
+            Enrichment of the feed (typically natural uranium).
+        tails_assay : float
+            Enrichment of the tails material.
+        return_sum : bool, optional
+            If True, returns the sum across reactors (default True).
+        split_cat : bool, optional
+            If True, return SWU split by cascade stage; otherwise return
+            total SWU per reactor (default False).
+        cascade_splits : list of float, optional
+            Intermediate enrichments that define cascade stages.
+            Defaults to ``[0.1, 0.2]``.
+
+        Returns
+        -------
+        dict[str, np.ndarray] or np.ndarray
+            SWU per reactor (or summed), either by stage or total.
         """
+        from .enr_utils import calculate_swu_split
+        if cascade_splits is None:
+            cascade_splits = [0.1, 0.2]
+        if reactors is None:
+            reactors = self.reactors
+        reactors = np.atleast_1d(reactors)
 
-        for inp in self.inputs:
-            if ".input" in str(inp):
-                input_dict = json.loads(inp.read_text())
+        # Mass and enrichment arrays for each reactor
+        fuel_mass, enr = self.get_fuel_mass_and_enrichment(reactors, return_sum=False)
 
-        flows_dict = self.flows
+        # Cache SWU splits for every unique enrichment
+        swu_split_cache = {}
+        for reactor in reactors:
+            for e in enr[reactor]:
+                if e > 0:
+                    key = round(float(e), 8)
+                    if key not in swu_split_cache:
+                        swu_split_cache[key] = np.asarray(
+                            calculate_swu_split(
+                                feed_enr=natu_assay,
+                                prod_enr=e,
+                                tail_enr=tails_assay,
+                                cascade_splits=cascade_splits,
+                            ),
+                            dtype=float,
+                        )
 
-        assert(len(feed_assays) == len(tails_assays)), 'Length of feed and tails arrays must be the same'
-        for r in input_dict["types"]["reactor"]:
-            if(r["name"] == reactor):
-                if 'fuel' not in r.keys():
-                    print(f'Reactor {reactor} does not take traditional fuel, most likely reprocessed fuel. So it does not use uranium. Returning zeros.')
-                    return np.zeros((len(flows_dict['TOTAL'][reactor]), len(feed_assays)))
-                fuel_material_recipe = r["fuel"]
+        n_stages = len(cascade_splits) + 1
+        zeros = np.zeros(n_stages)
+        swu = {}
 
-        fuel_composition = {}
-        for fuel_mat in fuel_material_recipe:
-            for event in input_dict["events"]:
-                if fuel_mat in event["parameters"].keys():
-                    for nuclide, mass in event["parameters"][fuel_mat].items():
-                        comp_mass = fuel_material_recipe[fuel_mat]*mass
-                        if nuclide in fuel_composition:
-                            fuel_composition[nuclide] += comp_mass
-                        else:
-                            fuel_composition[nuclide] = comp_mass
-                        
-        u235_mass = fuel_composition["u235"]
-        u_mass = 0.0
-        for nuclide in fuel_composition:
-            if nuclide.startswith("u"):
-                u_mass += fuel_composition[nuclide]
+        for reactor in reactors:
+            # SWU ratio vector for every fuel element
+            ratios = np.array(
+                [
+                    swu_split_cache.get(round(float(e), 8), zeros) if e > 0 else zeros
+                    for e in enr[reactor]
+                ],
+                dtype=float,
+            )
 
-        enrichment = u235_mass/u_mass
-
-        fuel_mass_flow = np.array(flows_dict["TOTAL"][reactor])
-        swu = multistage_swu_calc(fuel_mass_flow, enrichment, feed_assays, tails_assays) 
-
-        return(swu[0])
+            swu[reactor] = (ratios.T * fuel_mass[reactor])
+            # Sum over stages if not split_cat
+            if not split_cat:
+                swu[reactor] = np.sum(swu[reactor], axis=1)
+        return sum(swu.values()) if return_sum else swu
 
 
 
+    # Old functions
     def power_generated(self, reactor: str):
         """
             retrieves the power generation data from the operations json output
@@ -389,7 +489,7 @@ class PluginDYMOND(PluginGeneric):
         self._executable = Path(exe)    
 
 
-
+# TODO: remove, as this is repeated from enr_utils.py
 def swu_calc(product, Xproduct, Xtails, Xfeed):
 #product is the mass or rate of enriched uranium (np.array)
 #The X variables are the mass fraction of U235 of the respective masses (floats)
@@ -407,6 +507,7 @@ def swu_calc(product, Xproduct, Xtails, Xfeed):
     
     return(T, F, swu)
 
+# TODO: remove, as this is repeated from enr_utils.py
 def swuStages(product, p_assay, feed_assays, tails_assays):
     #This function calculates the SWU, products masses, feed masses, and tails masses by stage
     #for a multi-stage enrichment scheme in an ideal configuration (i.e. t(n) = f(n-1), p(n) = f(n+1))
@@ -436,6 +537,7 @@ def swuStages(product, p_assay, feed_assays, tails_assays):
     
     return(swu_demand, products, feeds, tails)
 
+# TODO: remove, as this is repeated from enr_utils.py
 def multistage_swu_calc(product, p_assay, feed_assays, tails_assays):
     swu_demand = np.zeros([len(product), len(feed_assays)])
     product_streams = np.zeros([len(product), len(feed_assays)])

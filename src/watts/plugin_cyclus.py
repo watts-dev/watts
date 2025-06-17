@@ -842,141 +842,6 @@ class CyclusOutput:
 
         return enrich
 
-    # ----------------------------- Enrichment process helpers -----------------------------
-
-    @staticmethod
-    def feed_to_product_ratio(feed_enr: float | list[float],
-                               prod_enr: float | list[float],
-                               tailing_enr: float | list[float]) -> float:
-        """
-        Calculate the feed-to-product ratio for a given enrichment process.
-
-        Parameters
-        ----------
-        feed_enr : float or list of float
-            Enrichment of the feed material.
-        prod_enr : float or list of float
-            Enrichment of the product material.
-        tailing_enr : float or list of float
-            Enrichment of the tails material.
-
-        Returns
-        -------
-        float or list of float
-            Feed-to-product ratio for the given enrichment process.
-        """
-        # Convert inputs to numpy arrays
-        feed_enr = np.atleast_1d(feed_enr)
-        prod_enr = np.atleast_1d(prod_enr)
-        tailing_enr = np.atleast_1d(tailing_enr)
-
-        # Calculate the feed-to-product ratio, based on product, feed, and tails enrichments
-        ratio = (prod_enr - tailing_enr) / (feed_enr - tailing_enr)
-        ratio[prod_enr == 0] = 0  # Set ratio to 0 if product enrichment is 0
-        assert np.all(ratio >= 0), f"Feed-to-product ratio cannot be negative.\nRatio: {ratio}.\nInput was:\n\tFeed: {feed_enr}\n\tProduct: {prod_enr}\n\tTails: {tailing_enr}"
-        return ratio
-
-    @staticmethod
-    def tails_to_product_ratio(feed_enr: float | list[float],
-                               prod_enr: float | list[float],
-                               tailing_enr: float | list[float]) -> float:
-        """
-        Calculate the tails-to-product ratio for a given enrichment process.
-
-        Parameters
-        ----------
-        feed_enr : float or list of float
-            Enrichment of the feed material.
-        prod_enr : float or list of float
-            Enrichment of the product material.
-        tailing_enr : float or list of float
-            Enrichment of the tails material.
-
-        Returns
-        -------
-        float or list of float
-            Tails-to-product ratio for the given enrichment process.
-        """
-        # Convert inputs to numpy arrays
-        feed_enr = np.atleast_1d(feed_enr)
-        prod_enr = np.atleast_1d(prod_enr)
-        tailing_enr = np.atleast_1d(tailing_enr)
-
-        # Calculate the tails-to-product ratio based on product, feed, and tails enrichments
-        ratio = (prod_enr - feed_enr) / (feed_enr - tailing_enr)
-        ratio[prod_enr == 0] = 0  # Set ratio to 0 if product enrichment is 0
-        assert np.all(ratio >= 0), f"Tails-to-product ratio cannot be negative.\nRatio: {ratio}.\nInput was:\n\tFeed: {feed_enr}\n\tProduct: {prod_enr}\n\tTails: {tailing_enr}"
-        return ratio
-
-    @staticmethod
-    def _swu_function(enr: float | list[float]):
-        """
-        Helper function to calculate the separative work unit (SWU) for a given enrichment level.
-        This function is used internally by the calculate_swu method.
-
-        Parameters
-        ----------
-        enr : float or list of float
-            Enrichment level of the material, expressed as a decimal (0 to 1).
-
-        Returns
-        -------
-        float or list of float
-            SWU value for the given enrichment level.
-        """
-        # Convert inputs to numpy arrays
-        enr = np.atleast_1d(enr)
-        result = np.zeros_like(enr)
-
-        # Mask for valid enrichment values (0 < enr < 1). The rest will be 0.
-        mask = (enr > 0) & (enr < 1)
-
-        # Formula is: f(x) = (2x - 1) * log(x / (1 - x)) where x is the enrichment
-        result[mask] = (2 * enr[mask] - 1) * np.log(enr[mask] / (1 - enr[mask]))
-        return result if result.shape else result.item()
-
-    @staticmethod
-    def SWU_to_product_ratio(feed_enr: float | list[float],
-                            prod_enr: float | list[float],
-                            tailing_enr: float | list[float]) -> float | np.ndarray:
-        """
-        Calculate the separative work unit (SWU) to product ratio for a given enrichment process.
-
-        Parameters
-        ----------
-        feed_enr : float or list of float
-            Enrichment of the feed material.
-        prod_enr : float or list of float
-            Enrichment of the product material.
-        tailing_enr : float or list of float
-            Enrichment of the tails material.
-
-        Returns
-        -------
-        float or np.ndarray
-            SWU-to-product ratio for the given enrichment process.
-        """
-
-        # Convert to arrays
-        feed_enr = np.atleast_1d(feed_enr)
-        prod_enr = np.atleast_1d(prod_enr)
-        tailing_enr = np.atleast_1d(tailing_enr)
-
-        # Compute intermediate ratios
-        tails_ratio = CyclusOutput.tails_to_product_ratio(feed_enr, prod_enr, tailing_enr)
-        feed_ratio = CyclusOutput.feed_to_product_ratio(feed_enr, prod_enr, tailing_enr)
-
-        # Compute value terms
-        Vp = CyclusOutput._swu_function(prod_enr)
-        Vf = CyclusOutput._swu_function(feed_enr)
-        Vt = CyclusOutput._swu_function(tailing_enr)
-
-        # Final SWU per product formula
-        swu_per_product = Vp + tails_ratio * Vt - feed_ratio * Vf
-        swu_per_product[prod_enr == 0] = 0  # Set SWU to 0 if product enrichment is 0
-        assert np.all(swu_per_product >= 0), f"SWU-to-product ratio cannot be negative.\nRatio: {swu_per_product}.\nInput was:\n\tFeed: {feed_enr}\n\tProduct: {prod_enr}\n\tTails: {tailing_enr}"
-        return swu_per_product
-
     # ----------------------------- Advanced data extraction functions -----------------------------
 
     def stock_fuel_natu(self, prototype:str | list[str],
@@ -1004,6 +869,8 @@ class CyclusOutput:
         nat : dict[str, np.ndarray] or np.ndarray
             Natural uranium mass flow for each prototype, or total if return_sum=True.
         """
+        from .enr_utils import feed_to_product_ratio
+
         # Convert prototype to a numpy array
         prototype = np.atleast_1d(prototype)
 
@@ -1014,9 +881,9 @@ class CyclusOutput:
         nat = {}
         for p in prototype:
             # Calculate the feed-to-product ratio for the current prototype
-            feed_to_product_ratio = self.feed_to_product_ratio(natu_assay, enrichment[p], tails_assay)
+            feed_to_product = feed_to_product_ratio(natu_assay, enrichment[p], tails_assay)
             # Multiply the ratio by the product (fuel demand)
-            nat[p] = fuel_mass_flow[p] * feed_to_product_ratio
+            nat[p] = fuel_mass_flow[p] * feed_to_product
 
         # Sum over all prototypes if requested
         if return_sum:
@@ -1048,6 +915,8 @@ class CyclusOutput:
         nat : dict[str, np.ndarray] or np.ndarray
             Tails mass flow for each prototype, or total if return_sum=True.
         """
+        from .enr_utils import tails_to_product_ratio
+
         # Convert prototype to a numpy array
         prototype = np.atleast_1d(prototype)
 
@@ -1058,80 +927,91 @@ class CyclusOutput:
         nat = {}
         for p in prototype:
             # Calculate the tails-to-product ratio for the current prototype
-            tails_to_product_ratio = self.tails_to_product_ratio(natu_assay, enrichment[p], tails_assay)
+            tails_to_product = tails_to_product_ratio(natu_assay, enrichment[p], tails_assay)
             # Multiply the ratio by the product (fuel demand)
-            nat[p] = fuel_mass_flow[p] * tails_to_product_ratio
+            nat[p] = fuel_mass_flow[p] * tails_to_product
 
         # Sum over all prototypes if requested
         if return_sum:
             nat = np.sum(list(nat.values()), axis=0)
         return nat
 
-    def stock_fuel_swu(self, prototype:str | list[str],
-                       natu_assay:float,
-                       tails_assay:float,
-                       return_sum: bool = True,
-                       split_cat:bool=False,
-                       cascade_splits:list[float]=[0.1, 0.2],):
+    def stock_fuel_swu(
+        self,
+        prototype,
+        natu_assay,
+        tails_assay,
+        return_sum=True,
+        split_cat=False,
+        cascade_splits=None,
+    ):
         """
-        Calculate the separative work unit (SWU) for a given prototype or list of prototypes.
-        This function computes the SWU based on the enrichment levels of the specified prototypes.
+        Compute SWU requirements for one or more prototypes.
 
         Parameters
         ----------
-        prototype : str or list of str
-            Name(s) of the prototype(s) to analyze.
+        prototype : str or list[str]
+            Prototype name(s).
         natu_assay : float
-            Enrichment level of the natural uranium, expressed as a decimal.
+            Enrichment of the feed (typically natural uranium).
         tails_assay : float
-            Enrichment level of the tails material, expressed as a decimal.
+            Enrichment of the tails material.
         return_sum : bool, optional
-            If True, returns a single array summed over all prototypes. Default is True.
+            If True, returns the sum across prototypes (default True).
+        split_cat : bool, optional
+            If True, return SWU split by cascade stage; otherwise return
+            total SWU per prototype (default False).
+        cascade_splits : list of float, optional
+            Intermediate enrichments that define cascade stages.
+            Defaults to ``[0.1, 0.2]``.
 
         Returns
         -------
-        swu : dict[str, np.ndarray] or np.ndarray
-            SWU for each prototype, or total if return_sum=True.
+        dict[str, np.ndarray] or np.ndarray
+            SWU per prototype (or summed), either by stage or total.
         """
-        # Convert prototype to a numpy array
+        if cascade_splits is None:
+            cascade_splits = [0.1, 0.2] # Default cascade splits
+
+        from .enr_utils import calculate_swu_split
+
         prototype = np.atleast_1d(prototype)
 
-        # Get fuel mass and enrichment for the specified prototypes, separately for each
+        # Mass and enrichment arrays for each prototype
         fuel_mass, enr = self.get_fuel_mass_and_enrichment(prototype, return_sum=False)
-        uniq_enr = {round(float(e), 8) for p in prototype for e in enr[p] if e > 0} # unique enrichments, rounded to avoid truncation errors
 
-        # Calculate the SWU split for each category for unique enrichments if needed
-        if split_cat:
-            from .enr_utils import calculate_swu_split
-            SWU_splits = {}
-            for e in uniq_enr:
-                SWU_splits[e] = np.asarray(
-                    calculate_swu_split(
-                        e,
-                        tailing_enr=tails_assay,
-                        feed_enr=natu_assay,
-                        cascade_splits=cascade_splits,
-                    ),
-                    dtype=float,
-                )
+        # Cache SWU splits for every unique enrichment
+        swu_split_cache = {}
+        for p in prototype:
+            for e in enr[p]:
+                if e > 0:
+                    key = round(float(e), 8)
+                    if key not in swu_split_cache:
+                        swu_split_cache[key] = np.asarray(
+                            calculate_swu_split(
+                                feed_enr=natu_assay,
+                                prod_enr=e,
+                                tail_enr=tails_assay,
+                                cascade_splits=cascade_splits,
+                            ),
+                            dtype=float,
+                        )
+        n_stages = len(cascade_splits) + 1
+        zeros = np.zeros(n_stages)
         swu = {}
-        zeros = np.zeros(len(cascade_splits) + 1)
 
         for p in prototype:
+            # SWU ratio vector for every fuel element
+            ratios = np.array(
+                [
+                    swu_split_cache.get(round(float(e), 8), zeros) if e > 0 else zeros
+                    for e in enr[p]
+                ],
+                dtype=float,
+            )
+            swu[p] = (ratios.T * fuel_mass[p])
+            # Sum over stages if not split_cat
             if not split_cat:
-                ratio = self.SWU_to_product_ratio(natu_assay, enr[p], tails_assay)
-                swu[p] = fuel_mass[p] * ratio
-            else:
-                # map each enrichment to its cached split
-                multistage_swu = np.array(
-                    [
-                        SWU_splits.get(round(float(e), 8), zeros) # Return zeros if enrichment not found
-                        if e > 0 else zeros
-                        for e in enr[p]
-                    ],
-                    dtype=float,
-                )
-                swu[p] = fuel_mass[p] * multistage_swu.T
-
+                swu[p] = np.sum(swu[p], axis=1)
         return sum(swu.values()) if return_sum else swu
-    
+
