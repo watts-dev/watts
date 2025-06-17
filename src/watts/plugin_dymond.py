@@ -263,6 +263,43 @@ class ResultsDYMOND(Results):
 
         return np.sum(list(natu.values()), axis=0) if return_sum else natu
 
+    def stock_fuel_tails(self, reactors=None, natu_assay=None, tails_assay=None, return_sum=True):
+        """
+        Compute tails mass for one or more reactors.
+
+        Parameters
+        ----------
+        reactors : str or list[str]
+            Reactor name(s) to evaluate.
+        natu_assay : float
+            U-235 fraction in natural uranium (feed).
+        tails_assay : float
+            U-235 fraction in enrichment tails.
+        return_sum : bool, default True
+            If True, return the total across reactors; otherwise return a dict.
+
+        Returns
+        -------
+        np.ndarray or dict[str, np.ndarray]
+            Tails mass per time step (total or per reactor).
+        """
+        from .enr_utils import tails_to_product_ratio
+        if reactors is None:
+            reactors = self.reactors
+        reactors = np.atleast_1d(reactors)
+
+        # Mass flow (product) and enrichment for each reactor
+        prod_flows = self.flows["TOTAL"]          # product mass arrays
+        prod_enrs  = self.get_enrichments(reactors)
+
+        tails = {}
+        for r in reactors:
+            # Product-to-tails ratio with natural feed
+            ratio = tails_to_product_ratio(natu_assay, prod_enrs[r], tails_assay)
+            tails[r] = np.asarray(prod_flows[r], dtype=float) * ratio
+
+        return np.sum(list(tails.values()), axis=0) if return_sum else tails
+    
     def stock_fuel_swu(
         self,
         reactors = None,
