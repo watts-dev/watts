@@ -6,7 +6,7 @@ from typing import List, Optional
 import math
 import pandas as pd
 import numpy as np
-import h5py as h5 
+import h5py as h5
 import json
 
 from .plugin import Plugin, PluginGeneric, _find_executable
@@ -31,7 +31,7 @@ class ResultsDYMOND(Results):
         List of output files
 
     Attributes
-    ----------    
+    ----------
     stocks
         Dictionary of cumulative material stored in the model at each time point by agent type and material type
     flows
@@ -48,9 +48,98 @@ class ResultsDYMOND(Results):
     def __init__(self, params: Parameters, exec_info: ExecInfo,
                  inputs: List[Path], outputs: List[Path]):
         super().__init__(params, exec_info, inputs, outputs)
-        self.reactors, self.stocks, self.flows, self.operations, self.output_data = self._get_dymond_json_data()
 
-    def _get_dymond_json_data(self) -> dict:
+        self.obj = self.get_object()
+
+    def get_object(self):
+        return DYMONDOutput(self.inputs, self.outputs)
+class PluginDYMOND(PluginGeneric):
+    """Plugin for running DYMOND simulations
+
+        Parameters
+    ----------
+    template_file
+        Templated DYMOND input
+    executable
+        Path to DYMOND bash/shell script
+    extra_inputs
+        List of extra (non-templated) input files that are needed
+    extra_template_inputs
+        Extra templated input files
+    show_stdout
+        Whether to display output from stdout when DYMOND is run
+    show_stderr
+        Whether to display output from stderr when DYMOND is run
+
+    Attributes
+    ----------
+    executable
+        Path to DYMOND executable
+    execute_command
+        List of command-line arguments to call the executable
+    """
+
+
+    def __init__(self,
+                 template_file: PathLike,
+                 executable: PathLike = 'dymond.sh',
+                 extra_inputs: Optional[List[str]] = None,
+                 extra_template_inputs: Optional[List[PathLike]] = None,
+                 show_stdout: bool = False,
+                 show_stderr: bool = False):
+
+        executable = _find_executable(executable, 'DYMOND_DIR')
+        execute_command = ['{self.executable}', '-i', '{self.input_name}']
+
+        super().__init__(executable, execute_command, template_file, extra_inputs,
+                         extra_template_inputs, "DYMOND", show_stdout, show_stderr)
+
+        self.input_name = "DYMOND_input"
+
+    @PluginGeneric.executable.setter
+    def executable(self, exe: PathLike):
+        if not exe.is_file():
+            raise RuntimeError(
+                f"{self.plugin_name} module '{exe}' does not exist. The "
+                "DYMOND_DIR environment variable needs to be set to a directory "
+                "containing the DYMOND scripts and model modules."
+            )
+        self._executable = Path(exe)
+
+class DYMONDOutput:
+    def __init__(self, input_files, output_files):
+        '''
+        Class to access and browse an output file from DYMOND.
+        All input and output files must be formatted as json files.
+        Parameters:
+        -----------
+        path: str
+            path to output file, including file name
+        '''
+        # Check if files exist
+        for inp in input_files:
+            assert inp.is_file(), f"Input file {inp} does not exist."
+        for oup in output_files:
+            assert oup.is_file(), f"Output file {oup} does not exist."
+
+        # Check if files are json-formatted
+        for inp in input_files:
+            try:
+                input_dict = json.loads(inp.read_text(encoding='utf-8'))
+            except Exception as e:
+                raise ValueError(f"Error reading input file {inp} as JSON: {e}")
+        for oup in output_files:
+            try:
+                output_dict = json.loads(oup.read_text(encoding='utf-8'))
+            except Exception as e:
+                raise ValueError(f"Error reading output file {oup} as JSON: {e}")
+
+        self.inputs = input_files
+        self.outputs = output_files
+        self.reactors, self.stocks, self.flows, self.operations, self.output_data = self._get_DYMOND_json_data()
+        self.years = np.array(self.get_times()['years'])
+
+    def _get_DYMOND_json_data(self) -> dict:
         """Read abbreviated DYMOND output JSON files and return it as dictionaries"""
         for oup in self.outputs:
             if "stocks" in str(oup):
@@ -62,7 +151,7 @@ class ResultsDYMOND(Results):
                 reactors = list([k for  k in operations_dict["reactors"] if k != "TOTAL"])
             elif "output" in str(oup):
                 output_data_dict = json.loads(oup.read_text())
-        
+
         return(reactors, stocks_dict, flows_dict, operations_dict, output_data_dict)
 
     def get_times(self):
@@ -173,7 +262,7 @@ class ResultsDYMOND(Results):
             Yearly discharged fuel mass per reactor, or total if return_sum=True.
         """
         # TODO: TO FILL, LIKE stock_fuel_demand, but for discharged fuel
-        
+
 
     def get_enrichments(self, reactors: str | list[str] | None = None) -> np.ndarray | dict[str, np.ndarray]:
         """
@@ -301,7 +390,7 @@ class ResultsDYMOND(Results):
             tails[r] = np.asarray(prod_flows[r], dtype=float) * ratio
 
         return np.sum(list(tails.values()), axis=0) if return_sum else tails
-    
+
     def stock_fuel_swu(
         self,
         reactors = None,
@@ -398,15 +487,15 @@ class ResultsDYMOND(Results):
             Returns:
             -----------
             numpy.array<float>
-                the annual power generation info for the reactor type       
-        
+                the annual power generation info for the reactor type
+
         """
 
         operations_dict = self.operations
 
         return(np.array(operations_dict["reactors"][reactor]))
 
-    
+
     def fuel_fabricated(self, reactor: str):
         """
              retrieves the fuel fabrication data from the flows json output
@@ -419,8 +508,8 @@ class ResultsDYMOND(Results):
             Returns:
             -----------
             numpy.array<float>
-                the annual fuel fabrication info for the reactor type           
-        
+                the annual fuel fabrication info for the reactor type
+
         """
 
         flows_dict = self.flows
@@ -440,8 +529,8 @@ class ResultsDYMOND(Results):
             Returns:
             -----------
             numpy.array<float>
-                the annual reprocessing info for the reprocessing plant type           
-        
+                the annual reprocessing info for the reprocessing plant type
+
         """
 
         flows_dict = self.flows
@@ -463,69 +552,14 @@ class ResultsDYMOND(Results):
             Returns:
             -----------
             numpy.array<float>
-                the total mass of waste being stored each year          
-        
+                the total mass of waste being stored each year
+
         """
 
         stocks_dict = self.stocks
 
         return(np.array(stocks_dict[storage][material]))
-        
 
-
-
-class PluginDYMOND(PluginGeneric):
-    """Plugin for running DYMOND simulations
-    
-        Parameters
-    ----------
-    template_file
-        Templated DYMOND input
-    executable
-        Path to DYMOND bash/shell script
-    extra_inputs
-        List of extra (non-templated) input files that are needed
-    extra_template_inputs
-        Extra templated input files
-    show_stdout
-        Whether to display output from stdout when DYMOND is run
-    show_stderr
-        Whether to display output from stderr when DYMOND is run
-
-    Attributes
-    ----------
-    executable
-        Path to DYMOND executable
-    execute_command
-        List of command-line arguments to call the executable
-    """
-
-
-    def __init__(self, 
-                 template_file: PathLike,
-                 executable: PathLike = 'dymond.sh',
-                 extra_inputs: Optional[List[str]] = None,
-                 extra_template_inputs: Optional[List[PathLike]] = None,
-                 show_stdout: bool = False,
-                 show_stderr: bool = False):
-        
-        executable = _find_executable(executable, 'DYMOND_DIR')
-        execute_command = ['{self.executable}', '-i', '{self.input_name}']
-
-        super().__init__(executable, execute_command, template_file, extra_inputs,
-                         extra_template_inputs, "DYMOND", show_stdout, show_stderr)     
-        
-        self.input_name = "DYMOND_input"
-
-    @PluginGeneric.executable.setter
-    def executable(self, exe: PathLike):
-        if not exe.is_file():
-            raise RuntimeError(
-                f"{self.plugin_name} module '{exe}' does not exist. The "
-                "DYMOND_DIR environment variable needs to be set to a directory "
-                "containing the DYMOND scripts and model modules."
-            )
-        self._executable = Path(exe)    
 
 
 # TODO: remove, as this is repeated from enr_utils.py
@@ -534,16 +568,16 @@ def swu_calc(product, Xproduct, Xtails, Xfeed):
 #The X variables are the mass fraction of U235 of the respective masses (floats)
     Vp = (2*Xproduct-1)*math.log(Xproduct/(1-Xproduct))
     Vt = (2*Xtails-1)*math.log(Xtails/(1-Xtails))
-    Vf = (2*Xfeed-1)*math.log(Xfeed/(1-Xfeed)) 
+    Vf = (2*Xfeed-1)*math.log(Xfeed/(1-Xfeed))
     F = 0
     T = 0
-    
+
 
     P = product
     T = (Xproduct-Xfeed)/(Xfeed-Xtails)*P
     F = T + P
     swu = P*Vp + Vt*T - Vf*F
-    
+
     return(T, F, swu)
 
 # TODO: remove, as this is repeated from enr_utils.py
@@ -554,7 +588,7 @@ def swuStages(product, p_assay, feed_assays, tails_assays):
     #p_assay: the enrichment fraction of the final product
     #feed_assays: the enrichment of the feed for each stage of enrichment
     #tails_assays: the enrichment of the tails coming out of each stage of enrichment
-    
+
     swu_demand = np.zeros(len(feed_assays))
     feeds = np.zeros(len(feed_assays))
     products = np.zeros(len(feed_assays))
@@ -571,9 +605,9 @@ def swuStages(product, p_assay, feed_assays, tails_assays):
             xp = feed_assays[n-1]
             if n > 1:
                 products[n-2] = feeds[n-1]
-                
+
             T1 = tails[n-1]
-    
+
     return(swu_demand, products, feeds, tails)
 
 # TODO: remove, as this is repeated from enr_utils.py
