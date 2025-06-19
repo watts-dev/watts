@@ -232,10 +232,6 @@ class DYMONDOutput:
         flows_dict = self.flows
 
         fuel_mass_dict = {}
-        for inp in self.inputs:
-            if ".input" in str(inp):
-                input_dict = json.loads(inp.read_text())
-
         for reactor in reactors:
             if reactor not in flows_dict["TOTAL"]:
                 raise ValueError(f"Reactor '{reactor}' not found in flows data.")
@@ -261,8 +257,20 @@ class DYMONDOutput:
         discharged_mass : np.ndarray or dict[str, np.ndarray]
             Yearly discharged fuel mass per reactor, or total if return_sum=True.
         """
-        # TODO: TO FILL, LIKE stock_fuel_demand, but for discharged fuel
+        if reactors is None:
+            reactors = self.reactors
+        reactors = np.atleast_1d(reactors)
+        waste_dict = self.stocks['waste']
 
+        fuel_mass_dict = {}
+        for reactor in reactors:
+            if reactor not in waste_dict:
+                raise ValueError(f"Reactor '{reactor}' not found in flows data.")
+            fuel_mass_dict[reactor] = np.array(waste_dict[reactor])
+
+        if return_sum:
+            return np.sum(list(fuel_mass_dict.values()), axis=0)
+        return fuel_mass_dict
 
     def get_enrichments(self, reactors: str | list[str] | None = None) -> np.ndarray | dict[str, np.ndarray]:
         """
@@ -559,71 +567,3 @@ class DYMONDOutput:
         stocks_dict = self.stocks
 
         return(np.array(stocks_dict[storage][material]))
-
-
-
-# TODO: remove, as this is repeated from enr_utils.py
-def swu_calc(product, Xproduct, Xtails, Xfeed):
-#product is the mass or rate of enriched uranium (np.array)
-#The X variables are the mass fraction of U235 of the respective masses (floats)
-    Vp = (2*Xproduct-1)*math.log(Xproduct/(1-Xproduct))
-    Vt = (2*Xtails-1)*math.log(Xtails/(1-Xtails))
-    Vf = (2*Xfeed-1)*math.log(Xfeed/(1-Xfeed))
-    F = 0
-    T = 0
-
-
-    P = product
-    T = (Xproduct-Xfeed)/(Xfeed-Xtails)*P
-    F = T + P
-    swu = P*Vp + Vt*T - Vf*F
-
-    return(T, F, swu)
-
-# TODO: remove, as this is repeated from enr_utils.py
-def swuStages(product, p_assay, feed_assays, tails_assays):
-    #This function calculates the SWU, products masses, feed masses, and tails masses by stage
-    #for a multi-stage enrichment scheme in an ideal configuration (i.e. t(n) = f(n-1), p(n) = f(n+1))
-    #product: the mass of the final enriched product in kg
-    #p_assay: the enrichment fraction of the final product
-    #feed_assays: the enrichment of the feed for each stage of enrichment
-    #tails_assays: the enrichment of the tails coming out of each stage of enrichment
-
-    swu_demand = np.zeros(len(feed_assays))
-    feeds = np.zeros(len(feed_assays))
-    products = np.zeros(len(feed_assays))
-    tails = np.zeros(len(feed_assays))
-    xp = p_assay
-    T1 = 0
-    for n in range(len(feeds), 0, -1):
-        #Stage is only needed if the enrichment is higher than the input feed
-        if p_assay > feed_assays[n-1]:
-            if products[n-1] == 0.0:
-                products[n-1] = product
-            tails[n-1], feeds[n-1], swu_demand[n-1] = swu_calc(products[n-1], xp, tails_assays[n-1], feed_assays[n-1])
-            feeds[n-1] -= T1
-            xp = feed_assays[n-1]
-            if n > 1:
-                products[n-2] = feeds[n-1]
-
-            T1 = tails[n-1]
-
-    return(swu_demand, products, feeds, tails)
-
-# TODO: remove, as this is repeated from enr_utils.py
-def multistage_swu_calc(product, p_assay, feed_assays, tails_assays):
-    swu_demand = np.zeros([len(product), len(feed_assays)])
-    product_streams = np.zeros([len(product), len(feed_assays)])
-    feed_streams = np.zeros([len(product), len(feed_assays)])
-    tails_streams = np.zeros([len(product), len(feed_assays)])
-
-    for y in range(len(product)):
-        swu, p, f, t = swuStages(product[y], p_assay, feed_assays, tails_assays)
-        for s in range(len(feed_assays)):
-            swu_demand[y][s] = swu[s]
-            product_streams[y][s] = p[s]
-            feed_streams[y][s] = f[s]
-            tails_streams[y][s] = t[s]
-
-
-    return(swu_demand, product_streams, feed_streams, tails_streams)
