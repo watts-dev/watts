@@ -155,8 +155,6 @@ class CyclusOutput:
         self.nucids = self.get_nucids()
         self.agent_dict = self.get_facility_agents()
         self.reactors = np.unique(list(self.get_facility_agents('reactor').values()))
-        # self.flows, self.stocks = self.get_agent_flow_and_stock_dict(by_proto)
-        # self.products = self.get_products()
 
 
     def get_facility_agents(self, spec_keywords=None):
@@ -177,32 +175,6 @@ class CyclusOutput:
         agents = {q['agentid']:q['prototype'] for q in query}
         return agents
 
-
-    def get_products(self):
-        # get product tables
-        product_dict = {}
-        query = self.sql_query('''SELECT name
-                               FROM sqlite_master
-                               WHERE type="table";''')
-        tables = [q['name'] for q in query if 'TimeSeries' in q['name']]
-        # kill ones with timeseriessupply or timeseriesdemand
-        tables = [q for q in tables if 'TimeSeriessupply' not in q]
-        tables = [q for q in tables if 'TimeSeriesdemand' not in q]
-        for table in tables:
-            key = table.replace('TimeSeries', '')
-            product_dict[key] = {}
-            # get unique agentids
-            query = self.sql_query(f'''SELECT distinct(agentid)
-                                   FROM {table}''')
-            agentids = [q['agentid'] for q in query]
-            # get production timeseries
-            for agentid in agentids:
-                query = self.sql_query(f'''SELECT sum(value), time
-                                       FROM {table}
-                                       WHERE agentid=={agentid}
-                                       GROUP BY time''')
-                product_dict[key][agentid] = self.get_yearly_sum(self.query_to_array(query, self.duration, nucids=[], time_label='time', value_label='sum(value)'))
-        return product_dict
 
 
     def process_prototype(self, proto, get_isotopics):
