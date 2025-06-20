@@ -180,7 +180,7 @@ def calculate_swu_split(feed_enr, prod_enr, tail_enr, cascade_splits=[0.1,0.2], 
     
     # Verify the total SWU calculated matches the total expected from feed to product if tails are uniform
     if len(np.unique(stage_tail_enrichments)) == 1:
-        total_swu = swu_to_product_ratio(feed_enr, tail_enr, prod_enr)
+        total_swu = swu_to_product_ratio(feed_enr, prod_enr, tail_enr)
         if not np.isclose(sum(stage_swus), total_swu):
             raise ValueError("Calculated total SWU does not match the expected total SWU.")
 
