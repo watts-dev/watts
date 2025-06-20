@@ -137,7 +137,6 @@ class DYMONDOutput:
         self.inputs = input_files
         self.outputs = output_files
         self.reactors, self.stocks, self.flows, self.operations, self.output_data = self._get_DYMOND_json_data()
-        self.years = np.array(self.get_times()['years'])
 
     def _get_DYMOND_json_data(self) -> dict:
         """Read abbreviated DYMOND output JSON files and return it as dictionaries"""

@@ -154,7 +154,7 @@ class CyclusOutput:
             setattr(self, k, v)
         self.nucids = self.get_nucids()
         self.agent_dict = self.get_facility_agents()
-
+        self.reactors = np.unique(list(self.get_facility_agents('reactor').values()))
         # self.flows, self.stocks = self.get_agent_flow_and_stock_dict(by_proto)
         # self.products = self.get_products()
 
@@ -580,19 +580,19 @@ class CyclusOutput:
 
     # ----------------------------- Direct fuel-related functions -----------------------------
 
-    def get_deployment_dict(self, reactors, misc_key='legacy', return_sum=True):
+    def get_deployment_dict(self, prototypes=None, misc_key='legacy', return_sum=True):
         '''
         Determines the amount of deployed power for each time step for
         each reactor prototype
 
         Parameters:
         -----------
-        reactors: list of str
+        prototypes: list of str
             names of reactor prototypes in the simulation
         misc_key: str
             prototype name to skip over in database
         return_sum: bool
-            if True, returns a single array summed over all reactors,
+            if True, returns a single array summed over all prototypes,
 
         Returns:
         --------
@@ -603,6 +603,11 @@ class CyclusOutput:
             much power is deployed for each key during the
             smulation.
         '''
+        # Convert reactor to a numpy array
+        if prototypes is None:
+            prototypes = self.reactors
+        prototypes = np.atleast_1d(prototypes)
+
         q = self.sql_query('''SELECT prototype, entertime, lifetime, Spec, value
                            FROM agententry
                            INNER JOIN timeseriespower
@@ -614,9 +619,9 @@ class CyclusOutput:
 
         power = np.zeros(self.duration)
 
-        power_dict = {k:np.zeros(self.duration) for k in reactors}
+        power_dict = {k:np.zeros(self.duration) for k in prototypes}
         power_dict['legacy'] = np.zeros(self.duration)
-        pow_cap_dict = {k:0 for k in reactors if k != misc_key}
+        pow_cap_dict = {k:0 for k in prototypes if k != misc_key}
 
         for row in q:
             proto = row['prototype']
@@ -624,7 +629,7 @@ class CyclusOutput:
             t1 = row['lifetime']
 
             found = False
-            for react_ in reactors:
+            for react_ in prototypes:
                 if react_ in proto:
                     key = react_
                     found = True
@@ -634,24 +639,24 @@ class CyclusOutput:
                 key = misc_key
 
             power_dict[key][t0-1:t0+t1-1] += row['value'] * 1e-3
-        
+
         # If return_sum is True, sum the power across all reactors
         if return_sum:
             power_dict = np.sum(list(power_dict.values()), axis=0)
         return power_dict
 
-    def get_fuel_mass_and_enrichment(self, prototype: str | list[str], return_sum: bool = True) -> tuple[np.ndarray, np.ndarray] | dict[str, tuple[np.ndarray, np.ndarray]]:
-        fuel_mass = self.stock_fuel_demand(prototype, return_sum=return_sum)
-        enrichment = self.get_enrichments(prototype)
+    def get_fuel_mass_and_enrichment(self, prototypes: str | list[str] | None = None, return_sum: bool = True) -> tuple[np.ndarray, np.ndarray] | dict[str, tuple[np.ndarray, np.ndarray]]:
+        fuel_mass = self.stock_fuel_demand(prototypes, return_sum=return_sum)
+        enrichment = self.get_enrichments(prototypes)
         return fuel_mass, enrichment
 
-    def stock_fuel_demand(self, prototype: str | list[str], return_sum: bool = True) -> np.ndarray | dict[str, np.ndarray]:
+    def stock_fuel_demand(self, prototypes: str | list[str] | None = None, return_sum: bool = True) -> np.ndarray | dict[str, np.ndarray]:
         """
         Annual fuel mass demand from one or more prototypes.
 
         Parameters
         ----------
-        prototype : str or list of str
+        prototypes : str or list of str
             Reactor prototype(s).
         return_sum : bool
             If True, returns a single array summed over all prototypes.
@@ -661,17 +666,19 @@ class CyclusOutput:
         fuel_mass : np.ndarray or dict[str, np.ndarray]
             Yearly fuel mass per prototype, or total if return_sum=True.
         """
-        # Convert prototype to a numpy array
-        prototype = np.atleast_1d(prototype)
+        # Convert reactor to a numpy array
+        if prototypes is None:
+            prototypes = self.reactors
+        prototypes = np.atleast_1d(prototypes)
 
         # Get agent IDs for the specified prototypes (flat list)
-        ids_by_proto = self.get_proto_ids(prototype)
+        ids_by_proto = self.get_proto_ids(prototypes)
         all_ids = [aid for ids in ids_by_proto.values() for aid in ids] # flatten
         id_csv = ",".join(map(str, all_ids))
 
         # If no IDs found, return empty arrays of the appropriate size
         if not all_ids:
-            return np.zeros(self.duration // 12) if return_sum else {p: np.zeros(self.duration // 12) for p in prototype}
+            return np.zeros(self.duration // 12) if return_sum else {p: np.zeros(self.duration // 12) for p in prototypes}
 
         # Get relevant commodities (fuel=into) for each prototype
         commods = self.get_commodity_into(agentid=all_ids)
@@ -690,7 +697,7 @@ class CyclusOutput:
         """)
 
         # Accumulate monthly quantities
-        out = {p: np.zeros(self.duration) for p in prototype}
+        out = {p: np.zeros(self.duration) for p in prototypes}
         for row in rows:
             rid, t, q = row["receiverid"], row["time"], row["q"]
             if t >= self.duration:
@@ -708,13 +715,13 @@ class CyclusOutput:
             fuel_mass = np.sum(list(fuel_mass.values()), axis=0)
         return fuel_mass
 
-    def stock_fuel_discharged(self, prototype: str | list[str], return_sum: bool = True) -> np.ndarray | dict[str, np.ndarray]:
+    def stock_fuel_discharged(self, prototypes: str | list[str] | None = None, return_sum: bool = True) -> np.ndarray | dict[str, np.ndarray]:
         """
         Annual discharged fuel mass from one or more prototypes.
 
         Parameters
         ----------
-        prototype : str or list of str
+        prototypes : str or list of str
             Reactor prototype(s).
         return_sum : bool
             If True, returns a single array summed over all prototypes.
@@ -724,17 +731,19 @@ class CyclusOutput:
         discharged_mass : np.ndarray or dict[str, np.ndarray]
             Yearly discharged fuel mass per prototype, or total if return_sum=True.
         """
-        # Convert prototype to a numpy array
-        prototype = np.atleast_1d(prototype)
+        # Convert reactor to a numpy array
+        if prototypes is None:
+            prototypes = self.reactors
+        prototypes = np.atleast_1d(prototypes)
 
         # Get agent IDs for the specified prototypes (flat list)
-        ids_by_proto = self.get_proto_ids(prototype)
+        ids_by_proto = self.get_proto_ids(prototypes)
         all_ids = [aid for ids in ids_by_proto.values() for aid in ids] # flatten
         id_csv = ",".join(map(str, all_ids))
 
         # If no IDs found, return empty arrays of the appropriate size
         if not all_ids:
-            return np.zeros(self.duration // 12) if return_sum else {p: np.zeros(self.duration // 12) for p in prototype}
+            return np.zeros(self.duration // 12) if return_sum else {p: np.zeros(self.duration // 12) for p in prototypes}
 
         # Get relevant commodities (discharged=out of) for each prototype
         commods = self.get_commodity_out_of(agentid=all_ids)
@@ -753,7 +762,7 @@ class CyclusOutput:
         """)
 
         # Accumulate monthly quantities
-        out = {p: np.zeros(self.duration) for p in prototype}
+        out = {p: np.zeros(self.duration) for p in prototypes}
         for row in rows:
             rid, t, q = row["senderid"], row["time"], row["q"]
             if t >= self.duration:
@@ -771,14 +780,14 @@ class CyclusOutput:
             discharged = np.sum(list(discharged.values()), axis=0)
         return discharged
 
-    def get_enrichments(self, prototype: str | list[str]) -> np.ndarray | dict[str, np.ndarray]:
+    def get_enrichments(self, prototypes: str | list[str]) -> np.ndarray | dict[str, np.ndarray]:
         """
         Annual enrichment (U-235 mass fraction) for fuel delivered to one or more prototypes.
-        Always returns one array per prototype.
+        Always returns one array per prototypes.
 
         Parameters
         ----------
-        prototype : str or list of str
+        prototypes : str or list of str
             Name(s) of the prototypes to analyze.
 
         Returns
@@ -786,17 +795,19 @@ class CyclusOutput:
         enrichment : dict[str, np.ndarray]
             Annual enrichment time series for each prototype, or a total array.
         """
-        # Convert prototype to a numpy array
-        prototype = np.atleast_1d(prototype)
+        # Convert reactor to a numpy array
+        if prototypes is None:
+            prototypes = self.reactors
+        prototypes = np.atleast_1d(prototypes)
 
         # Get agent IDs for the specified prototypes (flat list)
-        ids_by_proto = self.get_proto_ids(prototype)
+        ids_by_proto = self.get_proto_ids(prototypes)
         all_ids = [aid for ids in ids_by_proto.values() for aid in ids] # flatten
         id_csv = ",".join(map(str, all_ids))
 
         # If no IDs found, return empty arrays of the appropriate size
         if not all_ids:
-            return {p: np.zeros(self.duration // 12) for p in prototype}
+            return {p: np.zeros(self.duration // 12) for p in prototypes}
 
         # Get relevant commodities (fuel=into) for each prototype
         commods = self.get_commodity_into(agentid=all_ids)
@@ -820,8 +831,8 @@ class CyclusOutput:
 
 
         # Accumulate monthly quantities
-        u235_by_proto = {p: np.zeros(self.duration) for p in prototype}
-        mass_by_proto = {p: np.zeros(self.duration) for p in prototype}
+        u235_by_proto = {p: np.zeros(self.duration) for p in prototypes}
+        mass_by_proto = {p: np.zeros(self.duration) for p in prototypes}
         for row in rows:
             rid, t, u_mass, u235 = row["receiverid"], row["time"], row["u_mass"], row["u235"]
             if t >= self.duration:
@@ -833,13 +844,13 @@ class CyclusOutput:
                     break
 
         # Convert to yearly total
-        for p in prototype:
+        for p in prototypes:
             mass_by_proto[p] = self.get_yearly_sum(mass_by_proto[p])
             u235_by_proto[p] = self.get_yearly_sum(u235_by_proto[p])
 
         enrich = {}
         # Calculate enrichment (U-235 mass fraction)
-        for p in prototype:
+        for p in prototypes:
             with np.errstate(divide='ignore', invalid='ignore'): # to remove warnings when dividing by zero
                 ratio = np.zeros_like(u235_by_proto[p])
                 nonzero = mass_by_proto[p] > 0
@@ -850,9 +861,9 @@ class CyclusOutput:
 
     # ----------------------------- Advanced data extraction functions -----------------------------
 
-    def stock_fuel_natu(self, prototype:str | list[str],
-                        natu_assay:float,
-                        tails_assay:float,
+    def stock_fuel_natu(self, prototypes: str | list[str] | None = None,
+                        natu_assay:float = None,
+                        tails_assay:float = None,
                         return_sum: bool = True):
         """
         Calculate the natural uranium mass flow for a given prototype or list of prototypes.
@@ -861,7 +872,7 @@ class CyclusOutput:
 
         Parameters
         ----------
-        prototype : str or list of str
+        prototypes : str or list of str
             Name(s) of the prototype(s) to analyze.
         natu_assay : float
             Enrichment level of the natural uranium, expressed as a decimal.
@@ -877,15 +888,17 @@ class CyclusOutput:
         """
         from .enr_utils import feed_to_product_ratio
 
-        # Convert prototype to a numpy array
-        prototype = np.atleast_1d(prototype)
+        # Convert reactor to a numpy array
+        if prototypes is None:
+            prototypes = self.reactors
+        prototypes = np.atleast_1d(prototypes)
 
         # Get fuel demand and enrichment for the specified prototypes, separately for each
-        fuel_mass_flow, enrichment = self.get_fuel_mass_and_enrichment(prototype, return_sum=False)
+        fuel_mass_flow, enrichment = self.get_fuel_mass_and_enrichment(prototypes, return_sum=False)
 
         # Construct a dictionary per prototype
         nat = {}
-        for p in prototype:
+        for p in prototypes:
             # Calculate the feed-to-product ratio for the current prototype
             feed_to_product = feed_to_product_ratio(natu_assay, enrichment[p], tails_assay)
             # Multiply the ratio by the product (fuel demand)
@@ -896,9 +909,9 @@ class CyclusOutput:
             nat = np.sum(list(nat.values()), axis=0)
         return nat
 
-    def stock_fuel_tails(self, prototype:str | list[str],
-                        natu_assay:float,
-                        tails_assay:float,
+    def stock_fuel_tails(self, prototypes: str | list[str] | None = None,
+                        natu_assay:float = None,
+                        tails_assay:float = None,
                         return_sum: bool = True):
         """
         Calculate the tails mass flow for a given prototype or list of prototypes.
@@ -907,7 +920,7 @@ class CyclusOutput:
 
         Parameters
         ----------
-        prototype : str or list of str
+        prototypes : str or list of str
             Name(s) of the prototype(s) to analyze.
         natu_assay : float
             Enrichment level of the natural uranium, expressed as a decimal.
@@ -923,15 +936,17 @@ class CyclusOutput:
         """
         from .enr_utils import tails_to_product_ratio
 
-        # Convert prototype to a numpy array
-        prototype = np.atleast_1d(prototype)
+        # Convert reactor to a numpy array
+        if prototypes is None:
+            prototypes = self.reactors
+        prototypes = np.atleast_1d(prototypes)
 
         # Get fuel demand and enrichment for the specified prototypes, separately for each
-        fuel_mass_flow, enrichment = self.get_fuel_mass_and_enrichment(prototype, return_sum=False)
+        fuel_mass_flow, enrichment = self.get_fuel_mass_and_enrichment(prototypes, return_sum=False)
 
         # Construct a dictionary per prototype
         nat = {}
-        for p in prototype:
+        for p in prototypes:
             # Calculate the tails-to-product ratio for the current prototype
             tails_to_product = tails_to_product_ratio(natu_assay, enrichment[p], tails_assay)
             # Multiply the ratio by the product (fuel demand)
@@ -944,7 +959,7 @@ class CyclusOutput:
 
     def stock_fuel_swu(
         self,
-        prototype,
+        prototypes,
         natu_assay,
         tails_assay,
         return_sum=True,
@@ -956,7 +971,7 @@ class CyclusOutput:
 
         Parameters
         ----------
-        prototype : str or list[str]
+        prototypes : str or list[str]
             Prototype name(s).
         natu_assay : float
             Enrichment of the feed (typically natural uranium).
@@ -981,14 +996,17 @@ class CyclusOutput:
 
         from .enr_utils import calculate_swu_split
 
-        prototype = np.atleast_1d(prototype)
+        # Convert reactor to a numpy array
+        if prototypes is None:
+            prototypes = self.reactors
+        prototypes = np.atleast_1d(prototypes)
 
         # Mass and enrichment arrays for each prototype
-        fuel_mass, enr = self.get_fuel_mass_and_enrichment(prototype, return_sum=False)
+        fuel_mass, enr = self.get_fuel_mass_and_enrichment(prototypes, return_sum=False)
 
         # Cache SWU splits for every unique enrichment
         swu_split_cache = {}
-        for p in prototype:
+        for p in prototypes:
             for e in enr[p]:
                 if e > 0:
                     key = round(float(e), 8)
@@ -1006,7 +1024,7 @@ class CyclusOutput:
         zeros = np.zeros(n_stages)
         swu = {}
 
-        for p in prototype:
+        for p in prototypes:
             # SWU ratio vector for every fuel element
             ratios = np.array(
                 [
