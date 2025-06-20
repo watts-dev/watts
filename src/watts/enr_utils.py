@@ -64,7 +64,7 @@ def tails_to_product_ratio(feed_enr: float | list[float],
     assert np.all(ratio >= 0), f"Tails-to-product ratio cannot be negative.\nRatio: {ratio}.\nInput was:\n\tFeed: {feed_enr}\n\tProduct: {prod_enr}\n\tTails: {tail_enr}"
     return ratio.item() if ratio.size == 1 else ratio
 
-def _swu_function(enr: float | list[float]):
+def _value_function(enr: float | list[float]):
     """
     Helper function to calculate the separative work unit (SWU) for a given enrichment level.
     This function is used internally by the calculate_swu method.
@@ -122,9 +122,9 @@ def swu_to_product_ratio(feed_enr: float | list[float],
     feed_ratio = feed_to_product_ratio(feed_enr, prod_enr, tail_enr)
 
     # Compute value terms
-    Vp = _swu_function(prod_enr)
-    Vf = _swu_function(feed_enr)
-    Vt = _swu_function(tail_enr)
+    Vp = _value_function(prod_enr)
+    Vf = _value_function(feed_enr)
+    Vt = _value_function(tail_enr)
 
     # Final SWU per product formula
     ratio = Vp + tails_ratio * Vt - feed_ratio * Vf
