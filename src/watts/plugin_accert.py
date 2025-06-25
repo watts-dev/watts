@@ -87,7 +87,7 @@ class ResultsACCERT(Results):
 
     @property
     def account_table(self) -> pd.DataFrame:
-        account_file = self.base_path / 'ACCERT_updated_account.xlsx'
+        account_file = next((file for file in self.base_path.glob('*_updated_account.xlsx')), None)
         if Path(account_file).exists():
             return pd.read_excel(account_file)
         else:
