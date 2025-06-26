@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changes
+
+* Update ACCERT output name
+  ([#120](https://github.com/watts-dev/watts/pull/120))
+
 ## [0.5.2]
 
 ### Added
