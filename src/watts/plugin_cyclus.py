@@ -5,8 +5,6 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Callable, Mapping, List, Optional
 
-from uncertainties import ufloat
-
 import sqlite3 as lite
 import numpy as np
 import os
