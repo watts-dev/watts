@@ -46,35 +46,42 @@ class ResultsCyclus(Results):
         # self.obj = CyclusOutput(self.sqlite_file)
 
     def get_object(self):
+        """Returns a CyclusOutput object linked to the output SQLite file."""
         return CyclusOutput(self.sqlite_file)
 
     @property
     def sqlite_file(self) -> Path:
+        """Returns the path to the output SQLite file from the simulation."""
         l = [p for p in self.outputs if p.name.endswith('sqlite')]
         assert(len(l) == 1)
         return l[0]
 
     @property
     def prototypes(self):
+        """Returns a list of unique prototype names from the simulation."""
         return list(set(self.obj.agent_dict.values()))
 
     @property
     def reactors(self):
+        """Returns a dictionary of agent IDs and their prototype names for reactor facilities.""""
         return self.obj.get_facility_agents('reactor')
 
     @property
     def commodities(self) -> List[str]:
+        """Returns a list of unique commodity names used in the simulation."""
         # obj = CyclusOutput(self.sqlite_file)
         q = self.obj.cur.execute('SELECT distinct(commodity) FROM transactions')
         return [x['commodity'] for x in q]
 
     @property
     def time_dict(self) -> dict:
+        """Returns a dictionary with simulation time metadata (start year/month, duration, etc.)."""
         # obj = CyclusOutput(self.sqlite_file)
         return self.obj.get_times()
 
     @property
     def mass_flow_dict(self) -> dict:
+        """Returns a dictionary mapping commodities to their yearly mass flows."""
         # obj = CyclusOutput(self.sqlite_file)
         arr = self.obj.get_fuel_demands(self.commodities)
         d = {}
@@ -187,6 +194,21 @@ class CyclusOutput:
 
 
     def process_prototype(self, proto, get_isotopics):
+        """
+        Process mass flows and compute stock over time for a given prototype.
+
+        Parameters
+        ----------
+        proto : str or list of str
+            Prototype name(s) to process.
+        get_isotopics : bool
+            If True, includes isotopic mass data; otherwise only total mass.
+
+        Returns
+        -------
+        tuple
+            (prototype name, flow dictionary, cumulative stock array)
+        """
         print(f'\tProcessing prototype: {proto}')
         flow_dict = {}
         for c in ['receiverid', 'senderid']:
@@ -243,6 +265,21 @@ class CyclusOutput:
 
 
     def process_agent(self, id, get_isotopics):
+        """
+        Process mass flows and compute stock over time for a given agent ID.
+
+        Parameters
+        ----------
+        id : int
+            Agent ID to process.
+        get_isotopics : bool
+            If True, includes isotopic mass data; otherwise only total mass.
+
+        Returns
+        -------
+        tuple
+            (agent ID, flow dictionary, cumulative stock array)
+        """
 
         flow_dict = {}
         for c in ['receiverid', 'senderid']:
@@ -284,6 +321,22 @@ class CyclusOutput:
         return id, flow_dict, agent_stock
 
     def get_agent_flow_and_stock_dict(self, by_proto, get_isotopics=False):
+        """
+        Returns flow and stock dictionaries by prototype or agent.
+
+        Parameters
+        ----------
+        by_proto : bool
+            If True, groups by prototype; otherwise, by individual agent.
+        get_isotopics : bool, optional
+            If True, includes isotopic mass data.
+
+        Returns
+        -------
+        tuple
+            (flow_dict, stock_dict) indexed by prototype or agent ID.
+        """
+
         agent_flow_dict = {}
         agent_stock_dict = {}
 
@@ -424,6 +477,19 @@ class CyclusOutput:
                 'duration': duration, 'years': years}
 
     def get_nucids(self):
+        """
+        Returns the set of all nuclide IDs present in the flow dictionary.
+
+        Parameters
+        ----------
+        flow_dict : dict
+            Dictionary of flow data, typically from `get_agent_flow_and_stock_dict`.
+
+        Returns
+        -------
+        set
+            Set of integer nuclide IDs appearing in any time step of the flow data.
+        """
         query = self.sql_query('''SELECT distinct(nucid)
                                 FROM compositions''')
         nucids = np.array(sorted([q['nucid'] for q in query]))
@@ -461,6 +527,21 @@ class CyclusOutput:
         return fuel_flow_array
 
     def get_commodity_into(self, proto_name=None, agentid=None):
+        """
+        Get the list of unique incoming commodity names for a given prototype or agent ID.
+
+        Parameters
+        ----------
+        proto_name : str, optional
+            Name of the prototype. If specified, `agentid` must be None.
+        agentid : int or list of int, optional
+            Agent ID(s). If specified, `proto_name` must be None.
+
+        Returns
+        -------
+        list of str
+            List of commodity names received by the specified agent(s).
+        """
         # there can only be one
         assert((proto_name is not None) != (agentid is not None))
         if proto_name:
@@ -480,6 +561,21 @@ class CyclusOutput:
 
 
     def get_commodity_out_of(self, proto_name=None, agentid=None):
+        """
+        Get the list of unique outgoing commodity names for a given prototype or agent ID.
+
+        Parameters
+        ----------
+        proto_name : str, optional
+            Name of the prototype. If specified, `agentid` must be None.
+        agentid : int or list of int, optional
+            Agent ID(s). If specified, `proto_name` must be None.
+
+        Returns
+        -------
+        list of str
+            List of commodity names sent by the specified agent(s).
+        """
         # there can only be one
         assert((proto_name is not None) != (agentid is not None))
         if proto_name:
@@ -500,8 +596,20 @@ class CyclusOutput:
     def get_proto_ids(
         self,
         proto_name):
-        """If **proto_name** is a str, return a flat list of agent IDs.
-        If it is a sequence, return a dict {prototype: [agent IDs]}. """
+        """
+        Get agent IDs corresponding to one or more prototype names.
+
+        Parameters
+        ----------
+        proto_name : str or list of str
+            Prototype name or list of names.
+
+        Returns
+        -------
+        list of int or dict of list[int]
+            If input is a single prototype, returns a flat list of agent IDs.
+            If input is a list, returns a dictionary mapping prototype names to lists of agent IDs.
+        """
 
         want_flat = isinstance(proto_name, str)
         prototypes = [proto_name] if want_flat else list(proto_name)
@@ -531,6 +639,14 @@ class CyclusOutput:
 
 
     def get_commodities(self):
+        """
+        Return all unique commodity names used in the simulation.
+
+        Returns
+        -------
+        list of str
+            List of distinct commodity names from the transactions table.
+        """
         query = self.sql_query('''SELECT distinct(commodity)
                                FROM transactions''')
         return [x['commodity'] for x in query]
@@ -640,6 +756,22 @@ class CyclusOutput:
         return power_dict
 
     def get_fuel_mass_and_enrichment(self, prototypes: str | list[str] | None = None, return_sum: bool = True) -> tuple[np.ndarray, np.ndarray] | dict[str, tuple[np.ndarray, np.ndarray]]:
+        """
+        Get fuel mass and enrichment over time for one or more prototypes.
+
+        Parameters
+        ----------
+        prototypes : str, list of str, or None
+            Reactor prototype(s) to analyze. If None, use all reactor types in the simulation.
+        return_sum : bool
+            If True, return summed arrays across all prototypes. If False, return per-prototype dict.
+
+        Returns
+        -------
+        tuple or dict
+            If return_sum=True, returns (fuel_mass_array), {proto: enrichment_array}.
+            If return_sum=False, returns {proto: (fuel_mass_array, enrichment_array)}.
+        """
         fuel_mass = self.stock_fuel_demand(prototypes, return_sum=return_sum)
         enrichment = self.get_enrichments(prototypes)
         return fuel_mass, enrichment
