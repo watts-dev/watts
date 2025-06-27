@@ -3,8 +3,6 @@
 
 from pathlib import Path
 from typing import List, Optional
-import math
-import pandas as pd
 import numpy as np
 import h5py as h5
 import json
@@ -53,6 +51,9 @@ class ResultsDYMOND(Results):
 
     def get_object(self):
         return DYMONDOutput(self.inputs, self.outputs)
+    
+
+
 class PluginDYMOND(PluginGeneric):
     """Plugin for running DYMOND simulations
 
@@ -106,6 +107,8 @@ class PluginDYMOND(PluginGeneric):
             )
         self._executable = Path(exe)
 
+
+
 class DYMONDOutput:
     def __init__(self, input_files, output_files):
         '''
@@ -135,8 +138,9 @@ class DYMONDOutput:
                 raise ValueError(f"Error reading output file {oup} as JSON: {e}")
 
         self.inputs = input_files
+        self.reactors, self.reprocess_plants = self._get_type_names()
         self.outputs = output_files
-        self.reactors, self.stocks, self.flows, self.operations, self.output_data = self._get_DYMOND_json_data()
+        self.stocks, self.flows, self.operations, self.output_data = self._get_DYMOND_json_data()
 
     def _get_DYMOND_json_data(self) -> dict:
         """Read abbreviated DYMOND output JSON files and return it as dictionaries"""
@@ -147,11 +151,28 @@ class DYMONDOutput:
                 flows_dict = json.loads(oup.read_text())
             elif "operations" in str(oup):
                 operations_dict = json.loads(oup.read_text())
-                reactors = list([k for  k in operations_dict["reactors"] if k != "TOTAL"])
             elif "output" in str(oup):
                 output_data_dict = json.loads(oup.read_text())
 
-        return(reactors, stocks_dict, flows_dict, operations_dict, output_data_dict)
+        return(stocks_dict, flows_dict, operations_dict, output_data_dict)
+    
+    def _get_type_names(self) -> list[str]:
+        """Read DYMOND input for type definitions and return the type names"""
+        for inp in self.inputs:
+            if ".input" in str(inp):
+                input_dict = json.loads(inp.read_text())
+
+        reactors = []
+        if "reactor" in input_dict["types"]:
+            for r in input_dict["types"]["reactor"]:
+                reactors.append(r["name"])
+
+        reprocessing_plants = []
+        if "reprocessing" in input_dict["types"]:
+            for rp in input_dict["types"]["reprocessing"]:
+                reprocessing_plants.append(rp["name"])
+
+        return(reactors, reprocessing_plants)
 
     def get_times(self):
         '''
@@ -232,9 +253,9 @@ class DYMONDOutput:
 
         fuel_mass_dict = {}
         for reactor in reactors:
-            if reactor not in flows_dict["TOTAL"]:
+            if reactor not in flows_dict["reactor_in"]["TOTAL"]:
                 raise ValueError(f"Reactor '{reactor}' not found in flows data.")
-            fuel_mass_dict[reactor] = np.array(flows_dict["TOTAL"][reactor])
+            fuel_mass_dict[reactor] = np.array(flows_dict["reactor_in"]["TOTAL"][reactor])
 
         if return_sum:
             return np.sum(list(fuel_mass_dict.values()), axis=0)
@@ -259,13 +280,13 @@ class DYMONDOutput:
         if reactors is None:
             reactors = self.reactors
         reactors = np.atleast_1d(reactors)
-        waste_dict = self.stocks['waste']
+        flows_dict = self.flows
 
         fuel_mass_dict = {}
         for reactor in reactors:
-            if reactor not in waste_dict:
+            if reactor not in flows_dict["reactor_out"]["TOTAL"]:
                 raise ValueError(f"Reactor '{reactor}' not found in flows data.")
-            fuel_mass_dict[reactor] = np.array(waste_dict[reactor])
+            fuel_mass_dict[reactor] = np.array(flows_dict["reactor_out"]["TOTAL"][reactor])
 
         if return_sum:
             return np.sum(list(fuel_mass_dict.values()), axis=0)
@@ -303,7 +324,7 @@ class DYMONDOutput:
 
             if 'fuel' not in match:
                 print(f"Reactor {reactor} does not take traditional fuel. Returning zeros.")
-                enrichments[reactor] = np.zeros_like(flows_dict["TOTAL"][reactor])
+                enrichments[reactor] = np.zeros_like(flows_dict["reactor_in"]["TOTAL"][reactor])
                 continue
 
             fuel_material_recipe = match["fuel"]
@@ -321,7 +342,7 @@ class DYMONDOutput:
             u_mass = sum(m for n, m in fuel_composition.items() if n.startswith("u"))
             enrichment = u235_mass / u_mass if u_mass > 0 else 0.0
 
-            enrichments[reactor] = np.full_like(flows_dict["TOTAL"][reactor], enrichment)
+            enrichments[reactor] = np.full_like(flows_dict["reactor_in"]["TOTAL"][reactor], enrichment)
         return enrichments
 
     def stock_fuel_natu(self, reactors=None, natu_assay=None, tails_assay=None, return_sum=True):
@@ -350,7 +371,7 @@ class DYMONDOutput:
         reactors = np.atleast_1d(reactors)
 
         # Mass flow (product) and enrichment for each reactor
-        prod_flows = self.flows["TOTAL"]          # product mass arrays
+        prod_flows = self.flows["reactor_in"]["TOTAL"]          # product mass arrays
         prod_enrs  = self.get_enrichments(reactors)
 
         natu = {}
@@ -387,7 +408,7 @@ class DYMONDOutput:
         reactors = np.atleast_1d(reactors)
 
         # Mass flow (product) and enrichment for each reactor
-        prod_flows = self.flows["TOTAL"]          # product mass arrays
+        prod_flows = self.flows["reactor_in"]["TOTAL"]          # product mass arrays
         prod_enrs  = self.get_enrichments(reactors)
 
         tails = {}
@@ -521,28 +542,41 @@ class DYMONDOutput:
 
         flows_dict = self.flows
 
-        return(np.array(flows_dict["TOTAL"][reactor]))
+        return(np.array(flows_dict["reactor_in"]["TOTAL"][reactor]))
 
 
-    def reprocessed_mass(self, reprocess_plant: str):
+    def reprocessed_mass(self, reprocess_plants: str | list[str] | None = None, return_sum: bool = True) -> np.ndarray | dict[str, np.ndarray]:
         """
              retrieves the total reprocessing utilization data from the flows json output
 
             Parameters:
             -----------
-            reprocess_plant: str
-                the name of the reprocessing plant type to get the mass flow data for
+            reprocess_plants : str or list of str
+                the name(s) of the reprocessing plant type to get the mass flow data for
+            return_sum : bool
+                If True, returns a single array summed over all reprocessing plants
 
             Returns:
             -----------
-            numpy.array<float>
-                the annual reprocessing info for the reprocessing plant type
+            reprocessed_mass : np.ndarray or dict[str, np.ndarray]
+                the annual reprocessing info for the reprocessing plant type(s), or total if return_sum=True
 
         """
-
+        if(reprocess_plants is None):
+            reprocess_plants = self.reprocess_plants
+        reprocess_plants = np.atleast_1d(reprocess_plants)
         flows_dict = self.flows
 
-        return(np.array(flows_dict["TOTAL"][reprocess_plant]))
+        reprocessed_mass_dict = {}
+        for reprocess_plant in reprocess_plants:
+            if reprocess_plant not in flows_dict["reprocessing_out"]:
+                raise ValueError(f"Reprocessing Plant '{reprocess_plant}' not found in flows data")                
+            reprocessed_mass_dict[reprocess_plant] = np.sum(np.array(list(flows_dict["reprocessing_out"][reprocess_plant].values())), axis=0)
+
+        if return_sum:
+            return(np.sum(list(reprocessed_mass_dict.values()), axis=0))
+        
+        return(reprocessed_mass_dict)
 
 
     def cumulative_waste_mass(self, material: str, storage: str):

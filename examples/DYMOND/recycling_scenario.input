@@ -276,7 +276,17 @@
   "output":{
       "json files":true,
       "stocks":["drivers", "makeup", "waste"],
-      "flows":["PWR", "BWR", "ALWR", "Natrium", "ASFR"],
+      "flows":{
+        "reactor":{
+          "types": ["PWR", "BWR", "ALWR", "Natrium", "ASFR"],
+          "categories":["in", "out"],
+          "totals":true
+        },
+        "reprocessing":{
+          "types":["reprocess_SFR", "reprocess_AFR"],
+          "categories":["out"]
+        }
+      },
       "operations":["reactors"]
   }
 
