@@ -19,7 +19,7 @@ from .results import Results, ExecInfo
 class ResultsCyclus(Results):
     """Cyclus simulation restuls
 
-    Parameters
+    Parameters:
     ----------
     params
         Parameters used to generate inputs
@@ -100,7 +100,7 @@ class PluginCyclus(PluginGeneric):
     have them automatically expanded based on what isotopes appear in the xsdir
     file.
 
-    Parameters
+    Parameters:
     ----------
     template_file
         Templated Cyclus input (.xml)
@@ -167,7 +167,7 @@ class CyclusOutput:
     def get_facility_agents(self, spec_keywords=None):
         """Returns all facility agents in the simulation
 
-        Parameters
+        Parameters:
         ----------
         spec_keywords : str, optional
             If provided, filters facility agents whose specification string (Spec)
@@ -197,7 +197,7 @@ class CyclusOutput:
         """
         Process mass flows and compute stock over time for a given prototype.
 
-        Parameters
+        Parameters:
         ----------
         proto : str or list of str
             Prototype name(s) to process.
@@ -268,7 +268,7 @@ class CyclusOutput:
         """
         Process mass flows and compute stock over time for a given agent ID.
 
-        Parameters
+        Parameters:
         ----------
         id : int
             Agent ID to process.
@@ -324,7 +324,7 @@ class CyclusOutput:
         """
         Returns flow and stock dictionaries by prototype or agent.
 
-        Parameters
+        Parameters:
         ----------
         by_proto : bool
             If True, groups by prototype; otherwise, by individual agent.
@@ -425,7 +425,7 @@ class CyclusOutput:
         - Prepends an initial 0.0 as a placeholder for the year before data begins
         - Returns one value per year, excluding the final year of data
 
-        Parameters
+        Parameters:
         ----------
         arr : array-like
             1D array of monthly values
@@ -480,7 +480,7 @@ class CyclusOutput:
         """
         Returns the set of all nuclide IDs present in the flow dictionary.
 
-        Parameters
+        Parameters:
         ----------
         flow_dict : dict
             Dictionary of flow data, typically from `get_agent_flow_and_stock_dict`.
@@ -530,7 +530,7 @@ class CyclusOutput:
         """
         Get the list of unique incoming commodity names for a given prototype or agent ID.
 
-        Parameters
+        Parameters:
         ----------
         proto_name : str, optional
             Name of the prototype. If specified, `agentid` must be None.
@@ -564,7 +564,7 @@ class CyclusOutput:
         """
         Get the list of unique outgoing commodity names for a given prototype or agent ID.
 
-        Parameters
+        Parameters:
         ----------
         proto_name : str, optional
             Name of the prototype. If specified, `agentid` must be None.
@@ -599,7 +599,7 @@ class CyclusOutput:
         """
         Get agent IDs corresponding to one or more prototype names.
 
-        Parameters
+        Parameters:
         ----------
         proto_name : str or list of str
             Prototype name or list of names.
@@ -759,7 +759,7 @@ class CyclusOutput:
         """
         Get fuel mass and enrichment over time for one or more prototypes.
 
-        Parameters
+        Parameters:
         ----------
         prototypes : str, list of str, or None
             Reactor prototype(s) to analyze. If None, use all reactor types in the simulation.
@@ -780,7 +780,7 @@ class CyclusOutput:
         """
         Annual fuel mass demand from one or more prototypes.
 
-        Parameters
+        Parameters:
         ----------
         prototypes : str or list of str
             Reactor prototype(s).
@@ -845,7 +845,7 @@ class CyclusOutput:
         """
         Annual discharged fuel mass from one or more prototypes.
 
-        Parameters
+        Parameters:
         ----------
         prototypes : str or list of str
             Reactor prototype(s).
@@ -911,7 +911,7 @@ class CyclusOutput:
         Annual enrichment (U-235 mass fraction) for fuel delivered to one or more prototypes.
         Always returns one array per prototypes.
 
-        Parameters
+        Parameters:
         ----------
         prototypes : str or list of str
             Name(s) of the prototypes to analyze.
@@ -996,7 +996,7 @@ class CyclusOutput:
         This function computes the natural uranium mass flow based on the feed-to-product ratio
         and the enrichment levels of the specified prototypes.
 
-        Parameters
+        Parameters:
         ----------
         prototypes : str or list of str
             Name(s) of the prototype(s) to analyze.
@@ -1044,7 +1044,7 @@ class CyclusOutput:
         This function computes the tails mass flow based on the tails-to-product ratio
         and the enrichment levels of the specified prototypes.
 
-        Parameters
+        Parameters:
         ----------
         prototypes : str or list of str
             Name(s) of the prototype(s) to analyze.
@@ -1095,7 +1095,7 @@ class CyclusOutput:
         """
         Compute SWU requirements for one or more prototypes.
 
-        Parameters
+        Parameters:
         ----------
         prototypes : str or list[str]
             Prototype name(s).
