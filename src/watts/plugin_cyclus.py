@@ -552,7 +552,7 @@ class CyclusOutput:
 
     # ----------------------------- Direct fuel-related functions -----------------------------
 
-    def get_deployment_dict(self, prototypes=None, misc_key='legacy', return_sum=True):
+    def get_deployment_dict(self, prototypes=None, misc_key='legacy', return_sum=True, yearly=True):
         '''
         Determines the amount of deployed power for each time step for
         each reactor prototype
@@ -565,6 +565,8 @@ class CyclusOutput:
             prototype name to skip over in database
         return_sum: bool
             if True, returns a single array summed over all prototypes,
+        yearly: bool
+            if True, returns yearly sums instead of monthly
 
         Returns:
         --------
@@ -592,7 +594,7 @@ class CyclusOutput:
         power = np.zeros(self.duration)
 
         power_dict = {k:np.zeros(self.duration) for k in prototypes}
-        power_dict['legacy'] = np.zeros(self.duration)
+        power_dict[misc_key] = np.zeros(self.duration)
         pow_cap_dict = {k:0 for k in prototypes if k != misc_key}
 
         for row in q:
@@ -612,9 +614,20 @@ class CyclusOutput:
 
             power_dict[key][t0-1:t0+t1-1] += row['value'] * 1e-3
 
+        # If yearly is True, convert monthly data to yearly data
+        if yearly:
+            power_dict = {k: np.mean(v.reshape(-1, 12), axis=1) for k, v in power_dict.items()}
+
         # If return_sum is True, sum the power across all reactors
         if return_sum:
-            power_dict = np.sum(list(power_dict.values()), axis=0)
+            # If only misc_key is provided, return that key
+            if len(power_dict) == 1 and misc_key in power_dict:
+                power_dict = power_dict[misc_key]
+            # Otherwise, sum all values in the dictionary except misc_key
+            if misc_key in power_dict:
+                del power_dict[misc_key]
+                # Sum all power arrays in the dictionary
+                power_dict = np.sum(list(power_dict.values()), axis=0)
         return power_dict
 
     def get_fuel_mass_and_enrichment(self, prototypes: str | list[str] | None = None, return_sum: bool = True) -> tuple[np.ndarray, np.ndarray] | dict[str, tuple[np.ndarray, np.ndarray]]:
