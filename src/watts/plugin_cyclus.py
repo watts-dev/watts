@@ -144,6 +144,7 @@ class CyclusOutput:
         '''
         Class to access and browse an output file from Cyclus.
         Output file MUST be an SQLite database (.sqlite)
+
         Parameters:
         -----------
         path: str
@@ -174,7 +175,7 @@ class CyclusOutput:
             contains this keyword. Used to isolate a specific type of facility,
             such as 'reactor', based on its Cyclus specification.
 
-        Returns
+        Returns:
         -------
         dict
             Dictionary mapping agent ID (int) to prototype name (str).
@@ -204,7 +205,7 @@ class CyclusOutput:
         get_isotopics : bool
             If True, includes isotopic mass data; otherwise only total mass.
 
-        Returns
+        Returns:
         -------
         tuple
             (prototype name, flow dictionary, cumulative stock array)
@@ -275,7 +276,7 @@ class CyclusOutput:
         get_isotopics : bool
             If True, includes isotopic mass data; otherwise only total mass.
 
-        Returns
+        Returns:
         -------
         tuple
             (agent ID, flow dictionary, cumulative stock array)
@@ -331,7 +332,7 @@ class CyclusOutput:
         get_isotopics : bool, optional
             If True, includes isotopic mass data.
 
-        Returns
+        Returns:
         -------
         tuple
             (flow_dict, stock_dict) indexed by prototype or agent ID.
@@ -396,6 +397,12 @@ class CyclusOutput:
         value_label: str
             how to treat the values of interest, default = '',
             potential input is 'sum(quantity)'
+
+        Returns:
+        -------
+        np.ndarray
+            Array of shape (duration,) or (duration, len(nucids)), depending on
+            whether isotopic resolution is requested.
         '''
         if len(nucids) != 0:
             # isotopic mass
@@ -430,7 +437,7 @@ class CyclusOutput:
         arr : array-like
             1D array of monthly values
 
-        Returns
+        Returns:
         -------
         np.ndarray
             1D array of yearly sums, length = floor(len(arr) / 12), plus one initial 0
@@ -485,7 +492,7 @@ class CyclusOutput:
         flow_dict : dict
             Dictionary of flow data, typically from `get_agent_flow_and_stock_dict`.
 
-        Returns
+        Returns:
         -------
         set
             Set of integer nuclide IDs appearing in any time step of the flow data.
@@ -537,7 +544,7 @@ class CyclusOutput:
         agentid : int or list of int, optional
             Agent ID(s). If specified, `proto_name` must be None.
 
-        Returns
+        Returns:
         -------
         list of str
             List of commodity names received by the specified agent(s).
@@ -571,7 +578,7 @@ class CyclusOutput:
         agentid : int or list of int, optional
             Agent ID(s). If specified, `proto_name` must be None.
 
-        Returns
+        Returns:
         -------
         list of str
             List of commodity names sent by the specified agent(s).
@@ -604,7 +611,7 @@ class CyclusOutput:
         proto_name : str or list of str
             Prototype name or list of names.
 
-        Returns
+        Returns:
         -------
         list of int or dict of list[int]
             If input is a single prototype, returns a flat list of agent IDs.
@@ -642,7 +649,7 @@ class CyclusOutput:
         """
         Return all unique commodity names used in the simulation.
 
-        Returns
+        Returns:
         -------
         list of str
             List of distinct commodity names from the transactions table.
@@ -766,7 +773,7 @@ class CyclusOutput:
         return_sum : bool
             If True, return summed arrays across all prototypes. If False, return per-prototype dict.
 
-        Returns
+        Returns:
         -------
         tuple or dict
             If return_sum=True, returns (fuel_mass_array), {proto: enrichment_array}.
@@ -787,7 +794,7 @@ class CyclusOutput:
         return_sum : bool
             If True, returns a single array summed over all prototypes.
 
-        Returns
+        Returns:
         -------
         fuel_mass : np.ndarray or dict[str, np.ndarray]
             Yearly fuel mass per prototype, or total if return_sum=True.
@@ -852,7 +859,7 @@ class CyclusOutput:
         return_sum : bool
             If True, returns a single array summed over all prototypes.
 
-        Returns
+        Returns:
         -------
         discharged_mass : np.ndarray or dict[str, np.ndarray]
             Yearly discharged fuel mass per prototype, or total if return_sum=True.
@@ -916,7 +923,7 @@ class CyclusOutput:
         prototypes : str or list of str
             Name(s) of the prototypes to analyze.
 
-        Returns
+        Returns:
         -------
         enrichment : dict[str, np.ndarray]
             Annual enrichment time series for each prototype, or a total array.
@@ -1007,7 +1014,7 @@ class CyclusOutput:
         return_sum : bool, optional
             If True, returns a single array summed over all prototypes. Default is True.
 
-        Returns
+        Returns:
         -------
         nat : dict[str, np.ndarray] or np.ndarray
             Natural uranium mass flow for each prototype, or total if return_sum=True.
@@ -1055,7 +1062,7 @@ class CyclusOutput:
         return_sum : bool, optional
             If True, returns a single array summed over all prototypes. Default is True.
 
-        Returns
+        Returns:
         -------
         nat : dict[str, np.ndarray] or np.ndarray
             Tails mass flow for each prototype, or total if return_sum=True.
@@ -1112,7 +1119,7 @@ class CyclusOutput:
             Intermediate enrichments that define cascade stages.
             Defaults to ``[0.1, 0.2]``.
 
-        Returns
+        Returns:
         -------
         dict[str, np.ndarray] or np.ndarray
             SWU per prototype (or summed), either by stage or total.
