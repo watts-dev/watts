@@ -1097,7 +1097,7 @@ class CyclusOutput:
         tails_assay,
         return_sum=True,
         split_cat=False,
-        cascade_splits=None,
+        cascade_splits=[0.1, 0.2]
     ):
         """
         Compute SWU requirements for one or more prototypes.
@@ -1115,7 +1115,7 @@ class CyclusOutput:
         split_cat : bool, optional
             If True, return SWU split by cascade stage; otherwise return
             total SWU per prototype (default False).
-        cascade_splits : list of float, optional
+        cascade_splits : list of float
             Intermediate enrichments that define cascade stages.
             Defaults to ``[0.1, 0.2]``.
 
@@ -1124,8 +1124,6 @@ class CyclusOutput:
         dict[str, np.ndarray] or np.ndarray
             SWU per prototype (or summed), either by stage or total.
         """
-        if cascade_splits is None:
-            cascade_splits = [0.1, 0.2] # Default cascade splits
 
         from .enr_utils import calculate_swu_split
 
