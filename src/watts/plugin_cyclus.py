@@ -63,7 +63,7 @@ class ResultsCyclus(Results):
 
     @property
     def reactors(self):
-        """Returns a dictionary of agent IDs and their prototype names for reactor facilities.""""
+        """Returns a dictionary of agent IDs and their prototype names for reactor facilities."""
         return self.obj.get_facility_agents('reactor')
 
     @property
