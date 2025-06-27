@@ -132,7 +132,7 @@ def test_multistage_enr_with_alltails():
     np.testing.assert_allclose(result['tailing'], [33.659420, 0.6666], rtol=1e-2)
 
 
-def multistage_tot_is_the_same():
+def test_multistage_tot_is_the_same():
     feed_enrs = [ENR_NATL, 0.1]
     prod_enrs = [0.1, ENR_HALEU]
     tail_enrs = [ENR_TAILS, ENR_TAILS]
