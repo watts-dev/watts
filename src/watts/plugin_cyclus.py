@@ -160,8 +160,17 @@ class CyclusOutput:
     def get_facility_agents(self, spec_keywords=None):
         """Returns all facility agents in the simulation
 
-        Returns:
-            dict: key: int(id), value: str(prototype)
+        Parameters
+        ----------
+        spec_keywords : str, optional
+            If provided, filters facility agents whose specification string (Spec)
+            contains this keyword. Used to isolate a specific type of facility,
+            such as 'reactor', based on its Cyclus specification.
+
+        Returns
+        -------
+        dict
+            Dictionary mapping agent ID (int) to prototype name (str).
         """
         if not spec_keywords:
             query = self.sql_query('''SELECT distinct(agentid), prototype
