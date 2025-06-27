@@ -263,7 +263,7 @@ def multistage_enr(feed_enrs, prod_enrs, tailing_enrs, printing=True):
     qty_prod[-1] = 1.0  # target is unit product
 
     for n in range(n_stages - 1, -1, -1):
-        swu = qty_prod[n] * swu_to_product_ratio(  feed_enrs[n], prod_enrs[n], tailing_enrs[n])
+        swu = qty_prod[n] * swu_to_product_ratio(feed_enrs[n], prod_enrs[n], tailing_enrs[n])
         feed = qty_prod[n] * feed_to_product_ratio(feed_enrs[n], prod_enrs[n], tailing_enrs[n])
         qty_tailing = feed - qty_prod[n]
 
