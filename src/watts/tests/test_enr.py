@@ -5,7 +5,7 @@ from ..enr_utils import (
     tails_to_product_ratio,
     _value_function,
     swu_to_product_ratio,
-    calculate_swu_split,
+    enrichment_cascade,
     multistage_enr,
 )
 
@@ -77,11 +77,11 @@ def test_swu_to_product_array():
     np.testing.assert_allclose(result, [EXP_SWU, 8.6656], rtol=1e-2)
 
 # ---------------------------
-# calculate_swu_split tests
+# enrichment_cascade tests
 # ---------------------------
 
-def test_calculate_swu_split_leu():
-    result = calculate_swu_split(ENR_NATL, ENR_LEU, ENR_TAILS)
+def test_enrichment_cascade_leu():
+    result = enrichment_cascade(ENR_NATL, ENR_LEU, ENR_TAILS)['swu']
     assert isinstance(result, list)
     assert len(result) == 3  # default cascade splits: [0.1, 0.2] → 3 stages
     assert result[1] == 0
@@ -89,8 +89,8 @@ def test_calculate_swu_split_leu():
     assert np.isclose(result[0], EXP_SWU, rtol=1e-2)
 
 
-def test_calculate_swu_split_haleu():
-    result = calculate_swu_split(ENR_NATL, ENR_HALEU, ENR_TAILS)
+def test_enrichment_cascade_haleu():
+    result = enrichment_cascade(ENR_NATL, ENR_HALEU, ENR_TAILS)['swu']
     assert isinstance(result, list)
     assert len(result) == 3  # default cascade splits: [0.1, 0.2] → 3 stages
     assert result[2] == 0.0
@@ -98,8 +98,8 @@ def test_calculate_swu_split_haleu():
     assert np.isclose(result[0], 31.45522513, rtol=1e-3)
     
 
-def test_calculate_swu_split_custom():
-    result = calculate_swu_split(ENR_NATL, ENR_LEU, ENR_TAILS, cascade_splits=[0.1, 0.3, 0.7])
+def test_enrichment_cascade_custom():
+    result = enrichment_cascade(ENR_NATL, ENR_LEU, ENR_TAILS, cascade_splits=[0.1, 0.3, 0.7])['swu']
     assert(sum(result[1:]) == 0)
     assert len(result) == 4
 
@@ -107,7 +107,7 @@ def test_calculate_swu_split_custom():
 # multistage_enr tests
 # ---------------------------
 
-def test_multistage_enr_resuse_tails():
+def test_multistage_enr_reuse_tails():
     feed_enrs = [ENR_NATL, 0.1]
     prod_enrs = [0.1, ENR_HALEU]
     tail_enrs = [ENR_TAILS, ENR_NATL]

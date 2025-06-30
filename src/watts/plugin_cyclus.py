@@ -992,108 +992,177 @@ class CyclusOutput:
 
     # ----------------------------- Advanced data extraction functions -----------------------------
 
-    def stock_fuel_natu(self, prototypes: str | list[str] | None = None,
-                        natu_assay:float = None,
-                        tails_assay:float = None,
-                        return_sum: bool = True):
+    def stock_fuel_natu(self, 
+        prototypes: str | list[str] | None = None,
+        natu_assay:float = None,
+        tails_assay:float = None,
+        return_sum: bool = True,
+        split_cat=False,
+        cascade_splits=[0.1, 0.2]
+    ):
         """
-        Calculate the natural uranium mass flow for a given prototype or list of prototypes.
-        This function computes the natural uranium mass flow based on the feed-to-product ratio
-        and the enrichment levels of the specified prototypes.
+        Compute natural uranium requirements for one or more prototypes.
 
         Parameters:
         ----------
-        prototypes : str or list of str
-            Name(s) of the prototype(s) to analyze.
+        prototypes : str or list[str]
+            Prototype name(s).
         natu_assay : float
-            Enrichment level of the natural uranium, expressed as a decimal.
+            Enrichment of the feed (typically natural uranium).
         tails_assay : float
-            Enrichment level of the tails material, expressed as a decimal.
+            Enrichment of the tails material.
         return_sum : bool, optional
-            If True, returns a single array summed over all prototypes. Default is True.
+            If True, returns the sum across prototypes (default True).
+        split_cat : bool, optional
+            If True, return SWU split by cascade stage; otherwise return
+            total SWU per prototype (default False).
+        cascade_splits : list of float
+            Intermediate enrichments that define cascade stages.
+            Defaults to ``[0.1, 0.2]``.
 
         Returns:
         -------
-        nat : dict[str, np.ndarray] or np.ndarray
-            Natural uranium mass flow for each prototype, or total if return_sum=True.
+        dict[str, np.ndarray] or np.ndarray
+            SWU per prototype (or summed), either by stage or total.
         """
-        from .enr_utils import feed_to_product_ratio
+
+        from .enr_utils import enrichment_cascade
+        cascade_key = 'feed'
+
+        if not cascade_splits:
+            cascade_splits = [np.inf]
 
         # Convert reactor to a numpy array
         if prototypes is None:
             prototypes = self.reactors
         prototypes = np.atleast_1d(prototypes)
 
-        # Get fuel demand and enrichment for the specified prototypes, separately for each
-        fuel_mass_flow, enrichment = self.get_fuel_mass_and_enrichment(prototypes, return_sum=False)
+        # Mass and enrichment arrays for each prototype
+        fuel_mass, enr = self.get_fuel_mass_and_enrichment(prototypes, return_sum=False)
 
-        # Construct a dictionary per prototype
-        nat = {}
+        # Cache enrichment splits for every unique enrichment
+        split_cache = {}
         for p in prototypes:
-            # Calculate the feed-to-product ratio for the current prototype
-            feed_to_product = feed_to_product_ratio(natu_assay, enrichment[p], tails_assay)
-            # Multiply the ratio by the product (fuel demand)
-            nat[p] = fuel_mass_flow[p] * feed_to_product
+            for e in enr[p]:
+                if e > 0:
+                    key = round(float(e), 8)
+                    if key not in split_cache:
+                        split_cache[key] = np.asarray(
+                            enrichment_cascade(
+                                feed_enr=natu_assay,
+                                prod_enr=e,
+                                tail_enr=tails_assay,
+                                cascade_splits=cascade_splits,
+                            )[cascade_key],
+                            dtype=float,
+                        )
+        n_stages = len(cascade_splits) + 1
+        zeros = np.zeros(n_stages)
+        split_dict = {}
 
-        # Sum over all prototypes if requested
-        if return_sum:
-            nat = np.sum(list(nat.values()), axis=0)
-        return nat
+        for p in prototypes:
+            # Ratio vector for every fuel element
+            ratios = np.array(
+                [
+                    split_cache.get(round(float(e), 8), zeros) if e > 0 else zeros
+                    for e in enr[p]
+                ],
+                dtype=float,
+            )
+            split_dict[p] = (ratios.T * fuel_mass[p])
+            # Sum over stages if not split_cat
+            if not split_cat:
+                split_dict[p] = np.sum(split_dict[p], axis=0)
+        return sum(split_dict.values()) if return_sum else split_dict
 
-    def stock_fuel_tails(self, prototypes: str | list[str] | None = None,
-                        natu_assay:float = None,
-                        tails_assay:float = None,
-                        return_sum: bool = True):
+    def stock_fuel_tails(self, 
+        prototypes: str | list[str] | None = None,
+        natu_assay:float = None,
+        tails_assay:float = None,
+        return_sum: bool = True,
+        split_cat=False,
+        cascade_splits=[0.1, 0.2]
+    ):
         """
-        Calculate the tails mass flow for a given prototype or list of prototypes.
-        This function computes the tails mass flow based on the tails-to-product ratio
-        and the enrichment levels of the specified prototypes.
+        Compute enrichment tails for one or more prototypes.
 
         Parameters:
         ----------
-        prototypes : str or list of str
-            Name(s) of the prototype(s) to analyze.
+        prototypes : str or list[str]
+            Prototype name(s).
         natu_assay : float
-            Enrichment level of the natural uranium, expressed as a decimal.
+            Enrichment of the feed (typically natural uranium).
         tails_assay : float
-            Enrichment level of the tails material, expressed as a decimal.
+            Enrichment of the tails material.
         return_sum : bool, optional
-            If True, returns a single array summed over all prototypes. Default is True.
+            If True, returns the sum across prototypes (default True).
+        split_cat : bool, optional
+            If True, return SWU split by cascade stage; otherwise return
+            total SWU per prototype (default False).
+        cascade_splits : list of float
+            Intermediate enrichments that define cascade stages.
+            Defaults to ``[0.1, 0.2]``.
 
         Returns:
         -------
-        nat : dict[str, np.ndarray] or np.ndarray
-            Tails mass flow for each prototype, or total if return_sum=True.
+        dict[str, np.ndarray] or np.ndarray
+            SWU per prototype (or summed), either by stage or total.
         """
-        from .enr_utils import tails_to_product_ratio
+
+        from .enr_utils import enrichment_cascade
+        cascade_key = 'tailing'
+
+        if not cascade_splits:
+            cascade_splits = [np.inf]
 
         # Convert reactor to a numpy array
         if prototypes is None:
             prototypes = self.reactors
         prototypes = np.atleast_1d(prototypes)
 
-        # Get fuel demand and enrichment for the specified prototypes, separately for each
-        fuel_mass_flow, enrichment = self.get_fuel_mass_and_enrichment(prototypes, return_sum=False)
+        # Mass and enrichment arrays for each prototype
+        fuel_mass, enr = self.get_fuel_mass_and_enrichment(prototypes, return_sum=False)
 
-        # Construct a dictionary per prototype
-        nat = {}
+        # Cache enrichment splits for every unique enrichment
+        split_cache = {}
         for p in prototypes:
-            # Calculate the tails-to-product ratio for the current prototype
-            tails_to_product = tails_to_product_ratio(natu_assay, enrichment[p], tails_assay)
-            # Multiply the ratio by the product (fuel demand)
-            nat[p] = fuel_mass_flow[p] * tails_to_product
+            for e in enr[p]:
+                if e > 0:
+                    key = round(float(e), 8)
+                    if key not in split_cache:
+                        split_cache[key] = np.asarray(
+                            enrichment_cascade(
+                                feed_enr=natu_assay,
+                                prod_enr=e,
+                                tail_enr=tails_assay,
+                                cascade_splits=cascade_splits,
+                            )[cascade_key],
+                            dtype=float,
+                        )
+        n_stages = len(cascade_splits) + 1
+        zeros = np.zeros(n_stages)
+        split_dict = {}
 
-        # Sum over all prototypes if requested
-        if return_sum:
-            nat = np.sum(list(nat.values()), axis=0)
-        return nat
+        for p in prototypes:
+            # Ratio vector for every fuel element
+            ratios = np.array(
+                [
+                    split_cache.get(round(float(e), 8), zeros) if e > 0 else zeros
+                    for e in enr[p]
+                ],
+                dtype=float,
+            )
+            split_dict[p] = (ratios.T * fuel_mass[p])
+            # Sum over stages if not split_cat
+            if not split_cat:
+                split_dict[p] = np.sum(split_dict[p], axis=0)
+        return sum(split_dict.values()) if return_sum else split_dict
 
-    def stock_fuel_swu(
-        self,
-        prototypes,
-        natu_assay,
-        tails_assay,
-        return_sum=True,
+    def stock_fuel_swu(self, 
+        prototypes: str | list[str] | None = None,
+        natu_assay:float = None,
+        tails_assay:float = None,
+        return_sum: bool = True,
         split_cat=False,
         cascade_splits=[0.1, 0.2]
     ):
@@ -1123,7 +1192,11 @@ class CyclusOutput:
             SWU per prototype (or summed), either by stage or total.
         """
 
-        from .enr_utils import calculate_swu_split
+        from .enr_utils import enrichment_cascade
+        cascade_key = 'swu'
+
+        if not cascade_splits:
+            cascade_splits = [np.inf]
 
         # Convert reactor to a numpy array
         if prototypes is None:
@@ -1133,38 +1206,37 @@ class CyclusOutput:
         # Mass and enrichment arrays for each prototype
         fuel_mass, enr = self.get_fuel_mass_and_enrichment(prototypes, return_sum=False)
 
-        # Cache SWU splits for every unique enrichment
-        swu_split_cache = {}
+        # Cache enrichment splits for every unique enrichment
+        split_cache = {}
         for p in prototypes:
             for e in enr[p]:
                 if e > 0:
                     key = round(float(e), 8)
-                    if key not in swu_split_cache:
-                        swu_split_cache[key] = np.asarray(
-                            calculate_swu_split(
+                    if key not in split_cache:
+                        split_cache[key] = np.asarray(
+                            enrichment_cascade(
                                 feed_enr=natu_assay,
                                 prod_enr=e,
                                 tail_enr=tails_assay,
                                 cascade_splits=cascade_splits,
-                            ),
+                            )[cascade_key],
                             dtype=float,
                         )
         n_stages = len(cascade_splits) + 1
         zeros = np.zeros(n_stages)
-        swu = {}
+        split_dict = {}
 
         for p in prototypes:
-            # SWU ratio vector for every fuel element
+            # Ratio vector for every fuel element
             ratios = np.array(
                 [
-                    swu_split_cache.get(round(float(e), 8), zeros) if e > 0 else zeros
+                    split_cache.get(round(float(e), 8), zeros) if e > 0 else zeros
                     for e in enr[p]
                 ],
                 dtype=float,
             )
-            swu[p] = (ratios.T * fuel_mass[p])
+            split_dict[p] = (ratios.T * fuel_mass[p])
             # Sum over stages if not split_cat
             if not split_cat:
-                swu[p] = np.sum(swu[p], axis=1)
-        return sum(swu.values()) if return_sum else swu
-
+                split_dict[p] = np.sum(split_dict[p], axis=0)
+        return sum(split_dict.values()) if return_sum else split_dict

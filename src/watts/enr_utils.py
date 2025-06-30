@@ -132,9 +132,9 @@ def swu_to_product_ratio(feed_enr: float | list[float],
     assert np.all(ratio >= 0), f"SWU-to-product ratio cannot be negative.\nRatio: {ratio}.\nInput was:\n\tFeed: {feed_enr}\n\tProduct: {prod_enr}\n\tTails: {tail_enr}"
     return ratio.item() if ratio.size == 1 else ratio
 
-def calculate_swu_split(feed_enr, prod_enr, tail_enr, cascade_splits=[0.1,0.2], printing=False):
+def enrichment_cascade(feed_enr, prod_enr, tail_enr, cascade_splits=[0.1,0.2], printing=False):
     '''
-    Calculate the SWU distribution across different stages of enrichment.
+    Calculate the SWU, feed, and tail distributions across different stages of enrichment.
 
     Parameters:
     -----------
@@ -151,7 +151,9 @@ def calculate_swu_split(feed_enr, prod_enr, tail_enr, cascade_splits=[0.1,0.2], 
 
     Returns:
     --------
-    List of SWU values for each stage of enrichment
+    Dictionary
+        Dictionary containing lists of SWU, feed, and tailing
+        quantities for each stage of the enrichment process.
     '''
     # Add product enrichments list: 
     stage_product_enrichments = []
@@ -174,17 +176,20 @@ def calculate_swu_split(feed_enr, prod_enr, tail_enr, cascade_splits=[0.1,0.2], 
 
     # Calculate values
     multistage_dict = multistage_enr(stage_feed_enrichments, stage_product_enrichments, stage_tail_enrichments, printing=printing)
-    stage_swus = multistage_dict['swu']
-    while len(stage_swus) < len(cascade_splits)+1: # Add zeros for higher enrichment categories
-        stage_swus.append(0)
-    
+    cascade_data = {}
+    for key in multistage_dict:
+        cascade_data[key] =list(multistage_dict[key])
+        while len(cascade_data[key]) < len(cascade_splits)+1: # Add zeros for higher enrichment categories
+            cascade_data[key].append(0)
+        
     # Verify the total SWU calculated matches the total expected from feed to product if tails are uniform
     if len(np.unique(stage_tail_enrichments)) == 1:
+        stage_swus = cascade_data['swu']
         total_swu = swu_to_product_ratio(feed_enr, prod_enr, tail_enr)
         if not np.isclose(sum(stage_swus), total_swu):
             raise ValueError("Calculated total SWU does not match the expected total SWU.")
 
-    return stage_swus
+    return cascade_data
 
 
 def multistage_enr(feed_enrs, prod_enrs, tailing_enrs, printing=True):
