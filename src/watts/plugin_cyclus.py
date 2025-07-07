@@ -512,7 +512,7 @@ class CyclusOutput:
         Returns:
         -------
         np.ndarray
-            1D array of yearly sums, length = floor(len(arr) / 12), 
+            1D array of yearly sums, length = floor(len(arr) / 12),
             plus one initial 0
         """
         arr = np.asarray(arr)
@@ -568,13 +568,13 @@ class CyclusOutput:
         Parameters:
         ----------
         flow_dict : dict
-            Dictionary of flow data, typically from 
+            Dictionary of flow data, typically from
             `get_agent_flow_and_stock_dict`.
 
         Returns:
         -------
         set
-            Set of integer nuclide IDs appearing in any time step 
+            Set of integer nuclide IDs appearing in any time step
             of the flow data.
         """
         query = self.sql_query(
@@ -628,7 +628,7 @@ class CyclusOutput:
 
     def get_commodity_into(self, proto_name=None, agentid=None):
         """
-        Get the list of unique incoming commodity names for a 
+        Get the list of unique incoming commodity names for a
         given prototype or agent ID.
 
         Parameters:
@@ -664,7 +664,7 @@ class CyclusOutput:
 
     def get_commodity_out_of(self, proto_name=None, agentid=None):
         """
-        Get the list of unique outgoing commodity names for a given 
+        Get the list of unique outgoing commodity names for a given
         prototype or agent ID.
 
         Parameters:
@@ -710,7 +710,7 @@ class CyclusOutput:
         -------
         list of int or dict of list[int]
             If input is a single prototype, returns a flat list of agent IDs.
-            If input is a list, returns a dictionary mapping prototype names 
+            If input is a list, returns a dictionary mapping prototype names
             to lists of agent IDs.
         """
 
@@ -890,10 +890,10 @@ class CyclusOutput:
         Parameters:
         ----------
         prototypes : str, list of str, or None
-            Reactor prototype(s) to analyze. If None, use all reactor types 
+            Reactor prototype(s) to analyze. If None, use all reactor types
             in the simulation.
         return_sum : bool
-            If True, return summed arrays across all prototypes. 
+            If True, return summed arrays across all prototypes.
             If False, return per-prototype dict.
         reactors : str or list of str, optional
             alias for prototypes, used for compatibility with DYMOND plugin.
@@ -902,9 +902,9 @@ class CyclusOutput:
         Returns:
         -------
         tuple or dict
-            If return_sum=True, returns 
+            If return_sum=True, returns
                 (fuel_mass_array), {proto: enrichment_array}.
-            If return_sum=False, returns 
+            If return_sum=False, returns
                 {proto: (fuel_mass_array, enrichment_array)}.
         """
         fuel_mass = self.stock_fuel_demand(
@@ -1021,7 +1021,7 @@ class CyclusOutput:
         Returns:
         -------
         discharged_mass : np.ndarray or dict[str, np.ndarray]
-            Yearly discharged fuel mass per prototype, 
+            Yearly discharged fuel mass per prototype,
             or total if return_sum=True.
         """
         # Convert reactors/prototypes to a numpy array
@@ -1092,7 +1092,7 @@ class CyclusOutput:
         reactors: str | list[str] | None = None
     ) -> np.ndarray | dict[str, np.ndarray]:
         """
-        Annual enrichment (U-235 mass fraction) for fuel delivered 
+        Annual enrichment (U-235 mass fraction) for fuel delivered
         to one or more prototypes.
         Always returns one array per prototypes.
 
