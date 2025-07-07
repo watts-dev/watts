@@ -6,7 +6,7 @@ def feed_to_product_ratio(
     feed_enr: float | list[float],
     prod_enr: float | list[float],
     tail_enr: float | list[float],
-    ) -> float:
+) -> float:
     """
     Calculate the feed-to-product ratio for a given enrichment process.
 
@@ -31,13 +31,20 @@ def feed_to_product_ratio(
 
     # Calculate the feed-to-product ratio, based on product, feed,
     # and tails enrichments
+    # If every product-enrichment entry is zero, the ratio is zero
+    if np.all(prod_enr == 0):
+        return 0 if np.isscalar(prod_enr) else np.zeros_like(prod_enr)
+
+    # Otherwise, compute the ratio
     ratio = (prod_enr - tail_enr) / (feed_enr - tail_enr)
-    ratio[prod_enr == 0] = 0  # Set ratio to 0 if product enrichment is 0
-    assert np.all(
-        ratio >= 0
-    ), (f"Feed-to-product ratio cannot be negative.\nRatio: {ratio}.\n"
-        f"Input was:\n"
-        f"\tFeed: {feed_enr}\tProduct: {prod_enr}\n\tTails: {tail_enr}")
+
+    # Catch negative ratios early and raise a helpful error
+    if np.any(np.atleast_1d(ratio) < 0):
+        raise ValueError(
+            "Feed-to-product ratio cannot be negative.\n"
+            f"Computed ratio: {ratio}\nInput values:\n"
+            f"\tFeed: {feed_enr}\n\tProduct: {prod_enr}\n\tTails: {tail_enr}"
+        )
     return ratio.item() if ratio.size == 1 else ratio
 
 
@@ -45,7 +52,7 @@ def tails_to_product_ratio(
     feed_enr: float | list[float],
     prod_enr: float | list[float],
     tail_enr: float | list[float],
-    ) -> float:
+) -> float:
     """
     Calculate the tails-to-product ratio for a given enrichment process.
 
@@ -70,13 +77,20 @@ def tails_to_product_ratio(
 
     # Calculate the tails-to-product ratio based on product, feed,
     # and tails enrichments
+    # If every product-enrichment entry is zero, the ratio is zero
+    if np.all(prod_enr == 0):
+        return 0 if np.isscalar(prod_enr) else np.zeros_like(prod_enr)
+
+    # Otherwise, compute the ratio
     ratio = (prod_enr - feed_enr) / (feed_enr - tail_enr)
-    ratio[prod_enr == 0] = 0  # Set ratio to 0 if product enrichment is 0
-    assert np.all(
-        ratio >= 0
-    ), (f"Tails-to-product ratio cannot be negative.\nRatio: {ratio}.\n"
-        f"Input was:\n"
-        f"\tFeed: {feed_enr}\n\tProduct: {prod_enr}\n\tTails: {tail_enr}")
+
+    # Catch negative ratios early and raise a helpful error
+    if np.any(np.atleast_1d(ratio) < 0):
+        raise ValueError(
+            "Tails-to-product ratio cannot be negative.\n"
+            f"Computed ratio: {ratio}\nInput values:\n"
+            f"\tFeed: {feed_enr}\n\tProduct: {prod_enr}\n\tTails: {tail_enr}"
+        )
     return ratio.item() if ratio.size == 1 else ratio
 
 
@@ -141,19 +155,26 @@ def swu_to_product_ratio(
     tails_ratio = tails_to_product_ratio(feed_enr, prod_enr, tail_enr)
     feed_ratio = feed_to_product_ratio(feed_enr, prod_enr, tail_enr)
 
+    # If every product-enrichment entry is zero, the ratio is zero
+    if np.all(prod_enr == 0):
+        return 0 if np.isscalar(prod_enr) else np.zeros_like(prod_enr)
+
+    # Otherwise, compute the ratio
     # Compute value terms
     Vp = _value_function(prod_enr)
     Vf = _value_function(feed_enr)
     Vt = _value_function(tail_enr)
-
     # Final SWU per product formula
     ratio = Vp + tails_ratio * Vt - feed_ratio * Vf
     ratio[prod_enr == 0] = 0  # Set SWU to 0 if product enrichment is 0
-    assert np.all(
-        ratio >= 0
-    ), (f"SWU-to-product ratio cannot be negative.\nRatio: {ratio}.\n"
-        f"Input was:\n"
-        f"\tFeed: {feed_enr}\n\tProduct: {prod_enr}\n\tTails: {tail_enr}")
+
+    # Catch negative ratios early and raise a helpful error
+    if np.any(np.atleast_1d(ratio) < 0):
+        raise ValueError(
+            "SWU-to-product ratio cannot be negative.\n"
+            f"Computed ratio: {ratio}\nInput values:\n"
+            f"\tFeed: {feed_enr}\n\tProduct: {prod_enr}\n\tTails: {tail_enr}"
+        )
     return ratio.item() if ratio.size == 1 else ratio
 
 
@@ -196,7 +217,7 @@ def enrichment_cascade(
     for variable, val in enr_inputs_dict.items():
         assert isinstance(
             val, numbers.Number), \
-        f"Variable {variable} needs to be a single number."
+            f"Variable {variable} needs to be a single number."
 
     # edge case of just one
     if cascade_splits is None:
@@ -259,7 +280,7 @@ def enrichment_cascade(
         ):  # Add zeros for higher enrichment categories
             cascade_data[key].append(0)
 
-    # Verify the total SWU calculated matches the total expected 
+    # Verify the total SWU calculated matches the total expected
     # from feed to product if tails are uniform
     if len(np.unique(stage_tail_enrichments)) == 1:
         stage_swus = cascade_data["swu"]
