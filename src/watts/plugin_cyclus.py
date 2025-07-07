@@ -46,8 +46,6 @@ class ResultsCyclus(Results):
     ):
         super().__init__(params, exec_info, inputs, outputs)
         self.obj = self.get_object()
-        #! can't do this because sqlite cursors can't be pickled
-        # self.obj = CyclusOutput(self.sqlite_file)
 
     def get_object(self):
         """Returns a CyclusOutput object linked to the output SQLite file."""
@@ -73,20 +71,17 @@ class ResultsCyclus(Results):
     @property
     def commodities(self) -> List[str]:
         """Returns a list of unique commodity names used in the simulation."""
-        # obj = CyclusOutput(self.sqlite_file)
         q = self.obj.cur.execute("SELECT distinct(commodity) FROM transactions")
         return [x["commodity"] for x in q]
 
     @property
     def time_dict(self) -> dict:
         """Returns a dictionary with simulation time metadata (start year/month, duration, etc.)."""
-        # obj = CyclusOutput(self.sqlite_file)
         return self.obj.get_times()
 
     @property
     def mass_flow_dict(self) -> dict:
         """Returns a dictionary mapping commodities to their yearly mass flows."""
-        # obj = CyclusOutput(self.sqlite_file)
         arr = self.obj.get_fuel_demands(self.commodities)
         d = {}
         for indx in range(len(arr)):
