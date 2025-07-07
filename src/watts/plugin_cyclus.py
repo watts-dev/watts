@@ -1260,7 +1260,7 @@ class CyclusOutput:
                         # because the rest is reused by the next stage
                         cache[key] = {
                             "natu": c["feed"][0],
-                            "tails": np.asarray(c["tailing"], dtype=float),
+                            "tails": np.asarray(c["tails"], dtype=float),
                             "swu": np.asarray(c["swu"], dtype=float),
                         }
 

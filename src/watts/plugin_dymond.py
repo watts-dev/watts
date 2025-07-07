@@ -393,7 +393,7 @@ class DYMONDOutput:
                 for event in input_dict["events"]:
                     if fuel_mat in event["parameters"]:
                         comp = event["parameters"][fuel_mat]
-                        for nuclide, mass in comp_mass.items():
+                        for nuclide, mass in comp.items():
                             comp_mass = fuel_material_recipe[fuel_mat] * mass
                             fuel_composition[nuclide] = (
                                 fuel_composition.get(nuclide, 0.0) + comp_mass
@@ -478,7 +478,7 @@ class DYMONDOutput:
                         # because the rest is reused by the next stage
                         cache[key] = {
                             "natu": c["feed"][0],
-                            "tails": np.asarray(c["tailing"], dtype=float),
+                            "tails": np.asarray(c["tails"], dtype=float),
                             "swu": np.asarray(c["swu"], dtype=float),
                         }
 

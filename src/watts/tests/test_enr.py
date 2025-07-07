@@ -136,7 +136,7 @@ def test_enrichment_cascade_cascade_down():
             cascade_splits=splits,
             printing=False)
 
-        for k in ['swu', 'tailing']:
+        for k in ['swu', 'tails']:
             assert (np.isclose(sum(result[k]), sum(d[k]), rtol=1e-3))
         # feed has to be the same
         assert (np.isclose(result['feed'][0], d['feed'][0], rtol=1e-3))
@@ -160,13 +160,13 @@ def test_multistage_enr_reuse_tails():
     prod_enrs = [0.1, ENR_HALEU]
     tail_enrs = [ENR_TAILS, ENR_NATL]
     result = multistage_enr(feed_enrs, prod_enrs, tail_enrs, printing=False)
-    assert 'swu' in result and 'feed' in result and 'tailing' in result
+    assert 'swu' in result and 'feed' in result and 'tails' in result
     assert all(isinstance(x, list) for x in result.values())
     np.testing.assert_allclose(
         result['swu'], [32.07823497, 1.5064309], rtol=1e-2)
     np.testing.assert_allclose(
         result['feed'], [35.3260869, 1.699677], rtol=1e-2)
-    np.testing.assert_allclose(result['tailing'], [34.3260869, 0.0], rtol=1e-2)
+    np.testing.assert_allclose(result['tails'], [34.3260869, 0.0], rtol=1e-2)
 
 
 # this will have higher cat2 fraction than cat3 than the reuse tails scenario
@@ -175,14 +175,14 @@ def test_multistage_enr_with_alltails():
     prod_enrs = [0.1, ENR_HALEU]
     tail_enrs = [ENR_TAILS, ENR_TAILS]
     result = multistage_enr(feed_enrs, prod_enrs, tail_enrs, printing=False)
-    assert 'swu' in result and 'feed' in result and 'tailing' in result
+    assert 'swu' in result and 'feed' in result and 'tails' in result
     assert all(isinstance(x, list) for x in result.values())
     np.testing.assert_allclose(
         result['swu'], [31.45522513, 2.129440], rtol=1e-2)
     np.testing.assert_allclose(
         result['feed'], [35.3260869, 1.66666], rtol=1e-2)
     np.testing.assert_allclose(
-        result['tailing'], [33.659420, 0.6666], rtol=1e-2)
+        result['tails'], [33.659420, 0.6666], rtol=1e-2)
 
 
 def test_multistage_tot_is_the_same():
@@ -193,8 +193,8 @@ def test_multistage_tot_is_the_same():
     tail_enrs2 = [ENR_TAILS, ENR_NATL]
     result2 = multistage_enr(feed_enrs, prod_enrs, tail_enrs2, printing=False)
 
-    for k in ['swu', 'tailing']:
-        # total tailing and swu should be the same
+    for k in ['swu', 'tails']:
+        # total tails and swu should be the same
         assert (np.isclose(sum(result1[k]), sum(result2[k]), rtol=1e-3))
 
     # frontend feed (natlu) should be the same
