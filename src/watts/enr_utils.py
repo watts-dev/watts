@@ -178,12 +178,12 @@ def enrichment_cascade(
     """
     # make sure these are numbers
     for variable, val in {"feed": feed_enr, "prod": prod_enr, "tail": tail_enr}.items():
-        assert isinstance(val, numbers.Number), f"Varible {variable} needs to be a single number."
+        assert isinstance(
+            val, numbers.Number), f"Varible {variable} needs to be a single number."
 
     # edge case of just one
     if cascade_splits is None:
         cascade_splits = [np.inf]
-
 
     if len(cascade_splits) == 1 and cascade_splits[0] > prod_enr:
         # just one shot
@@ -191,7 +191,6 @@ def enrichment_cascade(
                         'feed': [feed_to_product_ratio(feed_enr, prod_enr, tail_enr)],
                         'tailing': [tails_to_product_ratio(feed_enr, prod_enr, tail_enr)]}
         return cascade_data
-
 
     # Add product enrichments list:
     stage_product_enrichments = []
@@ -225,7 +224,6 @@ def enrichment_cascade(
         stage_tail_enrichments = stage_tail_enrichments[
             : len(stage_product_enrichments)
         ]
-
 
     # Calculate values
     multistage_dict = multistage_enr(
@@ -284,7 +282,8 @@ def multistage_enr(feed_enrs, prod_enrs, tailing_enrs, printing=True):
 
     # Ensure lists, not arrays
     feed_enrs = [feed_enrs] if np.isscalar(feed_enrs) else list(feed_enrs)
-    tailing_enrs = [tailing_enrs] if np.isscalar(tailing_enrs) else list(tailing_enrs)
+    tailing_enrs = [tailing_enrs] if np.isscalar(
+        tailing_enrs) else list(tailing_enrs)
 
     if np.isscalar(prod_enrs):
         if len(feed_enrs) > 1:
@@ -352,9 +351,11 @@ def multistage_enr(feed_enrs, prod_enrs, tailing_enrs, printing=True):
 
         if printing:
             print(f"\tStage {n}:")
-            print(f"\t\tProd qty:    {qty_prod[n]:.6f} (enr: {prod_enrs[n]: .4%})")
+            print(
+                f"\t\tProd qty:    {qty_prod[n]:.6f} (enr: {prod_enrs[n]: .4%})")
             print(f"\t\tFeed qty:    {feed:.6f} (enr: {feed_enrs[n]: .4%})")
-            print(f"\t\tTailing qty: {qty_tailing:.6f} (enr: {tailing_enrs[n]: .4%})")
+            print(
+                f"\t\tTailing qty: {qty_tailing:.6f} (enr: {tailing_enrs[n]: .4%})")
             if np.any(matches):
                 print(f"\t\tSubtracting {qty_tailing:.6f} from stage {indx}")
 

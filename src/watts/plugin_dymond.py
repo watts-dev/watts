@@ -142,12 +142,14 @@ class DYMONDOutput:
             try:
                 input_dict = json.loads(inp.read_text(encoding="utf-8"))
             except Exception as e:
-                raise ValueError(f"Error reading input file {inp} as JSON: {e}")
+                raise ValueError(
+                    f"Error reading input file {inp} as JSON: {e}")
         for oup in output_files:
             try:
                 output_dict = json.loads(oup.read_text(encoding="utf-8"))
             except Exception as e:
-                raise ValueError(f"Error reading output file {oup} as JSON: {e}")
+                raise ValueError(
+                    f"Error reading output file {oup} as JSON: {e}")
 
         self.inputs = input_files
         self.reactors, self.reprocess_plants = self._get_type_names()
@@ -204,7 +206,8 @@ class DYMONDOutput:
         years = self.output_data["times"]  # Get years from output data
         init_year = min(years)  # First year of simulation
         init_month = 1  # DYMOND outputs yearly
-        duration = int((max(years) - min(years) + 1) * 12)  # duration in months
+        duration = int((max(years) - min(years) + 1)
+                       * 12)  # duration in months
         return {
             "init_year": init_year,
             "init_month": init_month,
@@ -239,8 +242,10 @@ class DYMONDOutput:
         power_dict = {}
         for reactor in reactors:
             if reactor not in self.operations["reactors"]:
-                raise ValueError(f"Reactor '{reactor}' not found in operations data.")
-            power_dict[reactor] = np.array(self.operations["reactors"][reactor]) / 1e3
+                raise ValueError(
+                    f"Reactor '{reactor}' not found in operations data.")
+            power_dict[reactor] = np.array(
+                self.operations["reactors"][reactor]) / 1e3
         if return_sum:
             return np.sum(list(power_dict.values()), axis=0)
         return power_dict
@@ -278,7 +283,8 @@ class DYMONDOutput:
         fuel_mass_dict = {}
         for reactor in reactors:
             if reactor not in flows_dict["reactor_in"]["TOTAL"]:
-                raise ValueError(f"Reactor '{reactor}' not found in flows data.")
+                raise ValueError(
+                    f"Reactor '{reactor}' not found in flows data.")
             fuel_mass_dict[reactor] = np.array(
                 flows_dict["reactor_in"]["TOTAL"][reactor]
             )
@@ -313,7 +319,8 @@ class DYMONDOutput:
         fuel_mass_dict = {}
         for reactor in reactors:
             if reactor not in flows_dict["reactor_out"]["TOTAL"]:
-                raise ValueError(f"Reactor '{reactor}' not found in flows data.")
+                raise ValueError(
+                    f"Reactor '{reactor}' not found in flows data.")
             fuel_mass_dict[reactor] = np.array(
                 flows_dict["reactor_out"]["TOTAL"][reactor]
             )
@@ -351,7 +358,8 @@ class DYMONDOutput:
         for reactor in reactors:
             # Find the reactor spec in input_dict
             match = next(
-                (r for r in input_dict["types"]["reactor"] if r["name"] == reactor),
+                (r for r in input_dict["types"]
+                 ["reactor"] if r["name"] == reactor),
                 None,
             )
             if match is None:
@@ -380,7 +388,8 @@ class DYMONDOutput:
                             )
 
             u235_mass = fuel_composition.get("u235", 0.0)
-            u_mass = sum(m for n, m in fuel_composition.items() if n.startswith("u"))
+            u_mass = sum(m for n, m in fuel_composition.items()
+                         if n.startswith("u"))
             enrichment = u235_mass / u_mass if u_mass > 0 else 0.0
 
             enrichments[reactor] = np.full_like(
@@ -437,7 +446,8 @@ class DYMONDOutput:
         reactors = np.atleast_1d(reactors)
 
         # Mass and enrichment arrays
-        fuel_mass, enr = self.get_fuel_mass_and_enrichment(reactors, return_sum=False)
+        fuel_mass, enr = self.get_fuel_mass_and_enrichment(
+            reactors, return_sum=False)
 
         # Cache cascade splits by unique enrichment
         cache = {}
@@ -474,7 +484,8 @@ class DYMONDOutput:
             # Natural-uranium feed
             r_natu = np.array(
                 [
-                    cache.get(round(float(e), 8), {"natu": 0})["natu"] if e > 0 else 0
+                    cache.get(round(float(e), 8), {"natu": 0})[
+                        "natu"] if e > 0 else 0
                     for e in enr[p]
                 ],
                 dtype=float,
@@ -485,7 +496,8 @@ class DYMONDOutput:
             r_tails = np.array(
                 [
                     (
-                        cache.get(round(float(e), 8), {"tails": zeros})["tails"]
+                        cache.get(round(float(e), 8), {
+                                  "tails": zeros})["tails"]
                         if e > 0
                         else zeros
                     )
@@ -717,7 +729,8 @@ class DYMONDOutput:
                 )
             reprocessed_mass_dict[reprocess_plant] = np.sum(
                 np.array(
-                    list(flows_dict["reprocessing_out"][reprocess_plant].values())
+                    list(flows_dict["reprocessing_out"]
+                         [reprocess_plant].values())
                 ),
                 axis=0,
             )

@@ -71,7 +71,8 @@ class ResultsCyclus(Results):
     @property
     def commodities(self) -> List[str]:
         """Returns a list of unique commodity names used in the simulation."""
-        q = self.obj.cur.execute("SELECT distinct(commodity) FROM transactions")
+        q = self.obj.cur.execute(
+            "SELECT distinct(commodity) FROM transactions")
         return [x["commodity"] for x in q]
 
     @property
@@ -163,7 +164,8 @@ class CyclusOutput:
             setattr(self, k, v)
         self.nucids = self.get_nucids()
         self.agent_dict = self.get_facility_agents()
-        self.reactors = np.unique(list(self.get_facility_agents("reactor").values()))
+        self.reactors = np.unique(
+            list(self.get_facility_agents("reactor").values()))
 
     def get_facility_agents(self, spec_keywords=None):
         """Returns all facility agents in the simulation
@@ -287,7 +289,8 @@ class CyclusOutput:
 
         # Calculate the stock for this prototype
         agent_stock = np.cumsum(
-            sum(flow_dict["receiving"].values()) - sum(flow_dict["sending"].values())
+            sum(flow_dict["receiving"].values()) -
+            sum(flow_dict["sending"].values())
         )
 
         return proto, flow_dict, agent_stock
@@ -365,7 +368,8 @@ class CyclusOutput:
 
         # Calculate the stock for this agent
         agent_stock = np.cumsum(
-            sum(flow_dict["receiving"].values()) - sum(flow_dict["sending"].values())
+            sum(flow_dict["receiving"].values()) -
+            sum(flow_dict["sending"].values())
         )
 
         return id, flow_dict, agent_stock
@@ -462,10 +466,12 @@ class CyclusOutput:
             # isotopic mass
             nucids = list(nucids)
             val = np.zeros((duration, len(nucids)))
-            assert "NucId" in query_result[0].keys(), print(query_result[0].keys())
+            assert "NucId" in query_result[0].keys(), print(
+                query_result[0].keys())
             assert value_label != ""
             for row in query_result:
-                val[row[time_label], nucids.index(row["NucId"])] += row[value_label]
+                val[row[time_label], nucids.index(
+                    row["NucId"])] += row[value_label]
         else:
             val = np.zeros(duration)
             for row in query_result:
@@ -758,7 +764,8 @@ class CyclusOutput:
         )
         return np.array(
             self.get_yearly_sum(
-                self.query_to_array(query, self.duration, "time", "sum(quantity)")
+                self.query_to_array(query, self.duration,
+                                    "time", "sum(quantity)")
             )
         )
 
@@ -835,7 +842,7 @@ class CyclusOutput:
                     if react_ == proto:
                         pow_cap_dict[react_] = row["value"] * 1e-3
 
-            power_dict[key][t0 - 1 : t0 + t1 - 1] += row["value"] * 1e-3
+            power_dict[key][t0 - 1: t0 + t1 - 1] += row["value"] * 1e-3
 
         # If yearly is True, convert monthly data to yearly data
         if yearly:
@@ -916,7 +923,8 @@ class CyclusOutput:
 
         # Get agent IDs for the specified prototypes (flat list)
         ids_by_proto = self.get_proto_ids(prototypes)
-        all_ids = [aid for ids in ids_by_proto.values() for aid in ids]  # flatten
+        all_ids = [aid for ids in ids_by_proto.values()
+                   for aid in ids]  # flatten
         id_csv = ",".join(map(str, all_ids))
 
         # If no IDs found, return empty arrays of the appropriate size
@@ -1000,7 +1008,8 @@ class CyclusOutput:
 
         # Get agent IDs for the specified prototypes (flat list)
         ids_by_proto = self.get_proto_ids(prototypes)
-        all_ids = [aid for ids in ids_by_proto.values() for aid in ids]  # flatten
+        all_ids = [aid for ids in ids_by_proto.values()
+                   for aid in ids]  # flatten
         id_csv = ",".join(map(str, all_ids))
 
         # If no IDs found, return empty arrays of the appropriate size
@@ -1080,7 +1089,8 @@ class CyclusOutput:
 
         # Get agent IDs for the specified prototypes (flat list)
         ids_by_proto = self.get_proto_ids(prototypes)
-        all_ids = [aid for ids in ids_by_proto.values() for aid in ids]  # flatten
+        all_ids = [aid for ids in ids_by_proto.values()
+                   for aid in ids]  # flatten
         id_csv = ",".join(map(str, all_ids))
 
         # If no IDs found, return empty arrays of the appropriate size
@@ -1139,7 +1149,8 @@ class CyclusOutput:
             with np.errstate(divide="ignore", invalid="ignore"):
                 ratio = np.zeros_like(u235_by_proto[p])
                 nonzero = mass_by_proto[p] > 0
-                ratio[nonzero] = u235_by_proto[p][nonzero] / mass_by_proto[p][nonzero]
+                ratio[nonzero] = u235_by_proto[p][nonzero] / \
+                    mass_by_proto[p][nonzero]
                 enrich[p] = ratio
 
         return enrich
@@ -1195,7 +1206,8 @@ class CyclusOutput:
         reactors = np.atleast_1d(reactors)
 
         # Mass and enrichment arrays
-        fuel_mass, enr = self.get_fuel_mass_and_enrichment(reactors, return_sum=False)
+        fuel_mass, enr = self.get_fuel_mass_and_enrichment(
+            reactors, return_sum=False)
 
         # Cache cascade splits by unique enrichment
         cache = {}
@@ -1232,7 +1244,8 @@ class CyclusOutput:
             # Natural-uranium feed
             r_natu = np.array(
                 [
-                    cache.get(round(float(e), 8), {"natu": 0})["natu"] if e > 0 else 0
+                    cache.get(round(float(e), 8), {"natu": 0})[
+                        "natu"] if e > 0 else 0
                     for e in enr[p]
                 ],
                 dtype=float,
@@ -1243,7 +1256,8 @@ class CyclusOutput:
             r_tails = np.array(
                 [
                     (
-                        cache.get(round(float(e), 8), {"tails": zeros})["tails"]
+                        cache.get(round(float(e), 8), {
+                                  "tails": zeros})["tails"]
                         if e > 0
                         else zeros
                     )
