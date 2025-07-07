@@ -389,7 +389,7 @@ class CyclusOutput:
         by_proto : bool
             If True, groups by prototype; otherwise, by individual agent.
         get_isotopics : bool, optional
-            If True, includes isotopic mass data.
+            If True, includes isotopic mass data. Default is False
 
         Returns:
         -------
