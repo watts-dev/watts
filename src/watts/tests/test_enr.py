@@ -118,7 +118,14 @@ def test_enrichment_cascade_cascade_down():
             assert(np.isclose(sum(result[k]), sum(d[k]), rtol=1e-3))
         # feed has to be the same
         assert(np.isclose(result['feed'][0], d['feed'][0], rtol=1e-3))
-
+        
+def test_enrichmnent_cascade_one_cascade():
+    
+    result = enrichment_cascade(ENR_NATL, ENR_HALEU, ENR_TAILS, cascade_splits=[np.inf], printing=False)['swu']
+    
+    assert(len(result) == 1)
+    assert np.isclose(result[0], 32.07823497 + 1.5064309, rtol=1e-3)
+        
 
 # ---------------------------
 # multistage_enr tests

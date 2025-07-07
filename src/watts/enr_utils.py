@@ -164,6 +164,14 @@ def enrichment_cascade(feed_enr, prod_enr, tail_enr, cascade_splits=[0.1,0.2], p
     # make sure these are numbers
     for variable, val in {'feed':feed_enr, 'prod': prod_enr, 'tail': tail_enr}.items():
         assert(type(val) in [float,int]), f'Varible {variable} needs to be a single number.'
+        
+    # edge case of just one
+    if len(cascade_splits) == 1 and cascade_splits[0] > prod_enr:
+        # just one shot
+        cascade_data = {'swu': [swu_to_product_ratio(feed_enr, prod_enr, tail_enr)],
+                        'feed': [feed_to_product_ratio(feed_enr, prod_enr, tail_enr)],
+                        'tailing': [tails_to_product_ratio(feed_enr, prod_enr, tail_enr)]}
+        return cascade_data
 
     # Add product enrichments list: 
     stage_product_enrichments = []
@@ -177,7 +185,9 @@ def enrichment_cascade(feed_enr, prod_enr, tail_enr, cascade_splits=[0.1,0.2], p
     stage_feed_enrichments = [feed_enr] + stage_product_enrichments[:-1]
     
     # Repeat tails enrichment for each stage if only one value is provided
-    stage_tail_enrichments = [tail_enr, feed_enr]
+    stage_tail_enrichments = [tail_enr]
+    if len(cascade_splits) > 1:
+        stage_tail_enrichments.append(feed_enr)
     if len(cascade_splits) > 2:
         stage_tail_enrichments.extend(cascade_splits[:-2])
     
@@ -189,9 +199,7 @@ def enrichment_cascade(feed_enr, prod_enr, tail_enr, cascade_splits=[0.1,0.2], p
         # cut off unnecessary stages
         stage_tail_enrichments = stage_tail_enrichments[:len(stage_product_enrichments)]
 
-    print(stage_feed_enrichments)
-    print(stage_product_enrichments)
-    print(stage_tail_enrichments)
+
     # Calculate values
     multistage_dict = multistage_enr(stage_feed_enrichments, stage_product_enrichments, stage_tail_enrichments, printing=printing)
     cascade_data = {}
