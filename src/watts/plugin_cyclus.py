@@ -682,7 +682,11 @@ class CyclusOutput:
 
     # ----------------------------- Direct fuel-related functions -----------------------------
 
-    def get_deployment_dict(self, prototypes=None, return_sum=True, yearly=True):
+    def get_deployment_dict(self,
+                            prototypes: str | list[str] | None = None,
+                            return_sum: bool = False,
+                            yearly: bool = True,
+                            reactors: str | list[str] | None = None) -> np.ndarray | dict[str, np.ndarray]:
         '''
         Determines the amount of deployed power for each time step for
         each reactor prototype
@@ -695,6 +699,9 @@ class CyclusOutput:
             if True, returns a single array summed over all prototypes,
         yearly: bool
             if True, returns yearly sums instead of monthly
+        reactors: list of str
+            alias for prototypes, used for compatibility with DYMOND plugin.
+            reactors and prototypes cannot both be specified.
 
         Returns:
         --------
@@ -703,11 +710,14 @@ class CyclusOutput:
             the values are a numpy array with one element for
             each time step in the scenario, indicating how
             much power is deployed for each key during the
-            smulation.
+            simulation.
         '''
-        # Convert reactor to a numpy array
-        if prototypes is None:
+        # Convert reactors/prototypes to a numpy array
+        assert prototypes is None or reactors is None, f"Either 'prototypes' or 'reactors' must be specified, but not both: prototypes={prototypes}, reactors={reactors}"
+        if prototypes is None and reactors is None:
             prototypes = self.reactors
+        elif reactors is not None:
+            prototypes = reactors
         prototypes = np.atleast_1d(prototypes)
 
         q = self.sql_query('''SELECT prototype, entertime, lifetime, Spec, value
@@ -749,7 +759,10 @@ class CyclusOutput:
             power_dict = np.sum(list(power_dict.values()), axis=0)
         return power_dict
 
-    def get_fuel_mass_and_enrichment(self, prototypes: str | list[str] | None = None, return_sum: bool = True) -> tuple[np.ndarray, np.ndarray] | dict[str, tuple[np.ndarray, np.ndarray]]:
+    def get_fuel_mass_and_enrichment(self,
+                                     prototypes: str | list[str] | None = None,
+                                     return_sum: bool = True,
+                                     reactors: str | list[str] | None = None) -> tuple[np.ndarray, np.ndarray] | dict[str, tuple[np.ndarray, np.ndarray]]:
         """
         Get fuel mass and enrichment over time for one or more prototypes.
 
@@ -759,6 +772,9 @@ class CyclusOutput:
             Reactor prototype(s) to analyze. If None, use all reactor types in the simulation.
         return_sum : bool
             If True, return summed arrays across all prototypes. If False, return per-prototype dict.
+        reactors : str or list of str, optional
+            alias for prototypes, used for compatibility with DYMOND plugin.
+            reactors and prototypes cannot both be specified.
 
         Returns:
         -------
@@ -766,11 +782,14 @@ class CyclusOutput:
             If return_sum=True, returns (fuel_mass_array), {proto: enrichment_array}.
             If return_sum=False, returns {proto: (fuel_mass_array, enrichment_array)}.
         """
-        fuel_mass = self.stock_fuel_demand(prototypes, return_sum=return_sum)
-        enrichment = self.get_enrichments(prototypes)
+        fuel_mass = self.stock_fuel_demand(prototypes, return_sum=return_sum, reactors=reactors)
+        enrichment = self.get_enrichments(prototypes, reactors=reactors)
         return fuel_mass, enrichment
 
-    def stock_fuel_demand(self, prototypes: str | list[str] | None = None, return_sum: bool = True) -> np.ndarray | dict[str, np.ndarray]:
+    def stock_fuel_demand(self,
+                          prototypes: str | list[str] | None = None,
+                          return_sum: bool = True,
+                          reactors: str | list[str] | None = None) -> np.ndarray | dict[str, np.ndarray]:
         """
         Annual fuel mass demand from one or more prototypes.
 
@@ -780,15 +799,21 @@ class CyclusOutput:
             Reactor prototype(s).
         return_sum : bool
             If True, returns a single array summed over all prototypes.
+        reactors : str or list of str, optional
+            alias for prototypes, used for compatibility with DYMOND plugin.
+            reactors and prototypes cannot both be specified.
 
         Returns:
         -------
         fuel_mass : np.ndarray or dict[str, np.ndarray]
             Yearly fuel mass per prototype, or total if return_sum=True.
         """
-        # Convert reactor to a numpy array
-        if prototypes is None:
+        # Convert reactors/prototypes to a numpy array
+        assert prototypes is None or reactors is None, f"Either 'prototypes' or 'reactors' must be specified, but not both: prototypes={prototypes}, reactors={reactors}"
+        if prototypes is None and reactors is None:
             prototypes = self.reactors
+        elif reactors is not None:
+            prototypes = reactors
         prototypes = np.atleast_1d(prototypes)
 
         # Get agent IDs for the specified prototypes (flat list)
@@ -835,7 +860,10 @@ class CyclusOutput:
             fuel_mass = np.sum(list(fuel_mass.values()), axis=0)
         return fuel_mass
 
-    def stock_fuel_discharged(self, prototypes: str | list[str] | None = None, return_sum: bool = True) -> np.ndarray | dict[str, np.ndarray]:
+    def stock_fuel_discharged(self,
+                              prototypes: str | list[str] | None = None,
+                              return_sum: bool = True,
+                              reactors: str | list[str] | None = None) -> np.ndarray | dict[str, np.ndarray]:
         """
         Annual discharged fuel mass from one or more prototypes.
 
@@ -845,15 +873,21 @@ class CyclusOutput:
             Reactor prototype(s).
         return_sum : bool
             If True, returns a single array summed over all prototypes.
+        reactors : str or list of str, optional
+            alias for prototypes, used for compatibility with DYMOND plugin.
+            reactors and prototypes cannot both be specified.
 
         Returns:
         -------
         discharged_mass : np.ndarray or dict[str, np.ndarray]
             Yearly discharged fuel mass per prototype, or total if return_sum=True.
         """
-        # Convert reactor to a numpy array
-        if prototypes is None:
+        # Convert reactors/prototypes to a numpy array
+        assert prototypes is None or reactors is None, f"Either 'prototypes' or 'reactors' must be specified, but not both: prototypes={prototypes}, reactors={reactors}"
+        if prototypes is None and reactors is None:
             prototypes = self.reactors
+        elif reactors is not None:
+            prototypes = reactors
         prototypes = np.atleast_1d(prototypes)
 
         # Get agent IDs for the specified prototypes (flat list)
@@ -900,7 +934,9 @@ class CyclusOutput:
             discharged = np.sum(list(discharged.values()), axis=0)
         return discharged
 
-    def get_enrichments(self, prototypes: str | list[str]) -> np.ndarray | dict[str, np.ndarray]:
+    def get_enrichments(self,
+                        prototypes: str | list[str],
+                        reactors: str | list[str] | None = None) -> np.ndarray | dict[str, np.ndarray]:
         """
         Annual enrichment (U-235 mass fraction) for fuel delivered to one or more prototypes.
         Always returns one array per prototypes.
@@ -909,15 +945,21 @@ class CyclusOutput:
         ----------
         prototypes : str or list of str
             Name(s) of the prototypes to analyze.
+        reactors : str or list of str, optional
+            alias for prototypes, used for compatibility with DYMOND plugin.
+            reactors and prototypes cannot both be specified.
 
         Returns:
         -------
         enrichment : dict[str, np.ndarray]
             Annual enrichment time series for each prototype, or a total array.
         """
-        # Convert reactor to a numpy array
-        if prototypes is None:
+        # Convert reactors/prototypes to a numpy array
+        assert prototypes is None or reactors is None, f"Either 'prototypes' or 'reactors' must be specified, but not both: prototypes={prototypes}, reactors={reactors}"
+        if prototypes is None and reactors is None:
             prototypes = self.reactors
+        elif reactors is not None:
+            prototypes = reactors
         prototypes = np.atleast_1d(prototypes)
 
         # Get agent IDs for the specified prototypes (flat list)
@@ -981,13 +1023,14 @@ class CyclusOutput:
 
     # ----------------------------- Advanced data extraction functions -----------------------------
 
-    def stock_fuel_natu(self, 
+    def stock_fuel_natu(self,
         prototypes: str | list[str] | None = None,
         natu_assay:float = None,
         tails_assay:float = None,
         return_sum: bool = True,
         split_cat=False,
-        cascade_splits=[0.1, 0.2]
+        cascade_splits=[0.1, 0.2],
+        reactors: str | list[str] | None = None
     ):
         """
         Compute natural uranium requirements for one or more prototypes.
@@ -1008,6 +1051,9 @@ class CyclusOutput:
         cascade_splits : list of float
             Intermediate enrichments that define cascade stages.
             Defaults to ``[0.1, 0.2]``.
+        reactors : str or list of str, optional
+            alias for prototypes, used for compatibility with DYMOND plugin.
+            reactors and prototypes cannot both be specified.
 
         Returns:
         -------
@@ -1021,13 +1067,16 @@ class CyclusOutput:
         if not cascade_splits:
             cascade_splits = [np.inf]
 
-        # Convert reactor to a numpy array
-        if prototypes is None:
+        # Convert reactors/prototypes to a numpy array
+        assert prototypes is None or reactors is None, f"Either 'prototypes' or 'reactors' must be specified, but not both: prototypes={prototypes}, reactors={reactors}"
+        if prototypes is None and reactors is None:
             prototypes = self.reactors
+        elif reactors is not None:
+            prototypes = reactors
         prototypes = np.atleast_1d(prototypes)
 
         # Mass and enrichment arrays for each prototype
-        fuel_mass, enr = self.get_fuel_mass_and_enrichment(prototypes, return_sum=False)
+        fuel_mass, enr = self.get_fuel_mass_and_enrichment(prototypes, return_sum=False, reactors=reactors)
 
         # Cache enrichment splits for every unique enrichment
         split_cache = {}
@@ -1064,13 +1113,14 @@ class CyclusOutput:
                 split_dict[p] = np.sum(split_dict[p], axis=0)
         return sum(split_dict.values()) if return_sum else split_dict
 
-    def stock_fuel_tails(self, 
+    def stock_fuel_tails(self,
         prototypes: str | list[str] | None = None,
         natu_assay:float = None,
         tails_assay:float = None,
         return_sum: bool = True,
         split_cat=False,
-        cascade_splits=[0.1, 0.2]
+        cascade_splits=[0.1, 0.2],
+        reactors: str | list[str] | None = None
     ):
         """
         Compute enrichment tails for one or more prototypes.
@@ -1091,6 +1141,9 @@ class CyclusOutput:
         cascade_splits : list of float
             Intermediate enrichments that define cascade stages.
             Defaults to ``[0.1, 0.2]``.
+        reactors : str or list of str, optional
+            alias for prototypes, used for compatibility with DYMOND plugin.
+            reactors and prototypes cannot both be specified.
 
         Returns:
         -------
@@ -1104,13 +1157,16 @@ class CyclusOutput:
         if not cascade_splits:
             cascade_splits = [np.inf]
 
-        # Convert reactor to a numpy array
-        if prototypes is None:
+        # Convert reactors/prototypes to a numpy array
+        assert prototypes is None or reactors is None, f"Either 'prototypes' or 'reactors' must be specified, but not both: prototypes={prototypes}, reactors={reactors}"
+        if prototypes is None and reactors is None:
             prototypes = self.reactors
+        elif reactors is not None:
+            prototypes = reactors
         prototypes = np.atleast_1d(prototypes)
 
         # Mass and enrichment arrays for each prototype
-        fuel_mass, enr = self.get_fuel_mass_and_enrichment(prototypes, return_sum=False)
+        fuel_mass, enr = self.get_fuel_mass_and_enrichment(prototypes, return_sum=False, reactors=reactors)
 
         # Cache enrichment splits for every unique enrichment
         split_cache = {}
@@ -1147,13 +1203,14 @@ class CyclusOutput:
                 split_dict[p] = np.sum(split_dict[p], axis=0)
         return sum(split_dict.values()) if return_sum else split_dict
 
-    def stock_fuel_swu(self, 
+    def stock_fuel_swu(self,
         prototypes: str | list[str] | None = None,
         natu_assay:float = None,
         tails_assay:float = None,
         return_sum: bool = True,
         split_cat=False,
-        cascade_splits=[0.1, 0.2]
+        cascade_splits=[0.1, 0.2],
+        reactors: str | list[str] | None = None
     ):
         """
         Compute SWU requirements for one or more prototypes.
@@ -1174,6 +1231,9 @@ class CyclusOutput:
         cascade_splits : list of float
             Intermediate enrichments that define cascade stages.
             Defaults to ``[0.1, 0.2]``.
+        reactors : str or list of str, optional
+            alias for prototypes, used for compatibility with DYMOND plugin.
+            reactors and prototypes cannot both be specified.
 
         Returns:
         -------
@@ -1187,13 +1247,16 @@ class CyclusOutput:
         if not cascade_splits:
             cascade_splits = [np.inf]
 
-        # Convert reactor to a numpy array
-        if prototypes is None:
+        # Convert reactors/prototypes to a numpy array
+        assert prototypes is None or reactors is None, f"Either 'prototypes' or 'reactors' must be specified, but not both: prototypes={prototypes}, reactors={reactors}"
+        if prototypes is None and reactors is None:
             prototypes = self.reactors
+        elif reactors is not None:
+            prototypes = reactors
         prototypes = np.atleast_1d(prototypes)
 
         # Mass and enrichment arrays for each prototype
-        fuel_mass, enr = self.get_fuel_mass_and_enrichment(prototypes, return_sum=False)
+        fuel_mass, enr = self.get_fuel_mass_and_enrichment(prototypes, return_sum=False, reactors=reactors)
 
         # Cache enrichment splits for every unique enrichment
         split_cache = {}
