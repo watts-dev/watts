@@ -983,12 +983,12 @@ class CyclusOutput:
         # Accumulate monthly quantities
         out = {p: np.zeros(self.duration) for p in prototypes}
         for row in rows:
-            rid, t, q = row["receiverid"], row["time"], row["q"]
-            if t >= self.duration:
+            rec_id, time, quantity = row["receiverid"], row["time"], row["q"]
+            if time >= self.duration:
                 continue
             for p, ids in ids_by_proto.items():
-                if rid in ids:
-                    out[p][t] += q
+                if rec_id in ids:
+                    out[p][time] += quantity
                     break
 
         # Convert to yearly totals
