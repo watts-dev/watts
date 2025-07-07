@@ -132,22 +132,28 @@ def swu_to_product_ratio(feed_enr: float | list[float],
     assert np.all(ratio >= 0), f"SWU-to-product ratio cannot be negative.\nRatio: {ratio}.\nInput was:\n\tFeed: {feed_enr}\n\tProduct: {prod_enr}\n\tTails: {tail_enr}"
     return ratio.item() if ratio.size == 1 else ratio
 
+
+
 def enrichment_cascade(feed_enr, prod_enr, tail_enr, cascade_splits=[0.1,0.2], printing=False):
     '''
     Calculate the SWU, feed, and tail distributions across different stages of enrichment.
+    By cascade, it is understood that the tails of the next stage is the feed for the
+    previous stage.
 
     Parameters:
     -----------
+    feed_enr: float, optional
+        Feed enrichment level, expressed as a decimal 
+        (default is 0.00711)
     prod_enr: float
         Final product enrichment level, expressed as a decimal
     tail_enr: float
         Tailing enrichment level, expressed as a decimal
-    feed_enr: float, optional
-        Feed enrichment level, expressed as a decimal 
-        (default is 0.00711)
     cascade_splits: list of float, optional
         Enrichment levels at intermediate stages (default is 
         [0.1, 0.2], corresponding to CAT-III, II, I)
+    printing: bool
+        for debugging.
 
     Returns:
     --------
@@ -155,6 +161,10 @@ def enrichment_cascade(feed_enr, prod_enr, tail_enr, cascade_splits=[0.1,0.2], p
         Dictionary containing lists of SWU, feed, and tailing
         quantities for each stage of the enrichment process.
     '''
+    # make sure these are numbers
+    for variable, val in {'feed':feed_enr, 'prod': prod_enr, 'tail': tail_enr}.items():
+        assert(type(val) in [float,int]), f'Varible {variable} needs to be a single number.'
+
     # Add product enrichments list: 
     stage_product_enrichments = []
     cascade_splits = np.array(list(cascade_splits))
@@ -164,16 +174,24 @@ def enrichment_cascade(feed_enr, prod_enr, tail_enr, cascade_splits=[0.1,0.2], p
     stage_product_enrichments.append(prod_enr)
     
     # Add feed enrichments
-    if type(feed_enr) in [float, int]:
-        stage_feed_enrichments = [feed_enr] + stage_product_enrichments[:-1]
-    else:
-        stage_feed_enrichments = feed_enr
+    stage_feed_enrichments = [feed_enr] + stage_product_enrichments[:-1]
     
     # Repeat tails enrichment for each stage if only one value is provided
-    stage_tail_enrichments = np.atleast_1d(tail_enr)
-    if len(stage_tail_enrichments) == 1:
-        stage_tail_enrichments = np.full_like(stage_product_enrichments, stage_tail_enrichments[0])
+    stage_tail_enrichments = [tail_enr, feed_enr]
+    if len(cascade_splits) > 2:
+        stage_tail_enrichments.extend(cascade_splits[:-2])
+    
+    if len(cascade_splits) == len(stage_product_enrichments):
+        # using all the stages
+        assert(len(cascade_splits) == len(stage_feed_enrichments) == len(stage_product_enrichments) == len(stage_tail_enrichments))
+    else: # not using all the stages
+        assert(len(stage_product_enrichments) == len(stage_feed_enrichments))
+        # cut off unnecessary stages
+        stage_tail_enrichments = stage_tail_enrichments[:len(stage_product_enrichments)]
 
+    print(stage_feed_enrichments)
+    print(stage_product_enrichments)
+    print(stage_tail_enrichments)
     # Calculate values
     multistage_dict = multistage_enr(stage_feed_enrichments, stage_product_enrichments, stage_tail_enrichments, printing=printing)
     cascade_data = {}

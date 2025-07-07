@@ -85,23 +85,40 @@ def test_enrichment_cascade_leu():
     assert isinstance(result, list)
     assert len(result) == 3  # default cascade splits: [0.1, 0.2] → 3 stages
     assert result[1] == 0
-    assert result[2] == 0
     assert np.isclose(result[0], EXP_SWU, rtol=1e-2)
 
 
 def test_enrichment_cascade_haleu():
     result = enrichment_cascade(ENR_NATL, ENR_HALEU, ENR_TAILS)['swu']
     assert isinstance(result, list)
+    print(result)
     assert len(result) == 3  # default cascade splits: [0.1, 0.2] → 3 stages
-    assert result[2] == 0.0
-    assert np.isclose(result[1], 2.1294407, rtol=1e-3)
-    assert np.isclose(result[0], 31.45522513, rtol=1e-3)
-    
+    assert np.isclose(result[0], 32.07823497, rtol=1e-3)
+    assert np.isclose(result[1], 1.5064309, rtol=1e-3)
+
 
 def test_enrichment_cascade_custom():
+    # drops unnecssary stages
     result = enrichment_cascade(ENR_NATL, ENR_LEU, ENR_TAILS, cascade_splits=[0.1, 0.3, 0.7])['swu']
     assert(sum(result[1:]) == 0)
     assert len(result) == 4
+
+
+def test_enrichment_cascade_cascade_down():
+    feed_enrs = [ENR_NATL, 0.1]
+    prod_enrs = [0.1, ENR_HALEU]
+    tail_enrs = [ENR_TAILS, ENR_NATL]
+    result = multistage_enr(feed_enrs, prod_enrs, tail_enrs, printing=False)
+    
+    for i in range(2,7): # try all weird cascade options
+        splits = [0.1] + list(np.linspace(0.1, 0.2,i))[1:]
+        d = enrichment_cascade(ENR_NATL, ENR_HALEU, ENR_TAILS, cascade_splits=splits, printing=False)
+        
+        for k in ['swu', 'tailing']:
+            assert(np.isclose(sum(result[k]), sum(d[k]), rtol=1e-3))
+        # feed has to be the same
+        assert(np.isclose(result['feed'][0], d['feed'][0], rtol=1e-3))
+
 
 # ---------------------------
 # multistage_enr tests
@@ -148,5 +165,4 @@ def test_multistage_tot_is_the_same():
     assert(np.isclose(result1['feed'][0], result2['feed'][0], rtol=1e-3))
 
     
-
     
