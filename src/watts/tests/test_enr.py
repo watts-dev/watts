@@ -23,7 +23,8 @@ EXP_SWU = 7.818
 
 def test_feed_to_product_single_value():
     assert np.isclose(feed_to_product_ratio(
-        ENR_NATL, ENR_LEU, ENR_TAILS), (ENR_LEU - ENR_TAILS) / (ENR_NATL - ENR_TAILS))
+        ENR_NATL, ENR_LEU, ENR_TAILS),
+        (ENR_LEU - ENR_TAILS) / (ENR_NATL - ENR_TAILS))
 
 
 def test_feed_to_product_array():
@@ -39,7 +40,8 @@ def test_feed_to_product_array():
 
 def test_tails_to_product_single_value():
     assert np.isclose(tails_to_product_ratio(
-        ENR_NATL, ENR_LEU, ENR_TAILS), (ENR_LEU - ENR_NATL) / (ENR_NATL - ENR_TAILS))
+        ENR_NATL, ENR_LEU, ENR_TAILS),
+        (ENR_LEU - ENR_NATL) / (ENR_NATL - ENR_TAILS))
 
 
 def test_evens_out():
@@ -128,7 +130,11 @@ def test_enrichment_cascade_cascade_down():
     for i in range(2, 7):  # try all weird cascade options
         splits = [0.1] + list(np.linspace(0.1, 0.2, i))[1:]
         d = enrichment_cascade(
-            ENR_NATL, ENR_HALEU, ENR_TAILS, cascade_splits=splits, printing=False)
+            ENR_NATL,
+            ENR_HALEU,
+            ENR_TAILS,
+            cascade_splits=splits,
+            printing=False)
 
         for k in ['swu', 'tailing']:
             assert (np.isclose(sum(result[k]), sum(d[k]), rtol=1e-3))
