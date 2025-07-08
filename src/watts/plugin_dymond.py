@@ -12,6 +12,7 @@ from .results import Results, ExecInfo
 from .fileutils import PathLike
 from .parameters import Parameters
 from .template import TemplateRenderer
+from .enr_utils import enrichment_cascade
 
 
 class ResultsDYMOND(Results):
@@ -446,8 +447,6 @@ class DYMONDOutput:
             For each entry the structure matches the corresponding
             stock_fuel_* helper that it replaces.
         """
-
-        from .enr_utils import enrichment_cascade
 
         if not cascade_splits:
             cascade_splits = [np.inf]

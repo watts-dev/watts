@@ -13,6 +13,7 @@ from .fileutils import PathLike
 from .parameters import Parameters
 from .plugin import Plugin, PluginGeneric, _find_executable
 from .results import Results, ExecInfo
+from .enr_utils import enrichment_cascade
 
 
 class ResultsCyclus(Results):
@@ -1228,8 +1229,6 @@ class CyclusOutput:
             For each entry the structure matches the corresponding
             stock_fuel_* helper that it replaces.
         """
-
-        from .enr_utils import enrichment_cascade
 
         if not cascade_splits:
             cascade_splits = [np.inf]
