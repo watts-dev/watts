@@ -13,6 +13,7 @@ from .fileutils import PathLike
 from .parameters import Parameters
 from .plugin import Plugin, PluginGeneric, _find_executable
 from .results import Results, ExecInfo
+from .enr_utils import enrichment_cascade
 
 
 class ResultsCyclus(Results):
@@ -46,8 +47,6 @@ class ResultsCyclus(Results):
     ):
         super().__init__(params, exec_info, inputs, outputs)
         self.obj = self.get_object()
-        #! can't do this because sqlite cursors can't be pickled
-        # self.obj = CyclusOutput(self.sqlite_file)
 
     def get_object(self):
         """Returns a CyclusOutput object linked to the output SQLite file."""
@@ -67,26 +66,27 @@ class ResultsCyclus(Results):
 
     @property
     def reactors(self):
-        """Returns a dictionary of agent IDs and their prototype names for reactor facilities."""
+        """Returns a dictionary of agent IDs and their prototype names
+        for reactor facilities."""
         return self.obj.get_facility_agents("reactor")
 
     @property
     def commodities(self) -> List[str]:
         """Returns a list of unique commodity names used in the simulation."""
-        # obj = CyclusOutput(self.sqlite_file)
-        q = self.obj.cur.execute("SELECT distinct(commodity) FROM transactions")
+        q = self.obj.cur.execute(
+            "SELECT distinct(commodity) FROM transactions")
         return [x["commodity"] for x in q]
 
     @property
     def time_dict(self) -> dict:
-        """Returns a dictionary with simulation time metadata (start year/month, duration, etc.)."""
-        # obj = CyclusOutput(self.sqlite_file)
+        """Returns a dictionary with simulation time metadata (start
+        year/month, duration, etc.)."""
         return self.obj.get_times()
 
     @property
     def mass_flow_dict(self) -> dict:
-        """Returns a dictionary mapping commodities to their yearly mass flows."""
-        # obj = CyclusOutput(self.sqlite_file)
+        """Returns a dictionary mapping commodities to their yearly
+        mass flows."""
         arr = self.obj.get_fuel_demands(self.commodities)
         d = {}
         for indx in range(len(arr)):
@@ -97,11 +97,11 @@ class ResultsCyclus(Results):
 class PluginCyclus(PluginGeneric):
     """Plugin for running Cyclus
 
-    #! In addition to the basic capability to use placeholders in MCNP input files,
-    this class also provides a custom Jinja filter called `expand_element
-    that allows you to specify natural elements in MCNP material definitions and
-    have them automatically expanded based on what isotopes appear in the xsdir
-    file.
+    #! In addition to the basic capability to use placeholders in
+    MCNP input files, this class also provides a custom Jinja
+    filter called `expand_element that allows you to specify natural
+    elements in MCNP material definitions and have them automatically
+    expanded based on what isotopes appear in the xsdir file.
 
     Parameters:
     ----------
@@ -168,7 +168,8 @@ class CyclusOutput:
             setattr(self, k, v)
         self.nucids = self.get_nucids()
         self.agent_dict = self.get_facility_agents()
-        self.reactors = np.unique(list(self.get_facility_agents("reactor").values()))
+        self.reactors = np.unique(
+            list(self.get_facility_agents("reactor").values()))
 
     def get_facility_agents(self, spec_keywords=None):
         """Returns all facility agents in the simulation
@@ -176,9 +177,10 @@ class CyclusOutput:
         Parameters:
         ----------
         spec_keywords : str, optional
-            If provided, filters facility agents whose specification string (Spec)
-            contains this keyword. Used to isolate a specific type of facility,
-            such as 'reactor', based on its Cyclus specification.
+            If provided, filters facility agents whose specification
+            string (Spec) contains this keyword. Used to isolate a
+            specific type of facility, such as 'reactor', based on
+            its Cyclus specification.
 
         Returns:
         -------
@@ -188,15 +190,15 @@ class CyclusOutput:
         if not spec_keywords:
             query = self.sql_query(
                 '''SELECT distinct(agentid), prototype
-                                   FROM agententry
-                                   WHERE kind=="Facility"'''
+                   FROM agententry
+                   WHERE kind=="Facility"'''
             )
         else:
             query = self.sql_query(
                 f"""SELECT distinct(agentid), prototype
-                                   FROM agententry
-                                   WHERE kind=="Facility" and spec
-                                   LIKE "%{spec_keywords}%" --case-insensitive"""
+                    FROM agententry
+                    WHERE kind=="Facility" and spec
+                    LIKE "%{spec_keywords}%" --case-insensitive"""
             )
         agents = {q["agentid"]: q["prototype"] for q in query}
         return agents
@@ -227,23 +229,23 @@ class CyclusOutput:
                 ps = ", ".join([f'"{str(q)}"' for q in proto])
                 query = self.sql_query(
                     f"""SELECT agentid
-                                       FROM agententry
-                                       WHERE prototype
-                                       IN ({ps})"""
+                        FROM agententry
+                        WHERE prototype
+                        IN ({ps})"""
                 )
             else:
                 query = self.sql_query(
                     f'''SELECT agentid
-                                       FROM agententry
-                                       WHERE prototype == "{proto}"'''
+                        FROM agententry
+                        WHERE prototype == "{proto}"'''
                 )
             ids = [q["agentid"] for q in query]
             id_str = ", ".join([str(q) for q in ids])
             query = self.sql_query(
                 f"""SELECT distinct(commodity)
-                                   FROM transactions
-                                   WHERE {c}
-                                   IN ({id_str})"""
+                    FROM transactions
+                    WHERE {c}
+                    IN ({id_str})"""
             )
             trade_commods = [q["commodity"] for q in query]
 
@@ -251,12 +253,12 @@ class CyclusOutput:
                 if not get_isotopics:
                     query = self.sql_query(
                         f"""SELECT sum(quantity), time
-                                           FROM transactions
-                                           INNER JOIN resources
-                                           ON transactions.resourceid = resources.resourceid
-                                           WHERE {c} in ({id_str})
-                                           AND commodity=="{commod}"
-                                           GROUP BY time"""
+                            FROM transactions
+                            INNER JOIN resources
+                            ON transactions.resourceid = resources.resourceid
+                            WHERE {c} in ({id_str})
+                            AND commodity=="{commod}"
+                            GROUP BY time"""
                     )
                     flow_dict[key][commod] = self.get_yearly_sum(
                         self.query_to_array(
@@ -271,14 +273,15 @@ class CyclusOutput:
                     # isotopics
                     query = self.sql_query(
                         f"""SELECT time, nucid, sum(quantity * massfrac)
-                                           AS nucmass
-                                           FROM transactions
-                                           JOIN resources
-                                           ON transactions.resourceid = resources.resourceid
-                                           JOIN compositions on resources.qualid = compositions.qualid
-                                           WHERE {c} in ({id_str})
-                                           AND commodity=="{commod}"
-                                           GROUP BY time, nucid"""
+                            AS nucmass
+                            FROM transactions
+                            JOIN resources
+                            ON transactions.resourceid = resources.resourceid
+                            JOIN compositions on
+                            resources.qualid = compositions.qualid
+                            WHERE {c} in ({id_str})
+                            AND commodity=="{commod}"
+                            GROUP BY time, nucid"""
                     )
                     flow_dict[key][commod] = self.get_yearly_sum(
                         self.query_to_array(
@@ -292,7 +295,8 @@ class CyclusOutput:
 
         # Calculate the stock for this prototype
         agent_stock = np.cumsum(
-            sum(flow_dict["receiving"].values()) - sum(flow_dict["sending"].values())
+            sum(flow_dict["receiving"].values()) -
+            sum(flow_dict["sending"].values())
         )
 
         return proto, flow_dict, agent_stock
@@ -329,12 +333,12 @@ class CyclusOutput:
                 if not get_isotopics:
                     query = self.sql_query(
                         f"""SELECT sum(quantity), time
-                                           FROM transactions
-                                           INNER JOIN resources
-                                           ON transactions.resourceid = resources.resourceid
-                                           WHERE {c}=={id}
-                                           AND commodity=="{commod}"
-                                           GROUP BY time"""
+                            FROM transactions
+                            INNER JOIN resources
+                            ON transactions.resourceid = resources.resourceid
+                            WHERE {c}=={id}
+                            AND commodity=="{commod}"
+                            GROUP BY time"""
                     )
                     flow_dict[key][commod] = self.get_yearly_sum(
                         self.query_to_array(
@@ -349,14 +353,15 @@ class CyclusOutput:
                     # isotopics
                     query = self.sql_query(
                         f"""SELECT time, nucid, sum(quantity * massfrac)
-                                           AS nucmass
-                                           FROM transactions
-                                           JOIN resources
-                                           ON transactions.resourceid = resources.resourceid
-                                           JOIN compositions on resources.qualid = compositions.qualid
-                                           WHERE {c}=={id}
-                                           AND commodity=="{commod}"
-                                           GROUP BY time, nucid"""
+                            AS nucmass
+                            FROM transactions
+                            JOIN resources
+                            ON transactions.resourceid = resources.resourceid
+                            JOIN compositions on
+                            resources.qualid = compositions.qualid
+                            WHERE {c}=={id}
+                            AND commodity=="{commod}"
+                            GROUP BY time, nucid"""
                     )
                     flow_dict[key][commod] = self.get_yearly_sum(
                         self.query_to_array(
@@ -370,7 +375,8 @@ class CyclusOutput:
 
         # Calculate the stock for this agent
         agent_stock = np.cumsum(
-            sum(flow_dict["receiving"].values()) - sum(flow_dict["sending"].values())
+            sum(flow_dict["receiving"].values()) -
+            sum(flow_dict["sending"].values())
         )
 
         return id, flow_dict, agent_stock
@@ -384,7 +390,7 @@ class CyclusOutput:
         by_proto : bool
             If True, groups by prototype; otherwise, by individual agent.
         get_isotopics : bool, optional
-            If True, includes isotopic mass data.
+            If True, includes isotopic mass data. Default is False
 
         Returns:
         -------
@@ -421,7 +427,7 @@ class CyclusOutput:
 
         return agent_flow_dict, agent_stock_dict
 
-    # ----------------------------- Global Utility Functions -----------------------------
+    # --------------- Global Utility Functions ---------------
 
     def sql_query(self, query_str: str):
         """
@@ -437,7 +443,11 @@ class CyclusOutput:
 
     @staticmethod
     def query_to_array(
-        query_result, duration, nucids=[], time_label="entertime", value_label=""
+        query_result,
+        duration,
+        nucids=[],
+        time_label="entertime",
+        value_label=""
     ):
         """
         Transform the results from a specified data query of the SQLite
@@ -467,10 +477,12 @@ class CyclusOutput:
             # isotopic mass
             nucids = list(nucids)
             val = np.zeros((duration, len(nucids)))
-            assert "NucId" in query_result[0].keys(), print(query_result[0].keys())
+            assert "NucId" in query_result[0].keys(), print(
+                query_result[0].keys())
             assert value_label != ""
             for row in query_result:
-                val[row[time_label], nucids.index(row["NucId"])] += row[value_label]
+                val[row[time_label], nucids.index(
+                    row["NucId"])] += row[value_label]
         else:
             val = np.zeros(duration)
             for row in query_result:
@@ -483,12 +495,15 @@ class CyclusOutput:
     @staticmethod
     def get_yearly_sum(arr):
         """
-        Convert monthly time series data into yearly sums, with initial alignment.
+        Convert monthly time series data into yearly sums, with
+        initial alignment.
 
         This function:
         - Sums values over consecutive 12-month periods
-        - Prepends an initial 0.0 as a placeholder for the year before data begins
-        - Returns one value per year, excluding the final year of data
+        - Prepends an initial 0.0 as a placeholder for the year
+          before data begins
+        - Returns one value per year, excluding the final year
+          of data
 
         Parameters:
         ----------
@@ -498,14 +513,15 @@ class CyclusOutput:
         Returns:
         -------
         np.ndarray
-            1D array of yearly sums, length = floor(len(arr) / 12), plus one initial 0
+            1D array of yearly sums, length = floor(len(arr) / 12),
+            plus one initial 0
         """
         arr = np.asarray(arr)
         n = (len(arr) // 12) * 12  # truncate to full years
         yearly = arr[:n].reshape(-1, 12).sum(axis=1)
         return np.insert(yearly[:-1], 0, 0.0)  # remove last year, prepend 0
 
-    # ----------------------------- Basic data extraction functions -----------------------------
+    # --------------- Basic data extraction functions ---------------
 
     def get_times(self):
         """
@@ -553,12 +569,14 @@ class CyclusOutput:
         Parameters:
         ----------
         flow_dict : dict
-            Dictionary of flow data, typically from `get_agent_flow_and_stock_dict`.
+            Dictionary of flow data, typically from
+            `get_agent_flow_and_stock_dict`.
 
         Returns:
         -------
         set
-            Set of integer nuclide IDs appearing in any time step of the flow data.
+            Set of integer nuclide IDs appearing in any time step
+            of the flow data.
         """
         query = self.sql_query(
             """SELECT distinct(nucid)
@@ -590,11 +608,11 @@ class CyclusOutput:
         for indx, ff in enumerate(fuel_forms):
             query = self.sql_query(
                 """SELECT sum(quantity), time
-                                      FROM transactions
-                                      INNER JOIN resources
-                                      ON transactions.resourceid = resources.resourceid
-                                      WHERE Commodity="%s"
-                                      GROUP BY time"""
+                FROM transactions
+                INNER JOIN resources
+                ON transactions.resourceid = resources.resourceid
+                WHERE Commodity="%s"
+                GROUP BY time"""
                 % ff
             )
             fuel_flow_array[indx, :] = np.array(
@@ -611,7 +629,8 @@ class CyclusOutput:
 
     def get_commodity_into(self, proto_name=None, agentid=None):
         """
-        Get the list of unique incoming commodity names for a given prototype or agent ID.
+        Get the list of unique incoming commodity names for a
+        given prototype or agent ID.
 
         Parameters:
         ----------
@@ -638,15 +657,16 @@ class CyclusOutput:
         csv = ",".join([str(q) for q in agentid])
         query = self.sql_query(
             f"""SELECT distinct(commodity)
-                               FROM transactions
-                               WHERE receiverid
-                               IN ({csv})"""
+            FROM transactions
+            WHERE receiverid
+            IN ({csv})"""
         )
         return [q["commodity"] for q in query]
 
     def get_commodity_out_of(self, proto_name=None, agentid=None):
         """
-        Get the list of unique outgoing commodity names for a given prototype or agent ID.
+        Get the list of unique outgoing commodity names for a given
+        prototype or agent ID.
 
         Parameters:
         ----------
@@ -673,8 +693,8 @@ class CyclusOutput:
         csv = ",".join([str(q) for q in agentid])
         query = self.sql_query(
             f"""SELECT distinct(commodity)
-                               FROM transactions
-                               WHERE senderid IN ({csv})"""
+            FROM transactions
+            WHERE senderid IN ({csv})"""
         )
         return [q["commodity"] for q in query]
 
@@ -691,7 +711,8 @@ class CyclusOutput:
         -------
         list of int or dict of list[int]
             If input is a single prototype, returns a flat list of agent IDs.
-            If input is a list, returns a dictionary mapping prototype names to lists of agent IDs.
+            If input is a list, returns a dictionary mapping prototype names
+            to lists of agent IDs.
         """
 
         want_flat = isinstance(proto_name, str)
@@ -733,7 +754,7 @@ class CyclusOutput:
         """
         query = self.sql_query(
             """SELECT distinct(commodity)
-                               FROM transactions"""
+            FROM transactions"""
         )
         return [x["commodity"] for x in query]
 
@@ -755,19 +776,20 @@ class CyclusOutput:
         """
         query = self.sql_query(
             f"""SELECT sum(quantity), time
-                               FROM transactions
-                               INNER JOIN resources
-                               ON transactions.resourceid = resources.resourceid
-                               WHERE Commodity="{commodity_name}"
-                               GROUP BY time"""
+                FROM transactions
+                INNER JOIN resources
+                ON transactions.resourceid = resources.resourceid
+                WHERE Commodity="{commodity_name}"
+                GROUP BY time"""
         )
         return np.array(
             self.get_yearly_sum(
-                self.query_to_array(query, self.duration, "time", "sum(quantity)")
+                self.query_to_array(query, self.duration,
+                                    "time", "sum(quantity)")
             )
         )
 
-    # ----------------------------- Direct fuel-related functions -----------------------------
+    # --------------- Direct fuel-related functions ---------------
 
     def get_deployment_dict(
         self,
@@ -804,7 +826,8 @@ class CyclusOutput:
         # Convert reactors/prototypes to a numpy array
         assert (
             prototypes is None or reactors is None
-        ), f"Either 'prototypes' or 'reactors' must be specified, but not both: prototypes={prototypes}, reactors={reactors}"
+        ), f"Either 'prototypes' or 'reactors' must be specified, \
+            but not both: prototypes={prototypes}, reactors={reactors}"
         if prototypes is None and reactors is None:
             prototypes = self.reactors
         elif reactors is not None:
@@ -813,13 +836,13 @@ class CyclusOutput:
 
         q = self.sql_query(
             """SELECT prototype, entertime, lifetime, Spec, value
-                           FROM agententry
-                           INNER JOIN timeseriespower
-                           ON agententry.agentid = timeseriespower.agentid
-                           WHERE agententry.spec
-                           LIKE "%Reactor"
-                           AND value != 0
-                           GROUP BY agententry.agentid"""
+               FROM agententry
+               INNER JOIN timeseriespower
+               ON agententry.agentid = timeseriespower.agentid
+               WHERE agententry.spec
+               LIKE "%Reactor"
+               AND value != 0
+               GROUP BY agententry.agentid"""
         )
 
         power = np.zeros(self.duration)
@@ -840,12 +863,13 @@ class CyclusOutput:
                     if react_ == proto:
                         pow_cap_dict[react_] = row["value"] * 1e-3
 
-            power_dict[key][t0 - 1 : t0 + t1 - 1] += row["value"] * 1e-3
+            power_dict[key][t0 - 1: t0 + t1 - 1] += row["value"] * 1e-3
 
         # If yearly is True, convert monthly data to yearly data
         if yearly:
             power_dict = {
-                k: np.mean(v.reshape(-1, 12), axis=1) for k, v in power_dict.items()
+                k: np.mean(v.reshape(-1, 12), axis=1)
+                for k, v in power_dict.items()
             }
 
         # If return_sum is True, sum the power across all reactors
@@ -859,16 +883,19 @@ class CyclusOutput:
         prototypes: str | list[str] | None = None,
         return_sum: bool = True,
         reactors: str | list[str] | None = None,
-    ) -> tuple[np.ndarray, np.ndarray] | dict[str, tuple[np.ndarray, np.ndarray]]:
+    ) -> tuple[np.ndarray, np.ndarray] | \
+            dict[str, tuple[np.ndarray, np.ndarray]]:
         """
         Get fuel mass and enrichment over time for one or more prototypes.
 
         Parameters:
         ----------
         prototypes : str, list of str, or None
-            Reactor prototype(s) to analyze. If None, use all reactor types in the simulation.
+            Reactor prototype(s) to analyze. If None, use all reactor types
+            in the simulation.
         return_sum : bool
-            If True, return summed arrays across all prototypes. If False, return per-prototype dict.
+            If True, return summed arrays across all prototypes.
+            If False, return per-prototype dict.
         reactors : str or list of str, optional
             alias for prototypes, used for compatibility with DYMOND plugin.
             reactors and prototypes cannot both be specified.
@@ -876,8 +903,10 @@ class CyclusOutput:
         Returns:
         -------
         tuple or dict
-            If return_sum=True, returns (fuel_mass_array), {proto: enrichment_array}.
-            If return_sum=False, returns {proto: (fuel_mass_array, enrichment_array)}.
+            If return_sum=True, returns
+                (fuel_mass_array), {proto: enrichment_array}.
+            If return_sum=False, returns
+                {proto: (fuel_mass_array, enrichment_array)}.
         """
         fuel_mass = self.stock_fuel_demand(
             prototypes, return_sum=return_sum, reactors=reactors
@@ -912,7 +941,8 @@ class CyclusOutput:
         # Convert reactors/prototypes to a numpy array
         assert (
             prototypes is None or reactors is None
-        ), f"Either 'prototypes' or 'reactors' must be specified, but not both: prototypes={prototypes}, reactors={reactors}"
+        ), f"Either 'prototypes' or 'reactors' must be specified, \
+            but not both: prototypes={prototypes}, reactors={reactors}"
         if prototypes is None and reactors is None:
             prototypes = self.reactors
         elif reactors is not None:
@@ -921,7 +951,8 @@ class CyclusOutput:
 
         # Get agent IDs for the specified prototypes (flat list)
         ids_by_proto = self.get_proto_ids(prototypes)
-        all_ids = [aid for ids in ids_by_proto.values() for aid in ids]  # flatten
+        all_ids = [aid for ids in ids_by_proto.values()
+                   for aid in ids]  # flatten
         id_csv = ",".join(map(str, all_ids))
 
         # If no IDs found, return empty arrays of the appropriate size
@@ -953,12 +984,12 @@ class CyclusOutput:
         # Accumulate monthly quantities
         out = {p: np.zeros(self.duration) for p in prototypes}
         for row in rows:
-            rid, t, q = row["receiverid"], row["time"], row["q"]
-            if t >= self.duration:
+            rec_id, time, quantity = row["receiverid"], row["time"], row["q"]
+            if time >= self.duration:
                 continue
             for p, ids in ids_by_proto.items():
-                if rid in ids:
-                    out[p][t] += q
+                if rec_id in ids:
+                    out[p][time] += quantity
                     break
 
         # Convert to yearly totals
@@ -991,12 +1022,14 @@ class CyclusOutput:
         Returns:
         -------
         discharged_mass : np.ndarray or dict[str, np.ndarray]
-            Yearly discharged fuel mass per prototype, or total if return_sum=True.
+            Yearly discharged fuel mass per prototype,
+            or total if return_sum=True.
         """
         # Convert reactors/prototypes to a numpy array
         assert (
             prototypes is None or reactors is None
-        ), f"Either 'prototypes' or 'reactors' must be specified, but not both: prototypes={prototypes}, reactors={reactors}"
+        ), f"Either 'prototypes' or 'reactors' must be specified, \
+            but not both: prototypes={prototypes}, reactors={reactors}"
         if prototypes is None and reactors is None:
             prototypes = self.reactors
         elif reactors is not None:
@@ -1005,7 +1038,8 @@ class CyclusOutput:
 
         # Get agent IDs for the specified prototypes (flat list)
         ids_by_proto = self.get_proto_ids(prototypes)
-        all_ids = [aid for ids in ids_by_proto.values() for aid in ids]  # flatten
+        all_ids = [aid for ids in ids_by_proto.values()
+                   for aid in ids]  # flatten
         id_csv = ",".join(map(str, all_ids))
 
         # If no IDs found, return empty arrays of the appropriate size
@@ -1054,10 +1088,13 @@ class CyclusOutput:
         return discharged
 
     def get_enrichments(
-        self, prototypes: str | list[str], reactors: str | list[str] | None = None
+        self,
+        prototypes: str | list[str],
+        reactors: str | list[str] | None = None
     ) -> np.ndarray | dict[str, np.ndarray]:
         """
-        Annual enrichment (U-235 mass fraction) for fuel delivered to one or more prototypes.
+        Annual enrichment (U-235 mass fraction) for fuel delivered
+        to one or more prototypes.
         Always returns one array per prototypes.
 
         Parameters:
@@ -1076,7 +1113,8 @@ class CyclusOutput:
         # Convert reactors/prototypes to a numpy array
         assert (
             prototypes is None or reactors is None
-        ), f"Either 'prototypes' or 'reactors' must be specified, but not both: prototypes={prototypes}, reactors={reactors}"
+        ), f"Either 'prototypes' or 'reactors' must be specified, \
+            but not both: prototypes={prototypes}, reactors={reactors}"
         if prototypes is None and reactors is None:
             prototypes = self.reactors
         elif reactors is not None:
@@ -1085,7 +1123,8 @@ class CyclusOutput:
 
         # Get agent IDs for the specified prototypes (flat list)
         ids_by_proto = self.get_proto_ids(prototypes)
-        all_ids = [aid for ids in ids_by_proto.values() for aid in ids]  # flatten
+        all_ids = [aid for ids in ids_by_proto.values()
+                   for aid in ids]  # flatten
         id_csv = ",".join(map(str, all_ids))
 
         # If no IDs found, return empty arrays of the appropriate size
@@ -1107,7 +1146,8 @@ class CyclusOutput:
                             THEN quantity * massfrac ELSE 0 END) AS u235
             FROM transactions
             JOIN resources    USING (resourceid)
-            JOIN compositions ON resources.qualid = compositions.qualid
+            JOIN compositions ON
+            resources.qualid = compositions.qualid
             WHERE receiverid IN ({id_csv})
             AND commodity  IN ({commod_csv})
             GROUP BY receiverid, time
@@ -1144,297 +1184,266 @@ class CyclusOutput:
             with np.errstate(divide="ignore", invalid="ignore"):
                 ratio = np.zeros_like(u235_by_proto[p])
                 nonzero = mass_by_proto[p] > 0
-                ratio[nonzero] = u235_by_proto[p][nonzero] / mass_by_proto[p][nonzero]
+                ratio[nonzero] = u235_by_proto[p][nonzero] / \
+                    mass_by_proto[p][nonzero]
                 enrich[p] = ratio
 
         return enrich
 
-    # ----------------------------- Advanced data extraction functions -----------------------------
+    # --------------- Advanced data extraction functions ---------------
+
+    def stock_fuel_resources(
+        self,
+        reactors: str | list[str] | None = None,
+        natu_assay: float = None,
+        tails_assay: float = None,
+        return_sum: bool = True,
+        split_cat: bool = False,
+        cascade_splits=[0.1, 0.2],
+    ):
+        """
+        Compute natural-uranium feed, enrichment tails, and SWU
+        requirements for one or more reactors.
+
+        Parameters:
+        ----------
+        reactors : str or list[str]
+            Prototype name(s).
+        natu_assay : float
+            Enrichment of the feed (typically natural uranium).
+        tails_assay : float
+            Enrichment of the tails material.
+        return_sum : bool, optional
+            If True, returns the sum across reactors (default True).
+        split_cat : bool, optional
+            If True, return tails and SWU split by cascade stage;
+            otherwise return totals (default False).
+        cascade_splits : list of float
+            Intermediate enrichments that define cascade stages.
+            Defaults to [0.1, 0.2].
+
+        Returns:
+        -------
+        dict[str, dict[str, np.ndarray] | np.ndarray]
+            Dictionary with keys 'natu', 'tails', and 'swu'.
+            For each entry the structure matches the corresponding
+            stock_fuel_* helper that it replaces.
+        """
+
+        if not cascade_splits:
+            cascade_splits = [np.inf]
+
+        # Reactor list
+        if reactors is None:
+            reactors = self.reactors
+        reactors = np.atleast_1d(reactors)
+
+        # Mass and enrichment arrays
+        fuel_mass, enr = self.get_fuel_mass_and_enrichment(
+            reactors, return_sum=False)
+
+        # Cache cascade splits by unique enrichment
+        cache = {}
+        for p in reactors:
+            for e in enr[p]:
+                if e > 0:
+                    key = round(float(e), 8)
+                    if key not in cache:
+                        c = enrichment_cascade(
+                            feed_enr=natu_assay,
+                            prod_enr=e,
+                            tail_enr=tails_assay,
+                            cascade_splits=cascade_splits,
+                        )
+                        # For natural uranium, use only the first stage,
+                        # because the rest is reused by the next stage
+                        cache[key] = {
+                            "natu": c["feed"][0],
+                            "tails": np.asarray(c["tails"], dtype=float),
+                            "swu": np.asarray(c["swu"], dtype=float),
+                        }
+
+        # Ensure a consistent number of stages
+        lengths = [len(v["tails"]) for v in cache.values()]
+        assert (
+            len(set(lengths)) == 1
+        ), "All cascades must have the same number of stages."
+        n_stages = lengths[0]
+        zeros = np.zeros(n_stages)
+
+        res = {"natu": {}, "tails": {}, "swu": {}}
+
+        for p in reactors:
+            # Natural-uranium feed
+            r_natu = np.array(
+                [
+                    cache.get(round(float(e), 8), {"natu": 0})[
+                        "natu"] if e > 0 else 0
+                    for e in enr[p]
+                ],
+                dtype=float,
+            )
+            res["natu"][p] = r_natu.T * fuel_mass[p]
+
+            # Tails
+            r_tails = np.array(
+                [
+                    (
+                        cache.get(round(float(e), 8), {
+                                  "tails": zeros})["tails"]
+                        if e > 0
+                        else zeros
+                    )
+                    for e in enr[p]
+                ],
+                dtype=float,
+            )
+            tails_val = r_tails.T * fuel_mass[p]
+            if not split_cat:
+                tails_val = np.sum(tails_val, axis=0)
+            res["tails"][p] = tails_val
+
+            # SWU
+            r_swu = np.array(
+                [
+                    (
+                        cache.get(round(float(e), 8), {"swu": zeros})["swu"]
+                        if e > 0
+                        else zeros
+                    )
+                    for e in enr[p]
+                ],
+                dtype=float,
+            )
+            swu_val = r_swu.T * fuel_mass[p]
+            if not split_cat:
+                swu_val = np.sum(swu_val, axis=0)
+            res["swu"][p] = swu_val
+
+        if return_sum:
+            return {k: sum(v.values()) for k, v in res.items()}
+        return res
 
     def stock_fuel_natu(
         self,
-        prototypes: str | list[str] | None = None,
+        reactors: str | list[str] | None = None,
         natu_assay: float = None,
         tails_assay: float = None,
         return_sum: bool = True,
-        split_cat=False,
         cascade_splits=[0.1, 0.2],
-        reactors: str | list[str] | None = None,
     ):
         """
-        Compute natural uranium requirements for one or more prototypes.
+        Compute natural uranium requirements for one or more reactors.
 
         Parameters:
         ----------
-        prototypes : str or list[str]
+        reactors : str or list[str]
             Prototype name(s).
         natu_assay : float
             Enrichment of the feed (typically natural uranium).
         tails_assay : float
             Enrichment of the tails material.
         return_sum : bool, optional
-            If True, returns the sum across prototypes (default True).
-        split_cat : bool, optional
-            If True, return SWU split by cascade stage; otherwise return
-            total SWU per prototype (default False).
+            If True, returns the sum across reactors (default True).
         cascade_splits : list of float
             Intermediate enrichments that define cascade stages.
-            Defaults to ``[0.1, 0.2]``.
-        reactors : str or list of str, optional
-            alias for prototypes, used for compatibility with DYMOND plugin.
-            reactors and prototypes cannot both be specified.
+            Defaults to [0.1, 0.2].
 
         Returns:
         -------
         dict[str, np.ndarray] or np.ndarray
-            SWU per prototype (or summed), either by stage or total.
+            Natural-uranium feed per reactor (or summed).
         """
-
-        from .enr_utils import enrichment_cascade
-
-        cascade_key = "feed"
-
-        if not cascade_splits:
-            cascade_splits = [np.inf]
-
-        # Convert reactors/prototypes to a numpy array
-        assert (
-            prototypes is None or reactors is None
-        ), f"Either 'prototypes' or 'reactors' must be specified, but not both: prototypes={prototypes}, reactors={reactors}"
-        if prototypes is None and reactors is None:
-            prototypes = self.reactors
-        elif reactors is not None:
-            prototypes = reactors
-        prototypes = np.atleast_1d(prototypes)
-
-        # Mass and enrichment arrays for each prototype
-        fuel_mass, enr = self.get_fuel_mass_and_enrichment(
-            prototypes, return_sum=False, reactors=reactors
-        )
-
-        # Cache enrichment splits for every unique enrichment
-        split_cache = {}
-        for p in prototypes:
-            for e in enr[p]:
-                if e > 0:
-                    key = round(float(e), 8)
-                    if key not in split_cache:
-                        split_cache[key] = np.asarray(
-                            enrichment_cascade(
-                                feed_enr=natu_assay,
-                                prod_enr=e,
-                                tail_enr=tails_assay,
-                                cascade_splits=cascade_splits,
-                            )[cascade_key],
-                            dtype=float,
-                        )
-        n_stages = len(cascade_splits) + 1
-        zeros = np.zeros(n_stages)
-        split_dict = {}
-
-        for p in prototypes:
-            # Ratio vector for every fuel element
-            ratios = np.array(
-                [
-                    split_cache.get(round(float(e), 8), zeros) if e > 0 else zeros
-                    for e in enr[p]
-                ],
-                dtype=float,
-            )
-            split_dict[p] = ratios.T * fuel_mass[p]
-            # Sum over stages if not split_cat
-            if not split_cat:
-                split_dict[p] = np.sum(split_dict[p], axis=0)
-        return sum(split_dict.values()) if return_sum else split_dict
+        return self.stock_fuel_resources(
+            reactors=reactors,
+            natu_assay=natu_assay,
+            tails_assay=tails_assay,
+            return_sum=return_sum,
+            cascade_splits=cascade_splits,
+        )["natu"]
 
     def stock_fuel_tails(
         self,
-        prototypes: str | list[str] | None = None,
+        reactors: str | list[str] | None = None,
         natu_assay: float = None,
         tails_assay: float = None,
         return_sum: bool = True,
-        split_cat=False,
+        split_cat: bool = False,
         cascade_splits=[0.1, 0.2],
-        reactors: str | list[str] | None = None,
     ):
         """
-        Compute enrichment tails for one or more prototypes.
+        Compute enrichment tails for one or more reactors.
 
         Parameters:
         ----------
-        prototypes : str or list[str]
+        reactors : str or list[str]
             Prototype name(s).
         natu_assay : float
             Enrichment of the feed (typically natural uranium).
         tails_assay : float
             Enrichment of the tails material.
         return_sum : bool, optional
-            If True, returns the sum across prototypes (default True).
+            If True, returns the sum across reactors (default True).
         split_cat : bool, optional
-            If True, return SWU split by cascade stage; otherwise return
-            total SWU per prototype (default False).
+            If True, return tails split by cascade stage; otherwise
+            return total tails per reactor (default False).
         cascade_splits : list of float
             Intermediate enrichments that define cascade stages.
-            Defaults to ``[0.1, 0.2]``.
-        reactors : str or list of str, optional
-            alias for prototypes, used for compatibility with DYMOND plugin.
-            reactors and prototypes cannot both be specified.
+            Defaults to [0.1, 0.2].
 
         Returns:
         -------
         dict[str, np.ndarray] or np.ndarray
-            SWU per prototype (or summed), either by stage or total.
+            Tails per reactor (or summed), split or total.
         """
-
-        from .enr_utils import enrichment_cascade
-
-        cascade_key = "tailing"
-
-        if not cascade_splits:
-            cascade_splits = [np.inf]
-
-        # Convert reactors/prototypes to a numpy array
-        assert (
-            prototypes is None or reactors is None
-        ), f"Either 'prototypes' or 'reactors' must be specified, but not both: prototypes={prototypes}, reactors={reactors}"
-        if prototypes is None and reactors is None:
-            prototypes = self.reactors
-        elif reactors is not None:
-            prototypes = reactors
-        prototypes = np.atleast_1d(prototypes)
-
-        # Mass and enrichment arrays for each prototype
-        fuel_mass, enr = self.get_fuel_mass_and_enrichment(
-            prototypes, return_sum=False, reactors=reactors
-        )
-
-        # Cache enrichment splits for every unique enrichment
-        split_cache = {}
-        for p in prototypes:
-            for e in enr[p]:
-                if e > 0:
-                    key = round(float(e), 8)
-                    if key not in split_cache:
-                        split_cache[key] = np.asarray(
-                            enrichment_cascade(
-                                feed_enr=natu_assay,
-                                prod_enr=e,
-                                tail_enr=tails_assay,
-                                cascade_splits=cascade_splits,
-                            )[cascade_key],
-                            dtype=float,
-                        )
-        n_stages = len(cascade_splits) + 1
-        zeros = np.zeros(n_stages)
-        split_dict = {}
-
-        for p in prototypes:
-            # Ratio vector for every fuel element
-            ratios = np.array(
-                [
-                    split_cache.get(round(float(e), 8), zeros) if e > 0 else zeros
-                    for e in enr[p]
-                ],
-                dtype=float,
-            )
-            split_dict[p] = ratios.T * fuel_mass[p]
-            # Sum over stages if not split_cat
-            if not split_cat:
-                split_dict[p] = np.sum(split_dict[p], axis=0)
-        return sum(split_dict.values()) if return_sum else split_dict
+        return self.stock_fuel_resources(
+            reactors=reactors,
+            natu_assay=natu_assay,
+            tails_assay=tails_assay,
+            return_sum=return_sum,
+            split_cat=split_cat,
+            cascade_splits=cascade_splits,
+        )["tails"]
 
     def stock_fuel_swu(
         self,
-        prototypes: str | list[str] | None = None,
+        reactors: str | list[str] | None = None,
         natu_assay: float = None,
         tails_assay: float = None,
         return_sum: bool = True,
-        split_cat=False,
+        split_cat: bool = False,
         cascade_splits=[0.1, 0.2],
-        reactors: str | list[str] | None = None,
     ):
         """
-        Compute SWU requirements for one or more prototypes.
+        Compute SWU requirements for one or more reactors.
 
         Parameters:
         ----------
-        prototypes : str or list[str]
+        reactors : str or list[str]
             Prototype name(s).
         natu_assay : float
             Enrichment of the feed (typically natural uranium).
         tails_assay : float
             Enrichment of the tails material.
         return_sum : bool, optional
-            If True, returns the sum across prototypes (default True).
+            If True, returns the sum across reactors (default True).
         split_cat : bool, optional
-            If True, return SWU split by cascade stage; otherwise return
-            total SWU per prototype (default False).
+            If True, return SWU split by cascade stage; otherwise
+            return total SWU per reactor (default False).
         cascade_splits : list of float
             Intermediate enrichments that define cascade stages.
-            Defaults to ``[0.1, 0.2]``.
-        reactors : str or list of str, optional
-            alias for prototypes, used for compatibility with DYMOND plugin.
-            reactors and prototypes cannot both be specified.
+            Defaults to [0.1, 0.2].
 
         Returns:
         -------
         dict[str, np.ndarray] or np.ndarray
-            SWU per prototype (or summed), either by stage or total.
+            SWU per reactor (or summed), split or total.
         """
-
-        from .enr_utils import enrichment_cascade
-
-        cascade_key = "swu"
-
-        if not cascade_splits:
-            cascade_splits = [np.inf]
-
-        # Convert reactors/prototypes to a numpy array
-        assert (
-            prototypes is None or reactors is None
-        ), f"Either 'prototypes' or 'reactors' must be specified, but not both: prototypes={prototypes}, reactors={reactors}"
-        if prototypes is None and reactors is None:
-            prototypes = self.reactors
-        elif reactors is not None:
-            prototypes = reactors
-        prototypes = np.atleast_1d(prototypes)
-
-        # Mass and enrichment arrays for each prototype
-        fuel_mass, enr = self.get_fuel_mass_and_enrichment(
-            prototypes, return_sum=False, reactors=reactors
-        )
-
-        # Cache enrichment splits for every unique enrichment
-        split_cache = {}
-        for p in prototypes:
-            for e in enr[p]:
-                if e > 0:
-                    key = round(float(e), 8)
-                    if key not in split_cache:
-                        split_cache[key] = np.asarray(
-                            enrichment_cascade(
-                                feed_enr=natu_assay,
-                                prod_enr=e,
-                                tail_enr=tails_assay,
-                                cascade_splits=cascade_splits,
-                            )[cascade_key],
-                            dtype=float,
-                        )
-        n_stages = len(cascade_splits) + 1
-        zeros = np.zeros(n_stages)
-        split_dict = {}
-
-        for p in prototypes:
-            # Ratio vector for every fuel element
-            ratios = np.array(
-                [
-                    split_cache.get(round(float(e), 8), zeros) if e > 0 else zeros
-                    for e in enr[p]
-                ],
-                dtype=float,
-            )
-            split_dict[p] = ratios.T * fuel_mass[p]
-            # Sum over stages if not split_cat
-            if not split_cat:
-                split_dict[p] = np.sum(split_dict[p], axis=0)
-        return sum(split_dict.values()) if return_sum else split_dict
+        return self.stock_fuel_resources(
+            reactors=reactors,
+            natu_assay=natu_assay,
+            tails_assay=tails_assay,
+            return_sum=return_sum,
+            split_cat=split_cat,
+            cascade_splits=cascade_splits,
+        )["swu"]

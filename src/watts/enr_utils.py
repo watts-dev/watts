@@ -29,12 +29,22 @@ def feed_to_product_ratio(
     prod_enr = np.atleast_1d(prod_enr)
     tail_enr = np.atleast_1d(tail_enr)
 
-    # Calculate the feed-to-product ratio, based on product, feed, and tails enrichments
+    # Calculate the feed-to-product ratio, based on product, feed,
+    # and tails enrichments
+    # If every product-enrichment entry is zero, the ratio is zero
+    if np.all(prod_enr == 0):
+        return 0 if np.isscalar(prod_enr) else np.zeros_like(prod_enr)
+
+    # Otherwise, compute the ratio
     ratio = (prod_enr - tail_enr) / (feed_enr - tail_enr)
-    ratio[prod_enr == 0] = 0  # Set ratio to 0 if product enrichment is 0
-    assert np.all(
-        ratio >= 0
-    ), f"Feed-to-product ratio cannot be negative.\nRatio: {ratio}.\nInput was:\n\tFeed: {feed_enr}\n\tProduct: {prod_enr}\n\tTails: {tail_enr}"
+
+    # Catch negative ratios early and raise a helpful error
+    if np.any(np.atleast_1d(ratio) < 0):
+        raise ValueError(
+            "Feed-to-product ratio cannot be negative.\n"
+            f"Computed ratio: {ratio}\nInput values:\n"
+            f"\tFeed: {feed_enr}\n\tProduct: {prod_enr}\n\tTails: {tail_enr}"
+        )
     return ratio.item() if ratio.size == 1 else ratio
 
 
@@ -65,18 +75,29 @@ def tails_to_product_ratio(
     prod_enr = np.atleast_1d(prod_enr)
     tail_enr = np.atleast_1d(tail_enr)
 
-    # Calculate the tails-to-product ratio based on product, feed, and tails enrichments
+    # Calculate the tails-to-product ratio based on product, feed,
+    # and tails enrichments
+    # If every product-enrichment entry is zero, the ratio is zero
+    if np.all(prod_enr == 0):
+        return 0 if np.isscalar(prod_enr) else np.zeros_like(prod_enr)
+
+    # Otherwise, compute the ratio
     ratio = (prod_enr - feed_enr) / (feed_enr - tail_enr)
-    ratio[prod_enr == 0] = 0  # Set ratio to 0 if product enrichment is 0
-    assert np.all(
-        ratio >= 0
-    ), f"Tails-to-product ratio cannot be negative.\nRatio: {ratio}.\nInput was:\n\tFeed: {feed_enr}\n\tProduct: {prod_enr}\n\tTails: {tail_enr}"
+
+    # Catch negative ratios early and raise a helpful error
+    if np.any(np.atleast_1d(ratio) < 0):
+        raise ValueError(
+            "Tails-to-product ratio cannot be negative.\n"
+            f"Computed ratio: {ratio}\nInput values:\n"
+            f"\tFeed: {feed_enr}\n\tProduct: {prod_enr}\n\tTails: {tail_enr}"
+        )
     return ratio.item() if ratio.size == 1 else ratio
 
 
 def _value_function(enr: float | list[float]):
     """
-    Helper function to calculate the separative work unit (SWU) for a given enrichment level.
+    Helper function to calculate the separative work unit (SWU) for a 
+    given enrichment level.
     This function is used internally by the calculate_swu method.
 
     Parameters
@@ -107,7 +128,8 @@ def swu_to_product_ratio(
     tail_enr: float | list[float],
 ) -> float | np.ndarray:
     """
-    Calculate the separative work unit (SWU) to product ratio for a given enrichment process.
+    Calculate the separative work unit (SWU) to product ratio 
+    for a given enrichment process.
 
     Parameters
     ----------
@@ -133,17 +155,26 @@ def swu_to_product_ratio(
     tails_ratio = tails_to_product_ratio(feed_enr, prod_enr, tail_enr)
     feed_ratio = feed_to_product_ratio(feed_enr, prod_enr, tail_enr)
 
+    # If every product-enrichment entry is zero, the ratio is zero
+    if np.all(prod_enr == 0):
+        return 0 if np.isscalar(prod_enr) else np.zeros_like(prod_enr)
+
+    # Otherwise, compute the ratio
     # Compute value terms
     Vp = _value_function(prod_enr)
     Vf = _value_function(feed_enr)
     Vt = _value_function(tail_enr)
-
     # Final SWU per product formula
     ratio = Vp + tails_ratio * Vt - feed_ratio * Vf
     ratio[prod_enr == 0] = 0  # Set SWU to 0 if product enrichment is 0
-    assert np.all(
-        ratio >= 0
-    ), f"SWU-to-product ratio cannot be negative.\nRatio: {ratio}.\nInput was:\n\tFeed: {feed_enr}\n\tProduct: {prod_enr}\n\tTails: {tail_enr}"
+
+    # Catch negative ratios early and raise a helpful error
+    if np.any(np.atleast_1d(ratio) < 0):
+        raise ValueError(
+            "SWU-to-product ratio cannot be negative.\n"
+            f"Computed ratio: {ratio}\nInput values:\n"
+            f"\tFeed: {feed_enr}\n\tProduct: {prod_enr}\n\tTails: {tail_enr}"
+        )
     return ratio.item() if ratio.size == 1 else ratio
 
 
@@ -151,9 +182,10 @@ def enrichment_cascade(
     feed_enr, prod_enr, tail_enr, cascade_splits=[0.1, 0.2], printing=False
 ):
     """
-    Calculate the SWU, feed, and tail distributions across different stages of enrichment.
-    By cascade, it is understood that the tails of the next stage is the feed for the
-    previous stage.
+    Calculate the SWU, feed, and tail distributions across different 
+    stages of enrichment.
+    By cascade, it is understood that the tails of the next stage is
+    the feed for the previous stage.
 
     Parameters:
     -----------
@@ -173,25 +205,32 @@ def enrichment_cascade(
     Returns:
     --------
     Dictionary
-        Dictionary containing lists of SWU, feed, and tailing
+        Dictionary containing lists of SWU, feed, and tails
         quantities for each stage of the enrichment process.
     """
     # make sure these are numbers
-    for variable, val in {"feed": feed_enr, "prod": prod_enr, "tail": tail_enr}.items():
-        assert isinstance(val, numbers.Number), f"Varible {variable} needs to be a single number."
+    enr_inputs_dict = {
+        "feed": feed_enr,
+        "prod": prod_enr,
+        "tail": tail_enr
+    }
+    for variable, val in enr_inputs_dict.items():
+        assert isinstance(
+            val, numbers.Number), \
+            f"Variable {variable} needs to be a single number."
 
     # edge case of just one
     if cascade_splits is None:
         cascade_splits = [np.inf]
 
-
     if len(cascade_splits) == 1 and cascade_splits[0] > prod_enr:
         # just one shot
-        cascade_data = {'swu': [swu_to_product_ratio(feed_enr, prod_enr, tail_enr)],
-                        'feed': [feed_to_product_ratio(feed_enr, prod_enr, tail_enr)],
-                        'tailing': [tails_to_product_ratio(feed_enr, prod_enr, tail_enr)]}
+        cascade_data = {
+            'swu': [swu_to_product_ratio(feed_enr, prod_enr, tail_enr)],
+            'feed': [feed_to_product_ratio(feed_enr, prod_enr, tail_enr)],
+            'tails': [tails_to_product_ratio(feed_enr, prod_enr, tail_enr)]
+        }
         return cascade_data
-
 
     # Add product enrichments list:
     stage_product_enrichments = []
@@ -226,7 +265,6 @@ def enrichment_cascade(
             : len(stage_product_enrichments)
         ]
 
-
     # Calculate values
     multistage_dict = multistage_enr(
         stage_feed_enrichments,
@@ -242,7 +280,8 @@ def enrichment_cascade(
         ):  # Add zeros for higher enrichment categories
             cascade_data[key].append(0)
 
-    # Verify the total SWU calculated matches the total expected from feed to product if tails are uniform
+    # Verify the total SWU calculated matches the total expected
+    # from feed to product if tails are uniform
     if len(np.unique(stage_tail_enrichments)) == 1:
         stage_swus = cascade_data["swu"]
         total_swu = swu_to_product_ratio(feed_enr, prod_enr, tail_enr)
@@ -254,9 +293,9 @@ def enrichment_cascade(
     return cascade_data
 
 
-def multistage_enr(feed_enrs, prod_enrs, tailing_enrs, printing=True):
+def multistage_enr(feed_enrs, prod_enrs, tails_enrs, printing=True):
     """
-    Calculate the SWU, feed, and tailing quantities for each stage
+    Calculate the SWU, feed, and tails quantities for each stage
     of a multi-stage enrichment process.
 
     Parameters:
@@ -265,7 +304,7 @@ def multistage_enr(feed_enrs, prod_enrs, tailing_enrs, printing=True):
         List of enrichment levels for the feed material at each stage.
     prod_enrs : list of float
         List of enrichment levels for the product material at each stage.
-    tailing_enrs : list of float
+    tails_enrs : list of float
         List of enrichment levels for the tails material at each stage.
     printing : bool, optional
         Whether to print the details of each stage (default is True).
@@ -273,18 +312,19 @@ def multistage_enr(feed_enrs, prod_enrs, tailing_enrs, printing=True):
     Returns:
     --------
     dict
-        Dictionary containing lists of SWU, feed, and tailing quantities
+        Dictionary containing lists of SWU, feed, and tails quantities
         for each stage.
     """
     if printing:
         print("Calculating SWU for multi-stage enrichment process:")
         print("\tFeed Enrichments:", feed_enrs)
         print("\tProduct Enrichments:", prod_enrs)
-        print("\tTailing Enrichments:", tailing_enrs)
+        print("\tTailing Enrichments:", tails_enrs)
 
     # Ensure lists, not arrays
     feed_enrs = [feed_enrs] if np.isscalar(feed_enrs) else list(feed_enrs)
-    tailing_enrs = [tailing_enrs] if np.isscalar(tailing_enrs) else list(tailing_enrs)
+    tails_enrs = [tails_enrs] if np.isscalar(
+        tails_enrs) else list(tails_enrs)
 
     if np.isscalar(prod_enrs):
         if len(feed_enrs) > 1:
@@ -301,14 +341,16 @@ def multistage_enr(feed_enrs, prod_enrs, tailing_enrs, printing=True):
             if val > final_enr:
                 break
         feed_enrs = feed_enrs[:indx]
-        tailing_enrs = tailing_enrs[:indx]
+        tails_enrs = tails_enrs[:indx]
 
     assert (
-        len(feed_enrs) == len(prod_enrs) == len(tailing_enrs)
-    ), f"Mismatch in number of stages: feed={len(feed_enrs)}, prod={len(prod_enrs)}, tailing={len(tailing_enrs)}."
+        len(feed_enrs) == len(prod_enrs) == len(tails_enrs)
+    ), (f"Mismatch in number of stages: "
+        f"feed={len(feed_enrs)}, prod={len(prod_enrs)}, tail={len(tails_enrs)}")
     assert (
-        prod_enrs[0] > feed_enrs[0] > tailing_enrs[0]
-    ), f"Stage 0 must satisfy prod > feed > tailing: prod={prod_enrs[0]}, feed={feed_enrs[0]}, tailing={tailing_enrs[0]}."
+        prod_enrs[0] > feed_enrs[0] > tails_enrs[0]
+    ), (f"Stage 0 must satisfy prod > feed > tails: "
+        f"prod={prod_enrs[0]}, feed={feed_enrs[0]}, tail={tails_enrs[0]}")
 
     n_stages = len(feed_enrs)
 
@@ -316,51 +358,54 @@ def multistage_enr(feed_enrs, prod_enrs, tailing_enrs, printing=True):
     for n in range(n_stages - 1):
         assert (
             prod_enrs[n] == feed_enrs[n + 1]
-        ), f"Stage {n}: product enrichment {prod_enrs[n]} does not match next stage feed {feed_enrs[n+1]}."
+        ), (f"Stage {n}: product enrichment {prod_enrs[n]} "
+            f"does not match next stage feed {feed_enrs[n+1]}.")
 
     # Verify consistent tail values unless reused as feed
-    for indx, val in enumerate(tailing_enrs):
+    for indx, val in enumerate(tails_enrs):
         if indx == 0:
             continue
-        if val != tailing_enrs[0] and val not in feed_enrs[:indx]:
+        if val != tails_enrs[0] and val not in feed_enrs[:indx]:
             raise ValueError("Tailing is not consistent or reused as feed.")
 
     # Backward pass to compute required flows
     swu_list = [0.0] * n_stages
     feed_list = [0.0] * n_stages
-    tailing_list = [0.0] * n_stages
+    tails_list = [0.0] * n_stages
     qty_prod = [0.0] * n_stages
     qty_prod[-1] = 1.0  # target is unit product
 
     for n in range(n_stages - 1, -1, -1):
         swu = qty_prod[n] * swu_to_product_ratio(
-            feed_enrs[n], prod_enrs[n], tailing_enrs[n]
+            feed_enrs[n], prod_enrs[n], tails_enrs[n]
         )
         feed = qty_prod[n] * feed_to_product_ratio(
-            feed_enrs[n], prod_enrs[n], tailing_enrs[n]
+            feed_enrs[n], prod_enrs[n], tails_enrs[n]
         )
-        qty_tailing = feed - qty_prod[n]
+        qty_tails = feed - qty_prod[n]
 
-        matches = np.isclose(feed_enrs, tailing_enrs[n], atol=1e-8)
+        matches = np.isclose(feed_enrs, tails_enrs[n], atol=1e-8)
         if np.any(matches):
             indx = np.where(matches)[0][0]
-            feed_list[indx] -= qty_tailing
+            feed_list[indx] -= qty_tails
             if indx != 0:
-                qty_prod[indx - 1] -= qty_tailing
+                qty_prod[indx - 1] -= qty_tails
         else:
-            tailing_list[n] += qty_tailing
+            tails_list[n] += qty_tails
 
         if printing:
             print(f"\tStage {n}:")
-            print(f"\t\tProd qty:    {qty_prod[n]:.6f} (enr: {prod_enrs[n]: .4%})")
-            print(f"\t\tFeed qty:    {feed:.6f} (enr: {feed_enrs[n]: .4%})")
-            print(f"\t\tTailing qty: {qty_tailing:.6f} (enr: {tailing_enrs[n]: .4%})")
+            print(
+                f"\t\tProd qty: {qty_prod[n]:.6f} (enr: {prod_enrs[n]: .4%})")
+            print(f"\t\tFeed qty: {feed:.6f} (enr: {feed_enrs[n]: .4%})")
+            print(
+                f"\t\tTails qty: {qty_tails:.6f} (enr: {tails_enrs[n]: .4%})")
             if np.any(matches):
-                print(f"\t\tSubtracting {qty_tailing:.6f} from stage {indx}")
+                print(f"\t\tSubtracting {qty_tails:.6f} from stage {indx}")
 
         if n != 0:
             qty_prod[n - 1] += feed
         swu_list[n] += swu
         feed_list[n] += feed
 
-    return {"swu": swu_list, "feed": feed_list, "tailing": tailing_list}
+    return {"swu": swu_list, "feed": feed_list, "tails": tails_list}
