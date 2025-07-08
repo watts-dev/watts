@@ -134,11 +134,11 @@ def swu_to_product_ratio(
     Parameters
     ----------
     feed_enr : float or list of float
-        Enrichment of the feed material.
+        Enrichment of the feed material as a decimal.
     prod_enr : float or list of float
-        Enrichment of the product material.
+        Enrichment of the product material as a decimal.
     tail_enr : float or list of float
-        Enrichment of the tails material.
+        Enrichment of the tails material as a decimal.
 
     Returns
     -------
@@ -179,7 +179,8 @@ def swu_to_product_ratio(
 
 
 def enrichment_cascade(
-    feed_enr, prod_enr, tail_enr, cascade_splits=[0.1, 0.2], printing=False
+    prod_enr, tail_enr, feed_enr = 0.00711, 
+    cascade_splits = [0.1, 0.2], printing=False
     ):
     """
     Calculate the SWU, feed, and tail distributions across different 
@@ -189,13 +190,13 @@ def enrichment_cascade(
 
     Parameters:
     -----------
-    feed_enr: float, optional
-        Feed enrichment level, expressed as a decimal
-        (default is 0.00711)
     prod_enr: float
         Final product enrichment level, expressed as a decimal
     tail_enr: float
         Tailing enrichment level, expressed as a decimal
+    feed_enr: float, optional
+        Feed enrichment level, expressed as a decimal
+        (default is 0.00711)
     cascade_splits: list of float, optional
         Enrichment levels at intermediate stages (default is
         [0.1, 0.2], corresponding to CAT-III, II, I)
@@ -204,7 +205,7 @@ def enrichment_cascade(
 
     Returns:
     --------
-    Dictionary
+    cascade_data: dictionary
         Dictionary containing lists of SWU, feed, and tails
         quantities for each stage of the enrichment process.
     """
@@ -214,9 +215,9 @@ def enrichment_cascade(
         "prod": prod_enr,
         "tail": tail_enr
     }
-    for variable, val in enr_inputs_dict.items():
+    for variable, enrichment in enr_inputs_dict.items():
         assert isinstance(
-            val, numbers.Number), \
+            enrichment, numbers.Number), \
             f"Variable {variable} needs to be a single number."
 
     # edge case of just one
@@ -235,9 +236,9 @@ def enrichment_cascade(
     # Add product enrichments list:
     stage_product_enrichments = []
     cascade_splits = np.array(list(cascade_splits))
-    for enr in cascade_splits:
-        if prod_enr > enr:
-            stage_product_enrichments.append(enr)
+    for enrichment in cascade_splits:
+        if prod_enr > enrichment:
+            stage_product_enrichments.append(enrichment)
     stage_product_enrichments.append(prod_enr)
 
     # Add feed enrichments
@@ -301,11 +302,14 @@ def multistage_enr(feed_enrs, prod_enrs, tails_enrs, printing=True):
     Parameters:
     -----------
     feed_enrs : list of float
-        List of enrichment levels for the feed material at each stage.
+        List of enrichment levels for the feed material at each stage as 
+        decimals.
     prod_enrs : list of float
-        List of enrichment levels for the product material at each stage.
+        List of enrichment levels for the product material at each stage 
+        as decimals.
     tails_enrs : list of float
-        List of enrichment levels for the tails material at each stage.
+        List of enrichment levels for the tails material at each stage
+        as decimals.
     printing : bool, optional
         Whether to print the details of each stage (default is True).
 
