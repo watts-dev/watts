@@ -758,13 +758,14 @@ class DYMONDOutput:
 
         return reprocessed_mass_dict
 
-    def cumulative_waste_mass(
+    def stock_waste_mass(
             self,
             material: str | list[str] | None = None,
             storage: str = 'waste',
             return_sum: bool = True) -> np.ndarray | dict[str, np.ndarray]:
         """
-        Retrieves the cumulative waste data from the stocks json output
+        Retrieves the cumulative waste data from the stocks json output and
+        calculates the annual flow data
 
         Parameters:
         -----------
@@ -781,12 +782,12 @@ class DYMONDOutput:
         Returns:
         -----------
         numpy.array<float> or dict[str, np.ndarray]
-            the cumulative waste mass for the specified material
+            the annual waste mass for the specified material
             or all materials if material is None
             if return_sum is True, returns a single array summed
             over all materials; otherwise, returns a dictionary
             with keys as material names and values as arrays
-            of cumulative mass
+            of annual mass flows
 
         """
 
@@ -812,8 +813,21 @@ class DYMONDOutput:
             cumulative_mass_dict[mat] = np.array(
                 storage_dict[mat]
             )
+
+        mass_flow_dict = {}
+        for mat in cumulative_mass_dict.keys():
+            mass_flow_dict[mat] = np.zeros(len(cumulative_mass_dict[mat]))
+            mass_flow_dict[mat][0] = cumulative_mass_dict[mat][0]
+            for y in range(1, len(cumulative_mass_dict[mat])):
+                mass_flow_dict[mat][y] = cumulative_mass_dict[mat][y] - cumulative_mass_dict[mat][y-1]
+
         if return_sum:
             return np.sum(
-                np.array(list(cumulative_mass_dict.values())), axis=0
+                np.array(list(mass_flow_dict.values())), axis=0
             )
-        return cumulative_mass_dict
+        
+        
+
+        return mass_flow_dict
+    
+
