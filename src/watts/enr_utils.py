@@ -6,7 +6,7 @@ def feed_to_product_ratio(
     feed_enr: float | list[float],
     prod_enr: float | list[float],
     tail_enr: float | list[float],
-) -> float:
+    ) -> float:
     """
     Calculate the feed-to-product ratio for a given enrichment process.
 
@@ -52,7 +52,7 @@ def tails_to_product_ratio(
     feed_enr: float | list[float],
     prod_enr: float | list[float],
     tail_enr: float | list[float],
-) -> float:
+    ) -> float:
     """
     Calculate the tails-to-product ratio for a given enrichment process.
 
@@ -126,7 +126,7 @@ def swu_to_product_ratio(
     feed_enr: float | list[float],
     prod_enr: float | list[float],
     tail_enr: float | list[float],
-) -> float | np.ndarray:
+    ) -> float | np.ndarray:
     """
     Calculate the separative work unit (SWU) to product ratio 
     for a given enrichment process.
@@ -180,7 +180,7 @@ def swu_to_product_ratio(
 
 def enrichment_cascade(
     feed_enr, prod_enr, tail_enr, cascade_splits=[0.1, 0.2], printing=False
-):
+    ):
     """
     Calculate the SWU, feed, and tail distributions across different 
     stages of enrichment.
