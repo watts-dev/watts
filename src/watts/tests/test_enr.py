@@ -107,7 +107,6 @@ def test_enrichment_cascade_leu():
 def test_enrichment_cascade_haleu():
     result = enrichment_cascade(ENR_NATL, ENR_HALEU, ENR_TAILS)['swu']
     assert isinstance(result, list)
-    print(result)
     assert len(result) == 3  # default cascade splits: [0.1, 0.2] → 3 stages
     assert np.isclose(result[0], 32.07823497, rtol=1e-3)
     assert np.isclose(result[1], 1.5064309, rtol=1e-3)
