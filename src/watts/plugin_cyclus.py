@@ -55,9 +55,9 @@ class ResultsCyclus(Results):
     @property
     def sqlite_file(self) -> Path:
         """Returns the path to the output SQLite file from the simulation."""
-        l = [p for p in self.outputs if p.name.endswith("sqlite")]
-        assert len(l) == 1
-        return l[0]
+        path_list = [path for path in self.outputs if path.name.endswith("sqlite")]
+        assert len(path_list) == 1
+        return path_list[0]
 
     @property
     def prototypes(self):
@@ -73,9 +73,9 @@ class ResultsCyclus(Results):
     @property
     def commodities(self) -> List[str]:
         """Returns a list of unique commodity names used in the simulation."""
-        q = self.obj.cur.execute(
+        query = self.obj.cur.execute(
             "SELECT distinct(commodity) FROM transactions")
-        return [x["commodity"] for x in q]
+        return [commod["commodity"] for commod in query]
 
     @property
     def time_dict(self) -> dict:
@@ -88,10 +88,10 @@ class ResultsCyclus(Results):
         """Returns a dictionary mapping commodities to their yearly
         mass flows."""
         arr = self.obj.get_fuel_demands(self.commodities)
-        d = {}
+        dictionary = {}
         for indx in range(len(arr)):
-            d[self.commodities[indx]] = arr[indx, :]
-        return d
+            dictionary[self.commodities[indx]] = arr[indx, :]
+        return dictionary
 
 
 class PluginCyclus(PluginGeneric):
@@ -135,7 +135,6 @@ class PluginCyclus(PluginGeneric):
         super().__init__(
             executable,
             ["{self.executable}", "{self.input_name}", "-o", output_name],
-            # executable, [self.executable, template_file, '-o', output_name],
             template_file,
             plugin_name="Cyclus",
             show_stdout=show_stdout,
@@ -203,13 +202,13 @@ class CyclusOutput:
         agents = {q["agentid"]: q["prototype"] for q in query}
         return agents
 
-    def process_prototype(self, proto, get_isotopics):
+    def process_prototype(self, protos, get_isotopics):
         """
         Process mass flows and compute stock over time for a given prototype.
 
         Parameters:
         ----------
-        proto : str or list of str
+        protos : str or list of str
             Prototype name(s) to process.
         get_isotopics : bool
             If True, includes isotopic mass data; otherwise only total mass.
@@ -219,32 +218,32 @@ class CyclusOutput:
         tuple
             (prototype name, flow dictionary, cumulative stock array)
         """
-        print(f"\tProcessing prototype: {proto}")
+        print(f"\tProcessing prototype: {protos}")
         flow_dict = {}
-        for c in ["receiverid", "senderid"]:
-            key = c.replace("erid", "ing")
+        for facility_type in ["receiverid", "senderid"]:
+            key = facility_type.replace("erid", "ing")
             flow_dict[key] = {}
             # get ids
-            if isinstance(proto, list):
-                ps = ", ".join([f'"{str(q)}"' for q in proto])
+            if isinstance(protos, list):
+                proto_string = ", ".join([f'"{str(proto)}"' for proto in protos])
                 query = self.sql_query(
                     f"""SELECT agentid
                         FROM agententry
                         WHERE prototype
-                        IN ({ps})"""
+                        IN ({proto_string})"""
                 )
             else:
                 query = self.sql_query(
                     f'''SELECT agentid
                         FROM agententry
-                        WHERE prototype == "{proto}"'''
+                        WHERE prototype == "{protos}"'''
                 )
             ids = [q["agentid"] for q in query]
-            id_str = ", ".join([str(q) for q in ids])
+            id_str = ", ".join([str(id) for id in ids])
             query = self.sql_query(
                 f"""SELECT distinct(commodity)
                     FROM transactions
-                    WHERE {c}
+                    WHERE {facility_type}
                     IN ({id_str})"""
             )
             trade_commods = [q["commodity"] for q in query]
@@ -256,7 +255,7 @@ class CyclusOutput:
                             FROM transactions
                             INNER JOIN resources
                             ON transactions.resourceid = resources.resourceid
-                            WHERE {c} in ({id_str})
+                            WHERE {facility_type} in ({id_str})
                             AND commodity=="{commod}"
                             GROUP BY time"""
                     )
@@ -279,7 +278,7 @@ class CyclusOutput:
                             ON transactions.resourceid = resources.resourceid
                             JOIN compositions on
                             resources.qualid = compositions.qualid
-                            WHERE {c} in ({id_str})
+                            WHERE {facility_type} in ({id_str})
                             AND commodity=="{commod}"
                             GROUP BY time, nucid"""
                     )
@@ -299,7 +298,7 @@ class CyclusOutput:
             sum(flow_dict["sending"].values())
         )
 
-        return proto, flow_dict, agent_stock
+        return protos, flow_dict, agent_stock
 
     def process_agent(self, id, get_isotopics):
         """
@@ -319,13 +318,13 @@ class CyclusOutput:
         """
 
         flow_dict = {}
-        for c in ["receiverid", "senderid"]:
-            key = c.replace("erid", "ing")
+        for facility_type in ["receiverid", "senderid"]:
+            key = facility_type.replace("erid", "ing")
             flow_dict[key] = {}
             query = self.sql_query(
                 f"""SELECT distinct(commodity)
                                    FROM transactions
-                                   WHERE {c}=={id}"""
+                                   WHERE {facility_type}=={id}"""
             )
             trade_commods = [q["commodity"] for q in query]
 
@@ -336,7 +335,7 @@ class CyclusOutput:
                             FROM transactions
                             INNER JOIN resources
                             ON transactions.resourceid = resources.resourceid
-                            WHERE {c}=={id}
+                            WHERE {facility_type}=={id}
                             AND commodity=="{commod}"
                             GROUP BY time"""
                     )
@@ -359,7 +358,7 @@ class CyclusOutput:
                             ON transactions.resourceid = resources.resourceid
                             JOIN compositions on
                             resources.qualid = compositions.qualid
-                            WHERE {c}=={id}
+                            WHERE {facility_type}=={id}
                             AND commodity=="{commod}"
                             GROUP BY time, nucid"""
                     )
@@ -401,7 +400,7 @@ class CyclusOutput:
         agent_flow_dict = {}
         agent_stock_dict = {}
 
-        cnt = 1
+        count = 1
         uniq_protos = set(self.agent_dict.values())
 
         if by_proto:
@@ -412,8 +411,8 @@ class CyclusOutput:
                 )
                 agent_flow_dict[proto] = flow_dict
                 agent_stock_dict[proto] = flow_dict
-                print(f"\tCompleted prototype {cnt}/{len(uniq_protos)}")
-                cnt += 1
+                print(f"\tCompleted prototype {count}/{len(uniq_protos)}")
+                count += 1
         else:
             print(f"Going through {len(self.agent_dict)} agents.")
             for id, proto in self.agent_dict.items():
@@ -422,8 +421,8 @@ class CyclusOutput:
                 )
                 agent_flow_dict[id] = flow_dict
                 agent_stock_dict[id] = flow_dict
-                print(f"\tCompleted agent {cnt}/{len(self.agent_dict)}")
-                cnt += 1
+                print(f"\tCompleted agent {count}/{len(self.agent_dict)}")
+                count += 1
 
         return agent_flow_dict, agent_stock_dict
 
@@ -517,8 +516,8 @@ class CyclusOutput:
             plus one initial 0
         """
         arr = np.asarray(arr)
-        n = (len(arr) // 12) * 12  # truncate to full years
-        yearly = arr[:n].reshape(-1, 12).sum(axis=1)
+        num_years = (len(arr) // 12) * 12  # truncate to full years
+        yearly = arr[:num_years].reshape(-1, 12).sum(axis=1)
         return np.insert(yearly[:-1], 0, 0.0)  # remove last year, prepend 0
 
     # --------------- Basic data extraction functions ---------------
@@ -536,16 +535,6 @@ class CyclusOutput:
             {'init_year':int, 'init_month':int,
              'duration':int, 'time': int, 'years':int}
         """
-        q = self.sql_query(
-            """SELECT prototype, entertime, lifetime, Spec, value
-                           FROM agententry
-                           INNER JOIN timeseriespower
-                           ON agententry.agentid = timeseriespower.agentid
-                           WHERE agententry.spec
-                           LIKE "%Reactor"
-                           AND value != 0
-                           GROUP BY agententry.agentid"""
-        )
         duration = self.sql_query(
             """SELECT InitialYear, InitialMonth, Duration
                                   FROM Info"""
@@ -603,8 +592,8 @@ class CyclusOutput:
             with the data being the yearly totals of
             each fuel form
         """
-        l_ = len(self.get_yearly_sum(np.zeros(self.duration)))
-        fuel_flow_array = np.zeros((len(fuel_forms), l_))
+        num_years = len(self.get_yearly_sum(np.zeros(self.duration)))
+        fuel_flow_array = np.zeros((len(fuel_forms), num_years))
         for indx, ff in enumerate(fuel_forms):
             query = self.sql_query(
                 """SELECT sum(quantity), time
@@ -627,7 +616,7 @@ class CyclusOutput:
             )
         return fuel_flow_array
 
-    def get_commodity_into(self, proto_name=None, agentid=None):
+    def get_commodity_into(self, proto_name=None, agentids=None):
         """
         Get the list of unique incoming commodity names for a
         given prototype or agent ID.
@@ -636,7 +625,7 @@ class CyclusOutput:
         ----------
         proto_name : str, optional
             Name of the prototype. If specified, `agentid` must be None.
-        agentid : int or list of int, optional
+        agentids : int or list of int, optional
             Agent ID(s). If specified, `proto_name` must be None.
 
         Returns:
@@ -645,16 +634,15 @@ class CyclusOutput:
             List of commodity names received by the specified agent(s).
         """
         # there can only be one
-        assert (proto_name is not None) != (agentid is not None)
+        assert (proto_name is not None) != (agentids is not None)
         if proto_name:
             # get the agentids
-            agentid = self.get_proto_ids(proto_name)
+            agentids = self.get_proto_ids(proto_name)
         else:
-            if not isinstance(agentid, list):
-                agentid = [agentid]
-        assert len(agentid) > 0, "No agentid found"
-        commods = []
-        csv = ",".join([str(q) for q in agentid])
+            if not isinstance(agentids, list):
+                agentids = [agentids]
+        assert len(agentids) > 0, "No agentid found"
+        csv = ",".join([str(agentid) for agentid in agentids])
         query = self.sql_query(
             f"""SELECT distinct(commodity)
             FROM transactions
@@ -663,7 +651,7 @@ class CyclusOutput:
         )
         return [q["commodity"] for q in query]
 
-    def get_commodity_out_of(self, proto_name=None, agentid=None):
+    def get_commodity_out_of(self, proto_name=None, agentids=None):
         """
         Get the list of unique outgoing commodity names for a given
         prototype or agent ID.
@@ -672,7 +660,7 @@ class CyclusOutput:
         ----------
         proto_name : str, optional
             Name of the prototype. If specified, `agentid` must be None.
-        agentid : int or list of int, optional
+        agentids : int or list of int, optional
             Agent ID(s). If specified, `proto_name` must be None.
 
         Returns:
@@ -681,16 +669,15 @@ class CyclusOutput:
             List of commodity names sent by the specified agent(s).
         """
         # there can only be one
-        assert (proto_name is not None) != (agentid is not None)
+        assert (proto_name is not None) != (agentids is not None)
         if proto_name:
             # get the agentids
-            agentid = self.get_proto_ids(proto_name)
+            agentids = self.get_proto_ids(proto_name)
         else:
-            if not isinstance(agentid, list):
-                agentid = [agentid]
-        assert len(agentid) > 0, "No agentid found"
-        commods = []
-        csv = ",".join([str(q) for q in agentid])
+            if not isinstance(agentids, list):
+                agentids = [agentids]
+        assert len(agentids) > 0, "No agentid found"
+        csv = ",".join([str(agentid) for agentid in agentids])
         query = self.sql_query(
             f"""SELECT distinct(commodity)
             FROM transactions
@@ -722,7 +709,7 @@ class CyclusOutput:
             return [] if want_flat else {}
 
         # Build a CSV of quoted prototype names:  "rx1", "rx2", …
-        proto_csv = ", ".join(f'"{p}"' for p in prototypes)
+        proto_csv = ", ".join(f'"{prototype}"' for prototype in prototypes)
 
         # Query the database for agent IDs associated with the prototypes
         rows = self.sql_query(
@@ -738,9 +725,9 @@ class CyclusOutput:
             return [r["agentid"] for r in rows]
 
         # Otherwise, return a dict mapping prototypes to lists of agent IDs
-        out = {p: [] for p in prototypes}
-        for r in rows:
-            out[r["prototype"]].append(r["agentid"])
+        out = {prototype: [] for prototype in prototypes}
+        for row in rows:
+            out[row["prototype"]].append(row["agentid"])
         return out
 
     def get_commodities(self):
@@ -756,7 +743,7 @@ class CyclusOutput:
             """SELECT distinct(commodity)
             FROM transactions"""
         )
-        return [x["commodity"] for x in query]
+        return [q["commodity"] for q in query]
 
     def get_mass_flow(self, commodity_name):
         """
@@ -834,7 +821,7 @@ class CyclusOutput:
             prototypes = reactors
         prototypes = np.atleast_1d(prototypes)
 
-        q = self.sql_query(
+        query = self.sql_query(
             """SELECT prototype, entertime, lifetime, Spec, value
                FROM agententry
                INNER JOIN timeseriespower
@@ -845,23 +832,23 @@ class CyclusOutput:
                GROUP BY agententry.agentid"""
         )
 
-        power = np.zeros(self.duration)
+        power_dict = {prototype: np.zeros(
+            self.duration) for prototype in prototypes}
+        pow_cap_dict = {prototype: 0 for prototype in prototypes}
 
-        power_dict = {k: np.zeros(self.duration) for k in prototypes}
-        pow_cap_dict = {k: 0 for k in prototypes}
-
-        for row in q:
+        for row in query:
             proto = row["prototype"]
             t0 = row["entertime"]
             t1 = row["lifetime"]
 
             found = False
-            for react_ in prototypes:
-                if react_ in proto:
-                    key = react_
+            for reactor in prototypes:
+                if reactor in proto:
+                    key = reactor
                     found = True
-                    if react_ == proto:
-                        pow_cap_dict[react_] = row["value"] * 1e-3
+                    if reactor == proto:
+                        # Want powers in GW
+                        pow_cap_dict[reactor] = row["value"] * 1e-3
 
             power_dict[key][t0 - 1: t0 + t1 - 1] += row["value"] * 1e-3
 
