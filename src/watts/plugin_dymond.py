@@ -758,24 +758,62 @@ class DYMONDOutput:
 
         return reprocessed_mass_dict
 
-    def cumulative_waste_mass(self, material: str, storage: str):
+    def cumulative_waste_mass(
+            self,
+            material: str | list[str] | None = None,
+            storage: str = 'waste',
+            return_sum: bool = True) -> np.ndarray | dict[str, np.ndarray]:
         """
-         retrieves the cumulative waste data from the stocks json output
+        Retrieves the cumulative waste data from the stocks json output
 
         Parameters:
         -----------
-        material: str
-            the name of the waste material to get data for
+        material: str or list of str
+            the name of the material type to get the cumulative waste
+            mass data for; if None, returns all materials
         storage: str
             the name of the storage type where the material is stored
+        return_sum: bool
+            if True, returns a single array summed over all materials;
+            otherwise, returns a dictionary with keys as material names
+            and values as arrays of cumulative mass
 
         Returns:
         -----------
-        numpy.array<float>
-            the total mass of waste being stored each year
+        numpy.array<float> or dict[str, np.ndarray]
+            the cumulative waste mass for the specified material
+            or all materials if material is None
+            if return_sum is True, returns a single array summed
+            over all materials; otherwise, returns a dictionary
+            with keys as material names and values as arrays
+            of cumulative mass
 
         """
 
         stocks_dict = self.stocks
+        if storage not in stocks_dict:
+            raise ValueError(f"Storage '{storage}' not found in stocks data")
+        storage_dict = stocks_dict[storage]
 
-        return np.array(stocks_dict[storage][material])
+        # Get material list
+        if material is None:
+            material = list(storage_dict.keys())
+        elif isinstance(material, str):
+            material = [material]
+        material = np.atleast_1d(material)
+
+        cumulative_mass_dict = {}
+        for mat in material:
+            if mat not in storage_dict:
+                raise ValueError(
+                    (f"Material '{mat}' not found in stocks data for ")
+                    (f"storage '{storage}'")
+                )
+            cumulative_mass_dict[mat] = np.array(
+                storage_dict[mat]
+            )
+        if return_sum:
+            return np.sum(
+                np.array(list(cumulative_mass_dict.values())), axis=0
+            )
+        return cumulative_mass_dict
