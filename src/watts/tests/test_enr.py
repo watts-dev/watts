@@ -150,6 +150,13 @@ def test_enrichmnent_cascade_one_cascade():
     assert (len(result) == 1)
     assert np.isclose(result[0], 32.07823497 + 1.5064309, rtol=1e-3)
 
+def test_enrichment_cascade_ensure_numbers():
+    try:
+        enrichment_cascade([ENR_NATL, ENR_NATL], ENR_HALEU, ENR_TAILS, cascade_splits=[np.inf], printing=False)
+        assert(False)
+    except AssertionError:
+        assert(True)
+
 
 # ---------------------------
 # multistage_enr tests
