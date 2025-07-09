@@ -823,6 +823,7 @@ class CyclusOutput:
             prototypes = reactors
         prototypes = np.atleast_1d(prototypes)
 
+        # Query the database for reactor deployments with non-zero power
         query = self.sql_query(
             """SELECT prototype, entertime, lifetime, Spec, value
                FROM agententry
@@ -843,16 +844,13 @@ class CyclusOutput:
             t0 = row["entertime"]
             t1 = row["lifetime"]
 
-            found = False
             for reactor in prototypes:
                 if reactor in proto:
                     key = reactor
-                    found = True
                     if reactor == proto:
                         # Want powers in GW
                         pow_cap_dict[reactor] = row["value"] * 1e-3
-
-            power_dict[key][t0 - 1: t0 + t1 - 1] += row["value"] * 1e-3
+                    power_dict[key][t0 - 1: t0 + t1 - 1] += row["value"] * 1e-3
 
         # If yearly is True, convert monthly data to yearly data
         if yearly:
