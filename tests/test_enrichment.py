@@ -55,7 +55,7 @@ def test_tails_to_product_array():
 # ---------------------------
 
 
-def test_value_function_typical():
+def test_value_function_single_value():
     result = enrichment_utils._value_function(0.05)
     expected = (2 * 0.05 - 1) * np.log(0.05 / 0.95)
     assert np.isclose(result, expected)
@@ -74,8 +74,7 @@ def test_value_function_array():
 
 
 def test_swu_to_product_typical():
-    result = enrichment_utils.swu_to_product_ratio(
-        ENR_NATL, ENR_LEU, ENR_TAILS)
+    result = enr_utils.swu_to_product_ratio(ENR_NATL, ENR_LEU, ENR_TAILS)
     assert np.isclose(result, EXP_SWU, rtol=1e-2)
 
 
