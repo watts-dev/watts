@@ -12,7 +12,7 @@ from .fileutils import PathLike
 from .parameters import Parameters
 from .plugin import PluginGeneric, _find_executable
 from .results import Results, ExecInfo
-from .enr_utils import enrichment_cascade
+from .enrichment_utils import enrichment_cascade
 
 
 class ResultsCyclus(Results):
@@ -54,7 +54,8 @@ class ResultsCyclus(Results):
     @property
     def sqlite_file(self) -> Path:
         """Returns the path to the output SQLite file from the simulation."""
-        path_list = [path for path in self.outputs if path.name.endswith("sqlite")]
+        path_list = [
+            path for path in self.outputs if path.name.endswith("sqlite")]
         assert len(path_list) == 1
         return path_list[0]
 
@@ -224,7 +225,8 @@ class CyclusOutput:
             flow_dict[key] = {}
             # get ids
             if isinstance(protos, list):
-                proto_string = ", ".join([f'"{str(proto)}"' for proto in protos])
+                proto_string = ", ".join(
+                    [f'"{str(proto)}"' for proto in protos])
                 query = self.sql_query(
                     f"""SELECT agentid
                         FROM agententry
@@ -820,6 +822,7 @@ class CyclusOutput:
             prototypes = reactors
         prototypes = np.atleast_1d(prototypes)
 
+        # Query the database for reactor deployments with non-zero power
         query = self.sql_query(
             """SELECT prototype, entertime, lifetime, Spec, value
                FROM agententry
@@ -846,8 +849,7 @@ class CyclusOutput:
                     if reactor == proto:
                         # Want powers in GW
                         pow_cap_dict[reactor] = row["value"] * 1e-3
-
-            power_dict[key][t0 - 1: t0 + t1 - 1] += row["value"] * 1e-3
+                    power_dict[key][t0 - 1: t0 + t1 - 1] += row["value"] * 1e-3
 
         # If yearly is True, convert monthly data to yearly data
         if yearly:
@@ -948,7 +950,7 @@ class CyclusOutput:
             )
 
         # Get relevant commodities (fuel=into) for each prototype
-        commods = self.get_commodity_into(agentid=all_ids)
+        commods = self.get_commodity_into(agentids=all_ids)
         commod_csv = ",".join(f'"{c}"' for c in commods)
 
         # Get total received fuel mass per agent per time step
@@ -1035,7 +1037,7 @@ class CyclusOutput:
             )
 
         # Get relevant commodities (discharged=out of) for each prototype
-        commods = self.get_commodity_out_of(agentid=all_ids)
+        commods = self.get_commodity_out_of(agentids=all_ids)
         commod_csv = ",".join(f'"{c}"' for c in commods)
 
         # Get total discharged fuel mass per agent per time step
@@ -1073,7 +1075,7 @@ class CyclusOutput:
 
     def get_enrichments(
         self,
-        prototypes: str | list[str],
+        prototypes: str | list[str] | None = None,
         reactors: str | list[str] | None = None
     ) -> np.ndarray | dict[str, np.ndarray]:
         """
@@ -1116,7 +1118,7 @@ class CyclusOutput:
             return {p: np.zeros(self.duration // 12) for p in prototypes}
 
         # Get relevant commodities (fuel=into) for each prototype
-        commods = self.get_commodity_into(agentid=all_ids)
+        commods = self.get_commodity_into(agentids=all_ids)
         commod_csv = ",".join(f'"{c}"' for c in commods)
 
         # SQL: sum total quantity and U-235 mass per receiver and time
@@ -1178,12 +1180,13 @@ class CyclusOutput:
 
     def stock_fuel_resources(
         self,
-        reactors: str | list[str] | None = None,
+        prototypes: str | list[str] | None = None,
         natu_assay: float = None,
         tails_assay: float = None,
         return_sum: bool = True,
         split_cat: bool = False,
         cascade_splits=[0.1, 0.2],
+        reactors: str | list[str] | None = None,
     ):
         """
         Compute natural-uranium feed, enrichment tails, and SWU
@@ -1191,7 +1194,7 @@ class CyclusOutput:
 
         Parameters:
         ----------
-        reactors : str or list[str]
+        prototypes : str or list[str]
             Prototype name(s).
         natu_assay : float
             Enrichment of the feed (typically natural uranium).
@@ -1205,6 +1208,8 @@ class CyclusOutput:
         cascade_splits : list of float
             Intermediate enrichments that define cascade stages.
             Defaults to [0.1, 0.2].
+        reactors : str or list[str], optional
+            Alias for prototypes, used for compatibility with DYMOND plugin.
 
         Returns:
         -------
@@ -1218,17 +1223,24 @@ class CyclusOutput:
             cascade_splits = [np.inf]
 
         # Reactor list
-        if reactors is None:
-            reactors = self.reactors
-        reactors = np.atleast_1d(reactors)
+        assert (
+            prototypes is None or reactors is None
+        ), f"Either 'prototypes' or 'reactors' must be specified, \
+            but not both: prototypes={prototypes}, reactors={reactors}"
+        if prototypes is None and reactors is None:
+            prototypes = self.reactors
+        elif reactors is not None:
+            prototypes = reactors
+        prototypes = np.atleast_1d(prototypes)
 
         # Mass and enrichment arrays
         fuel_mass, enr = self.get_fuel_mass_and_enrichment(
-            reactors, return_sum=False)
+            prototypes, return_sum=False
+        )
 
         # Cache cascade splits by unique enrichment
         cache = {}
-        for p in reactors:
+        for p in prototypes:
             for e in enr[p]:
                 if e > 0:
                     key = round(float(e), 8)
@@ -1257,7 +1269,7 @@ class CyclusOutput:
 
         res = {"natu": {}, "tails": {}, "swu": {}}
 
-        for p in reactors:
+        for p in prototypes:
             # Natural-uranium feed
             r_natu = np.array(
                 [
@@ -1310,18 +1322,19 @@ class CyclusOutput:
 
     def stock_fuel_natu(
         self,
-        reactors: str | list[str] | None = None,
+        prototypes: str | list[str] | None = None,
         natu_assay: float = None,
         tails_assay: float = None,
         return_sum: bool = True,
         cascade_splits=[0.1, 0.2],
+        reactors: str | list[str] | None = None,
     ):
         """
         Compute natural uranium requirements for one or more reactors.
 
         Parameters:
         ----------
-        reactors : str or list[str]
+        prototypes : str or list[str]
             Prototype name(s).
         natu_assay : float
             Enrichment of the feed (typically natural uranium).
@@ -1332,6 +1345,8 @@ class CyclusOutput:
         cascade_splits : list of float
             Intermediate enrichments that define cascade stages.
             Defaults to [0.1, 0.2].
+        reactors : str or list[str], optional
+            Alias for prototypes, used for compatibility with DYMOND plugin.
 
         Returns:
         -------
@@ -1339,28 +1354,30 @@ class CyclusOutput:
             Natural-uranium feed per reactor (or summed).
         """
         return self.stock_fuel_resources(
-            reactors=reactors,
+            prototypes=prototypes,
             natu_assay=natu_assay,
             tails_assay=tails_assay,
             return_sum=return_sum,
             cascade_splits=cascade_splits,
+            reactors=reactors,
         )["natu"]
 
     def stock_fuel_tails(
         self,
-        reactors: str | list[str] | None = None,
+        prototypes: str | list[str] | None = None,
         natu_assay: float = None,
         tails_assay: float = None,
         return_sum: bool = True,
         split_cat: bool = False,
         cascade_splits=[0.1, 0.2],
+        reactors: str | list[str] | None = None,
     ):
         """
         Compute enrichment tails for one or more reactors.
 
         Parameters:
         ----------
-        reactors : str or list[str]
+        prototypes : str or list[str]
             Prototype name(s).
         natu_assay : float
             Enrichment of the feed (typically natural uranium).
@@ -1374,6 +1391,8 @@ class CyclusOutput:
         cascade_splits : list of float
             Intermediate enrichments that define cascade stages.
             Defaults to [0.1, 0.2].
+        reactors : str or list[str], optional
+            Alias for prototypes, used for compatibility with DYMOND plugin.
 
         Returns:
         -------
@@ -1381,29 +1400,31 @@ class CyclusOutput:
             Tails per reactor (or summed), split or total.
         """
         return self.stock_fuel_resources(
-            reactors=reactors,
+            prototypes=prototypes,
             natu_assay=natu_assay,
             tails_assay=tails_assay,
             return_sum=return_sum,
             split_cat=split_cat,
             cascade_splits=cascade_splits,
+            reactors=reactors,
         )["tails"]
 
     def stock_fuel_swu(
         self,
-        reactors: str | list[str] | None = None,
+        prototypes: str | list[str] | None = None,
         natu_assay: float = None,
         tails_assay: float = None,
         return_sum: bool = True,
         split_cat: bool = False,
         cascade_splits=[0.1, 0.2],
+        reactors: str | list[str] | None = None,
     ):
         """
         Compute SWU requirements for one or more reactors.
 
         Parameters:
         ----------
-        reactors : str or list[str]
+        prototypes : str or list[str]
             Prototype name(s).
         natu_assay : float
             Enrichment of the feed (typically natural uranium).
@@ -1417,6 +1438,8 @@ class CyclusOutput:
         cascade_splits : list of float
             Intermediate enrichments that define cascade stages.
             Defaults to [0.1, 0.2].
+        reactors : str or list[str], optional
+            Alias for prototypes, used for compatibility with DYMOND plugin.
 
         Returns:
         -------
@@ -1424,10 +1447,11 @@ class CyclusOutput:
             SWU per reactor (or summed), split or total.
         """
         return self.stock_fuel_resources(
-            reactors=reactors,
+            prototypes=prototypes,
             natu_assay=natu_assay,
             tails_assay=tails_assay,
             return_sum=return_sum,
             split_cat=split_cat,
             cascade_splits=cascade_splits,
+            reactors=reactors,
         )["swu"]

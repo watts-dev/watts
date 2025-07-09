@@ -1,13 +1,6 @@
 import pytest
 import numpy as np
-from ..enr_utils import (
-    feed_to_product_ratio,
-    tails_to_product_ratio,
-    _value_function,
-    swu_to_product_ratio,
-    enrichment_cascade,
-    multistage_enr,
-)
+from watts import enrichment_utils
 
 
 ENR_NATL = 0.0071
@@ -22,13 +15,14 @@ EXP_SWU = 7.818
 # ---------------------------
 
 def test_feed_to_product_single_value():
-    assert np.isclose(feed_to_product_ratio(
+    assert np.isclose(enrichment_utils.feed_to_product_ratio(
         ENR_NATL, ENR_LEU, ENR_TAILS),
         (ENR_LEU - ENR_TAILS) / (ENR_NATL - ENR_TAILS))
 
 
 def test_feed_to_product_array():
-    result = feed_to_product_ratio([0.02, 0.03], [0.05, 0.06], [0.005, 0.01])
+    result = enrichment_utils.feed_to_product_ratio(
+        [0.02, 0.03], [0.05, 0.06], [0.005, 0.01])
     expected = (np.array([0.05, 0.06]) - np.array([0.005, 0.01])) / \
         (np.array([0.02, 0.03]) - np.array([0.005, 0.01]))
     np.testing.assert_allclose(result, expected)
@@ -39,18 +33,19 @@ def test_feed_to_product_array():
 
 
 def test_tails_to_product_single_value():
-    assert np.isclose(tails_to_product_ratio(
+    assert np.isclose(enrichment_utils.tails_to_product_ratio(
         ENR_NATL, ENR_LEU, ENR_TAILS),
         (ENR_LEU - ENR_NATL) / (ENR_NATL - ENR_TAILS))
 
 
 def test_evens_out():
-    assert np.isclose(feed_to_product_ratio(ENR_NATL, ENR_LEU, ENR_TAILS) -
-                      tails_to_product_ratio(ENR_NATL, ENR_LEU, ENR_TAILS), 1)
+    assert np.isclose(enrichment_utils.feed_to_product_ratio(ENR_NATL, ENR_LEU, ENR_TAILS) -
+                      enrichment_utils.tails_to_product_ratio(ENR_NATL, ENR_LEU, ENR_TAILS), 1)
 
 
 def test_tails_to_product_array():
-    result = tails_to_product_ratio([0.02, 0.03], [0.05, 0.06], [0.005, 0.01])
+    result = enrichment_utils.tails_to_product_ratio(
+        [0.02, 0.03], [0.05, 0.06], [0.005, 0.01])
     expected = (np.array([0.05, 0.06]) - np.array([0.02, 0.03])) / \
         (np.array([0.02, 0.03]) - np.array([0.005, 0.01]))
     np.testing.assert_allclose(result, expected)
@@ -60,15 +55,15 @@ def test_tails_to_product_array():
 # ---------------------------
 
 
-def test_value_function_typical():
-    result = _value_function(0.05)
+def test_value_function_single_value():
+    result = enrichment_utils._value_function(0.05)
     expected = (2 * 0.05 - 1) * np.log(0.05 / 0.95)
     assert np.isclose(result, expected)
 
 
 def test_value_function_array():
     input_values = np.array([0.01, 0.99])
-    result = _value_function(input_values)
+    result = enrichment_utils._value_function(input_values)
     expected = (2 * input_values - 1) * \
         np.log(input_values / (1 - input_values))
     np.testing.assert_allclose(result, expected)
@@ -78,8 +73,8 @@ def test_value_function_array():
 # ---------------------------
 
 
-def test_swu_to_product_typical():
-    result = swu_to_product_ratio(ENR_NATL, ENR_LEU, ENR_TAILS)
+def test_swu_to_product_single_value():
+    result = enrichment_utils.swu_to_product_ratio(ENR_NATL, ENR_LEU, ENR_TAILS)
     assert np.isclose(result, EXP_SWU, rtol=1e-2)
 
 
@@ -87,7 +82,7 @@ def test_swu_to_product_array():
     feed = [ENR_NATL, ENR_NATL*1.1]
     prod = [ENR_LEU, ENR_LEU*1.1]
     tail = [ENR_TAILS, ENR_TAILS*0.9]
-    result = swu_to_product_ratio(feed, prod, tail)
+    result = enrichment_utils.swu_to_product_ratio(feed, prod, tail)
     assert isinstance(result, np.ndarray)
     np.testing.assert_allclose(result, [EXP_SWU, 8.6656], rtol=1e-2)
 
@@ -97,7 +92,8 @@ def test_swu_to_product_array():
 
 
 def test_enrichment_cascade_leu():
-    result = enrichment_cascade(ENR_NATL, ENR_LEU, ENR_TAILS)['swu']
+    result = enrichment_utils.enrichment_cascade(
+        ENR_NATL, ENR_LEU, ENR_TAILS)['swu']
     assert isinstance(result, list)
     assert len(result) == 3  # default cascade splits: [0.1, 0.2] → 3 stages
     assert result[1] == 0
@@ -105,7 +101,8 @@ def test_enrichment_cascade_leu():
 
 
 def test_enrichment_cascade_haleu():
-    result = enrichment_cascade(ENR_NATL, ENR_HALEU, ENR_TAILS)['swu']
+    result = enrichment_utils.enrichment_cascade(
+        ENR_NATL, ENR_HALEU, ENR_TAILS)['swu']
     assert isinstance(result, list)
     assert len(result) == 3  # default cascade splits: [0.1, 0.2] → 3 stages
     assert np.isclose(result[0], 32.07823497, rtol=1e-3)
@@ -114,7 +111,7 @@ def test_enrichment_cascade_haleu():
 
 def test_enrichment_cascade_custom():
     # drops unnecssary stages
-    result = enrichment_cascade(
+    result = enrichment_utils.enrichment_cascade(
         ENR_NATL, ENR_LEU, ENR_TAILS, cascade_splits=[0.1, 0.3, 0.7])['swu']
     assert (sum(result[1:]) == 0)
     assert len(result) == 4
@@ -124,11 +121,12 @@ def test_enrichment_cascade_cascade_down():
     feed_enrs = [ENR_NATL, 0.1]
     prod_enrs = [0.1, ENR_HALEU]
     tail_enrs = [ENR_TAILS, ENR_NATL]
-    result = multistage_enr(feed_enrs, prod_enrs, tail_enrs, printing=False)
+    result = enrichment_utils.multistage_enr(
+        feed_enrs, prod_enrs, tail_enrs, printing=False)
 
     for i in range(2, 7):  # try all weird cascade options
         splits = [0.1] + list(np.linspace(0.1, 0.2, i))[1:]
-        d = enrichment_cascade(
+        d = enrichment_utils.enrichment_cascade(
             ENR_NATL,
             ENR_HALEU,
             ENR_TAILS,
@@ -141,20 +139,22 @@ def test_enrichment_cascade_cascade_down():
         assert (np.isclose(result['feed'][0], d['feed'][0], rtol=1e-3))
 
 
-def test_enrichmnent_cascade_one_cascade():
+def test_enrichment_cascade_one_cascade():
 
-    result = enrichment_cascade(ENR_NATL, ENR_HALEU, ENR_TAILS, cascade_splits=[
-                                np.inf], printing=False)['swu']
+    result = enrichment_utils.enrichment_cascade(ENR_NATL, ENR_HALEU, ENR_TAILS, cascade_splits=[
+        np.inf], printing=False)['swu']
 
     assert (len(result) == 1)
     assert np.isclose(result[0], 32.07823497 + 1.5064309, rtol=1e-3)
 
+
 def test_enrichment_cascade_ensure_numbers():
     try:
-        enrichment_cascade([ENR_NATL, ENR_NATL], ENR_HALEU, ENR_TAILS, cascade_splits=[np.inf], printing=False)
-        assert(False)
+        enrichment_utils.enrichment_cascade(
+            [ENR_NATL, ENR_NATL], ENR_HALEU, ENR_TAILS, cascade_splits=[np.inf], printing=False)
+        assert (False)
     except AssertionError:
-        assert(True)
+        assert (True)
 
 
 # ---------------------------
@@ -165,7 +165,8 @@ def test_multistage_enr_reuse_tails():
     feed_enrs = [ENR_NATL, 0.1]
     prod_enrs = [0.1, ENR_HALEU]
     tail_enrs = [ENR_TAILS, ENR_NATL]
-    result = multistage_enr(feed_enrs, prod_enrs, tail_enrs, printing=False)
+    result = enrichment_utils.multistage_enr(
+        feed_enrs, prod_enrs, tail_enrs, printing=False)
     assert 'swu' in result and 'feed' in result and 'tails' in result
     assert all(isinstance(x, list) for x in result.values())
     np.testing.assert_allclose(
@@ -180,7 +181,8 @@ def test_multistage_enr_with_alltails():
     feed_enrs = [ENR_NATL, 0.1]
     prod_enrs = [0.1, ENR_HALEU]
     tail_enrs = [ENR_TAILS, ENR_TAILS]
-    result = multistage_enr(feed_enrs, prod_enrs, tail_enrs, printing=False)
+    result = enrichment_utils.multistage_enr(
+        feed_enrs, prod_enrs, tail_enrs, printing=False)
     assert 'swu' in result and 'feed' in result and 'tails' in result
     assert all(isinstance(x, list) for x in result.values())
     np.testing.assert_allclose(
@@ -195,9 +197,11 @@ def test_multistage_tot_is_the_same():
     feed_enrs = [ENR_NATL, 0.1]
     prod_enrs = [0.1, ENR_HALEU]
     tail_enrs = [ENR_TAILS, ENR_TAILS]
-    result1 = multistage_enr(feed_enrs, prod_enrs, tail_enrs, printing=False)
+    result1 = enrichment_utils.multistage_enr(
+        feed_enrs, prod_enrs, tail_enrs, printing=False)
     tail_enrs2 = [ENR_TAILS, ENR_NATL]
-    result2 = multistage_enr(feed_enrs, prod_enrs, tail_enrs2, printing=False)
+    result2 = enrichment_utils.multistage_enr(
+        feed_enrs, prod_enrs, tail_enrs2, printing=False)
 
     for k in ['swu', 'tails']:
         # total tails and swu should be the same
