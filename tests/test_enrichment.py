@@ -73,8 +73,8 @@ def test_value_function_array():
 # ---------------------------
 
 
-def test_swu_to_product_typical():
-    result = enr_utils.swu_to_product_ratio(ENR_NATL, ENR_LEU, ENR_TAILS)
+def test_swu_to_product_single_value():
+    result = enrichment_utils.swu_to_product_ratio(ENR_NATL, ENR_LEU, ENR_TAILS)
     assert np.isclose(result, EXP_SWU, rtol=1e-2)
 
 
