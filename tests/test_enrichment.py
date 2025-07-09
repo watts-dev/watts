@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from .. import enrichment_utils
+from watts import enrichment_utils
 
 
 ENR_NATL = 0.0071
