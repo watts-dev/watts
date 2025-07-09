@@ -4,14 +4,12 @@
 from pathlib import Path
 from typing import List, Optional
 import numpy as np
-import h5py as h5
 import json
 
-from .plugin import Plugin, PluginGeneric, _find_executable
+from .plugin import PluginGeneric, _find_executable
 from .results import Results, ExecInfo
 from .fileutils import PathLike
 from .parameters import Parameters
-from .template import TemplateRenderer
 from .enr_utils import enrichment_cascade
 
 

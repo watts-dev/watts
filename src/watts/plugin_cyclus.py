@@ -1,9 +1,8 @@
 # SPDX-FileCopyrightText: 2022-2023 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
-from functools import lru_cache
 from pathlib import Path
-from typing import Callable, Mapping, List, Optional
+from typing import List
 
 import sqlite3 as lite
 import numpy as np
@@ -11,7 +10,7 @@ import os
 
 from .fileutils import PathLike
 from .parameters import Parameters
-from .plugin import Plugin, PluginGeneric, _find_executable
+from .plugin import PluginGeneric, _find_executable
 from .results import Results, ExecInfo
 from .enr_utils import enrichment_cascade
 
@@ -841,11 +840,9 @@ class CyclusOutput:
             t0 = row["entertime"]
             t1 = row["lifetime"]
 
-            found = False
             for reactor in prototypes:
                 if reactor in proto:
                     key = reactor
-                    found = True
                     if reactor == proto:
                         # Want powers in GW
                         pow_cap_dict[reactor] = row["value"] * 1e-3
