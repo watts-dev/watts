@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: MIT
 
 """
-This example demonstrates how to use WATTS to perform 
-ACCERT simulations. The ACCERT model quotes the total cost 
-and the cost of each account for a given set of parameters. 
+This example demonstrates how to use WATTS to perform
+ACCERT simulations. The ACCERT model quotes the total cost
+and the cost of each account for a given set of parameters.
 Results from ACCERT are extracted and stored in params.
 """
 
@@ -23,8 +23,18 @@ accert_result = accert_plugin(params)
 
 print(accert_result.inputs)
 print(accert_result.outputs)
-print("Total reactor cost [$]: ", accert_result.total_cost)
-
+print("Total calculated direct cost [B$]: {:.2f}".format(
+    accert_result.total_calculated_direct_cost / 1e9))
+print("Total direct cost [B$]: {:.2f}".format(
+    accert_result.total_direct_cost / 1e9))
+print("Total calculated indirect cost [B$]: {:.2f}".format(
+    accert_result.total_indirect_costs / 1e9))
+print("Total cost without owner [B$]: {:.2f}".format(
+    accert_result.total_cost_without_owner / 1e9))
+print("Total owner's cost [B$]: {:.2f}".format(
+    accert_result.owner_cost / 1e9))
+print("Total OCC [B$]: {:.2f}".format(
+    accert_result.total_OCC / 1e9))
 # ### uncomment below to see the ACCERT account table in markdown format
 # ### run `pip install -U pandas-profiling` to install pandas-profiling
 # print(accert_result.account_table.to_markdown())
