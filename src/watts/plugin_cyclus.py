@@ -951,7 +951,7 @@ class CyclusOutput:
             )
 
         # Get relevant commodities (fuel=into) for each prototype
-        commods = self.get_commodity_into(agentid=all_ids)
+        commods = self.get_commodity_into(agentids=all_ids)
         commod_csv = ",".join(f'"{c}"' for c in commods)
 
         # Get total received fuel mass per agent per time step
@@ -1038,7 +1038,7 @@ class CyclusOutput:
             )
 
         # Get relevant commodities (discharged=out of) for each prototype
-        commods = self.get_commodity_out_of(agentid=all_ids)
+        commods = self.get_commodity_out_of(agentids=all_ids)
         commod_csv = ",".join(f'"{c}"' for c in commods)
 
         # Get total discharged fuel mass per agent per time step
@@ -1076,7 +1076,7 @@ class CyclusOutput:
 
     def get_enrichments(
         self,
-        prototypes: str | list[str],
+        prototypes: str | list[str] | None = None,
         reactors: str | list[str] | None = None
     ) -> np.ndarray | dict[str, np.ndarray]:
         """
@@ -1119,7 +1119,7 @@ class CyclusOutput:
             return {p: np.zeros(self.duration // 12) for p in prototypes}
 
         # Get relevant commodities (fuel=into) for each prototype
-        commods = self.get_commodity_into(agentid=all_ids)
+        commods = self.get_commodity_into(agentids=all_ids)
         commod_csv = ",".join(f'"{c}"' for c in commods)
 
         # SQL: sum total quantity and U-235 mass per receiver and time
