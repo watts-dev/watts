@@ -13,7 +13,7 @@ from .fileutils import PathLike
 from .parameters import Parameters
 from .plugin import Plugin, PluginGeneric, _find_executable
 from .results import Results, ExecInfo
-from .enr_utils import enrichment_cascade
+from .enrichment_utils import enrichment_cascade
 
 
 class ResultsCyclus(Results):
@@ -55,7 +55,8 @@ class ResultsCyclus(Results):
     @property
     def sqlite_file(self) -> Path:
         """Returns the path to the output SQLite file from the simulation."""
-        path_list = [path for path in self.outputs if path.name.endswith("sqlite")]
+        path_list = [
+            path for path in self.outputs if path.name.endswith("sqlite")]
         assert len(path_list) == 1
         return path_list[0]
 
@@ -225,7 +226,8 @@ class CyclusOutput:
             flow_dict[key] = {}
             # get ids
             if isinstance(protos, list):
-                proto_string = ", ".join([f'"{str(proto)}"' for proto in protos])
+                proto_string = ", ".join(
+                    [f'"{str(proto)}"' for proto in protos])
                 query = self.sql_query(
                     f"""SELECT agentid
                         FROM agententry

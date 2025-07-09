@@ -12,7 +12,7 @@ from .results import Results, ExecInfo
 from .fileutils import PathLike
 from .parameters import Parameters
 from .template import TemplateRenderer
-from .enr_utils import enrichment_cascade
+from .enrichment_utils import enrichment_cascade
 
 
 class ResultsDYMOND(Results):
@@ -819,15 +819,12 @@ class DYMONDOutput:
             mass_flow_dict[mat] = np.zeros(len(cumulative_mass_dict[mat]))
             mass_flow_dict[mat][0] = cumulative_mass_dict[mat][0]
             for y in range(1, len(cumulative_mass_dict[mat])):
-                mass_flow_dict[mat][y] = cumulative_mass_dict[mat][y] - cumulative_mass_dict[mat][y-1]
+                mass_flow_dict[mat][y] = cumulative_mass_dict[mat][y] - \
+                    cumulative_mass_dict[mat][y-1]
 
         if return_sum:
             return np.sum(
                 np.array(list(mass_flow_dict.values())), axis=0
             )
-        
-        
 
         return mass_flow_dict
-    
-
