@@ -179,7 +179,7 @@ def swu_to_product_ratio(
 
 
 def enrichment_cascade(
-    prod_enr, tail_enr, feed_enr = 0.00711, 
+    feed_enr, prod_enr, tail_enr,
     cascade_splits = [0.1, 0.2], printing=False
     ):
     """
