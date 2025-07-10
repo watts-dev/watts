@@ -1213,7 +1213,7 @@ class CyclusOutput:
 
         Returns:
         -------
-        dict[str, dict[str, np.ndarray] | np.ndarray]
+        results: dict[str, dict[str, np.ndarray] | np.ndarray]
             Dictionary with keys 'natu', 'tails', and 'swu'.
             For each entry the structure matches the corresponding
             stock_fuel_* helper that it replaces.
@@ -1241,7 +1241,7 @@ class CyclusOutput:
         # Cache cascade splits by unique enrichment
         cache = {}
         for prototype in prototypes:
-            for enrichment in enr[p]:
+            for enrichment in enr[prototypes]:
                 if enrichment > 0:
                     key = round(float(enrichment), 8)
                     if key not in cache:
@@ -1267,11 +1267,11 @@ class CyclusOutput:
         n_stages = lengths[0]
         zeros = np.zeros(n_stages)
 
-        res = {"natu": {}, "tails": {}, "swu": {}}
+        results = {"natu": {}, "tails": {}, "swu": {}}
 
         for prototype in prototypes:
             # Natural-uranium feed
-            r_natu = np.array(
+            res_natu = np.array(
                 [
                     cache.get(round(float(e), 8), {"natu": 0})[
                         "natu"] if e > 0 else 0
@@ -1279,10 +1279,10 @@ class CyclusOutput:
                 ],
                 dtype=float,
             )
-            res["natu"][prototype] = r_natu.T * fuel_mass[p]
+            results["natu"][prototype] = res_natu.T * fuel_mass[prototype]
 
             # Tails
-            r_tails = np.array(
+            res_tails = np.array(
                 [
                     (
                         cache.get(round(float(e), 8), {
@@ -1294,13 +1294,13 @@ class CyclusOutput:
                 ],
                 dtype=float,
             )
-            tails_val = r_tails.T * fuel_mass[prototype]
+            tails_val = res_tails.T * fuel_mass[prototype]
             if not split_cat:
                 tails_val = np.sum(tails_val, axis=0)
-            res["tails"][prototype] = tails_val
+            results["tails"][prototype] = tails_val
 
             # SWU
-            r_swu = np.array(
+            res_swu = np.array(
                 [
                     (
                         cache.get(round(float(e), 8), {"swu": zeros})["swu"]
@@ -1311,14 +1311,14 @@ class CyclusOutput:
                 ],
                 dtype=float,
             )
-            swu_val = r_swu.T * fuel_mass[prototype]
+            swu_val = res_swu.T * fuel_mass[prototype]
             if not split_cat:
                 swu_val = np.sum(swu_val, axis=0)
-            res["swu"][prototype] = swu_val
+            results["swu"][prototype] = swu_val
 
         if return_sum:
-            return {k: sum(v.values()) for k, v in res.items()}
-        return res
+            return {k: sum(v.values()) for k, v in results.items()}
+        return results
 
     def stock_fuel_natu(
         self,
