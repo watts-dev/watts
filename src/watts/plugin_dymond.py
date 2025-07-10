@@ -145,15 +145,15 @@ class DYMONDOutput:
         for inp in input_files:
             try:
                 input_dict = json.loads(inp.read_text(encoding="utf-8"))
-            except Exception as e:
+            except Exception as error:
                 raise ValueError(
-                    f"Error reading input file {inp} as JSON: {e}")
+                    f"Error reading input file {inp} as JSON: {error}")
         for oup in output_files:
             try:
                 output_dict = json.loads(oup.read_text(encoding="utf-8"))
-            except Exception as e:
+            except Exception as error:
                 raise ValueError(
-                    f"Error reading output file {oup} as JSON: {e}")
+                    f"Error reading output file {oup} as JSON: {error}")
 
         self.inputs = input_files
         self.reactors, self.reprocess_plants = self._get_type_names()
@@ -185,13 +185,13 @@ class DYMONDOutput:
 
         reactors = []
         if "reactor" in input_dict["types"]:
-            for r in input_dict["types"]["reactor"]:
-                reactors.append(r["name"])
+            for reactor in input_dict["types"]["reactor"]:
+                reactors.append(reactor["name"])
 
         reprocessing_plants = []
         if "reprocessing" in input_dict["types"]:
-            for rp in input_dict["types"]["reprocessing"]:
-                reprocessing_plants.append(rp["name"])
+            for reprocessing in input_dict["types"]["reprocessing"]:
+                reprocessing_plants.append(reprocessing["name"])
 
         return (reactors, reprocessing_plants)
 
@@ -249,6 +249,7 @@ class DYMONDOutput:
             if reactor not in self.operations["reactors"]:
                 raise ValueError(
                     f"Reactor '{reactor}' not found in operations data.")
+            # Convert power from MW to GW
             power_dict[reactor] = np.array(
                 self.operations["reactors"][reactor]) / 1e3
         if return_sum:
@@ -460,23 +461,23 @@ class DYMONDOutput:
 
         # Cache cascade splits by unique enrichment
         cache = {}
-        for p in reactors:
-            for e in enr[p]:
-                if e > 0:
-                    key = round(float(e), 8)
+        for reactor in reactors:
+            for enrichment in enr[p]:
+                if enrichment > 0:
+                    key = round(float(enrichment), 8)
                     if key not in cache:
-                        c = enrichment_cascade(
+                        cascade = enrichment_cascade(
                             feed_enr=natu_assay,
-                            prod_enr=e,
+                            prod_enr=enrichment,
                             tail_enr=tails_assay,
                             cascade_splits=cascade_splits,
                         )
                         # For natural uranium, use only the first stage,
                         # because the rest is reused by the next stage
                         cache[key] = {
-                            "natu": c["feed"][0],
-                            "tails": np.asarray(c["tails"], dtype=float),
-                            "swu": np.asarray(c["swu"], dtype=float),
+                            "natu": cascade["feed"][0],
+                            "tails": np.asarray(cascade["tails"], dtype=float),
+                            "swu": np.asarray(cascade["swu"], dtype=float),
                         }
 
         # Ensure a consistent number of stages
@@ -489,17 +490,17 @@ class DYMONDOutput:
 
         res = {"natu": {}, "tails": {}, "swu": {}}
 
-        for p in reactors:
+        for reactor in reactors:
             # Natural-uranium feed
             r_natu = np.array(
                 [
                     cache.get(round(float(e), 8), {"natu": 0})[
                         "natu"] if e > 0 else 0
-                    for e in enr[p]
+                    for e in enr[reactor]
                 ],
                 dtype=float,
             )
-            res["natu"][p] = r_natu.T * fuel_mass[p]
+            res["natu"][reactor] = r_natu.T * fuel_mass[reactor]
 
             # Tails
             r_tails = np.array(
@@ -510,14 +511,14 @@ class DYMONDOutput:
                         if e > 0
                         else zeros
                     )
-                    for e in enr[p]
+                    for e in enr[reactor]
                 ],
                 dtype=float,
             )
             tails_val = r_tails.T * fuel_mass[p]
             if not split_cat:
                 tails_val = np.sum(tails_val, axis=0)
-            res["tails"][p] = tails_val
+            res["tails"][reactor] = tails_val
 
             # SWU
             r_swu = np.array(
@@ -527,14 +528,14 @@ class DYMONDOutput:
                         if e > 0
                         else zeros
                     )
-                    for e in enr[p]
+                    for e in enr[reactor]
                 ],
                 dtype=float,
             )
-            swu_val = r_swu.T * fuel_mass[p]
+            swu_val = r_swu.T * fuel_mass[reactor]
             if not split_cat:
                 swu_val = np.sum(swu_val, axis=0)
-            res["swu"][p] = swu_val
+            res["swu"][reactor] = swu_val
 
         if return_sum:
             return {k: sum(v.values()) for k, v in res.items()}

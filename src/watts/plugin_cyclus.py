@@ -431,7 +431,8 @@ class CyclusOutput:
 
     def sql_query(self, query_str: str):
         """
-        Execute a SQL query linked to the current database and return the result
+        Execute a SQL query linked to the current database and return the
+        result
 
         Parameters:
         -----------
@@ -924,7 +925,6 @@ class CyclusOutput:
         fuel_mass : np.ndarray or dict[str, np.ndarray]
             Yearly fuel mass per prototype, or total if return_sum=True.
         """
-        # Convert reactors/prototypes to a numpy array
         assert (
             prototypes is None or reactors is None
         ), f"Either 'prototypes' or 'reactors' must be specified, \
@@ -973,9 +973,9 @@ class CyclusOutput:
             rec_id, time, quantity = row["receiverid"], row["time"], row["q"]
             if time >= self.duration:
                 continue
-            for p, ids in ids_by_proto.items():
+            for proto, ids in ids_by_proto.items():
                 if rec_id in ids:
-                    out[p][time] += quantity
+                    out[proto][time] += quantity
                     break
 
         # Convert to yearly totals
@@ -1011,7 +1011,6 @@ class CyclusOutput:
             Yearly discharged fuel mass per prototype,
             or total if return_sum=True.
         """
-        # Convert reactors/prototypes to a numpy array
         assert (
             prototypes is None or reactors is None
         ), f"Either 'prototypes' or 'reactors' must be specified, \
@@ -1057,12 +1056,12 @@ class CyclusOutput:
         # Accumulate monthly quantities
         out = {p: np.zeros(self.duration) for p in prototypes}
         for row in rows:
-            rid, t, q = row["senderid"], row["time"], row["q"]
-            if t >= self.duration:
+            rid, time, quantity = row["senderid"], row["time"], row["q"]
+            if time >= self.duration:
                 continue
             for p, ids in ids_by_proto.items():
                 if rid in ids:
-                    out[p][t] += q
+                    out[p][time] += quantity
                     break
 
         # Convert to yearly totals
@@ -1096,7 +1095,6 @@ class CyclusOutput:
         enrichment : dict[str, np.ndarray]
             Annual enrichment time series for each prototype, or a total array.
         """
-        # Convert reactors/prototypes to a numpy array
         assert (
             prototypes is None or reactors is None
         ), f"Either 'prototypes' or 'reactors' must be specified, \
@@ -1144,35 +1142,37 @@ class CyclusOutput:
         u235_by_proto = {p: np.zeros(self.duration) for p in prototypes}
         mass_by_proto = {p: np.zeros(self.duration) for p in prototypes}
         for row in rows:
-            rid, t, u_mass, u235 = (
+            rid, time, u_mass, u235 = (
                 row["receiverid"],
                 row["time"],
                 row["u_mass"],
                 row["u235"],
             )
-            if t >= self.duration:
+            if time >= self.duration:
                 continue
-            for p, ids in ids_by_proto.items():
+            for proto, ids in ids_by_proto.items():
                 if rid in ids:
-                    mass_by_proto[p][t] += u_mass
-                    u235_by_proto[p][t] += u235
+                    mass_by_proto[proto][time] += u_mass
+                    u235_by_proto[proto][time] += u235
                     break
 
         # Convert to yearly total
-        for p in prototypes:
-            mass_by_proto[p] = self.get_yearly_sum(mass_by_proto[p])
-            u235_by_proto[p] = self.get_yearly_sum(u235_by_proto[p])
+        for prototype in prototypes:
+            mass_by_proto[prototype] = self.get_yearly_sum(
+                mass_by_proto[prototype])
+            u235_by_proto[prototype] = self.get_yearly_sum(
+                u235_by_proto[prototype])
 
         enrich = {}
         # Calculate enrichment (U-235 mass fraction)
-        for p in prototypes:
+        for prototype in prototypes:
             # to remove warnings when dividing by zero
             with np.errstate(divide="ignore", invalid="ignore"):
-                ratio = np.zeros_like(u235_by_proto[p])
-                nonzero = mass_by_proto[p] > 0
-                ratio[nonzero] = u235_by_proto[p][nonzero] / \
-                    mass_by_proto[p][nonzero]
-                enrich[p] = ratio
+                ratio = np.zeros_like(u235_by_proto[prototype])
+                nonzero = mass_by_proto[prototype] > 0
+                ratio[nonzero] = u235_by_proto[prototype][nonzero] / \
+                    mass_by_proto[prototype][nonzero]
+                enrich[prototype] = ratio
 
         return enrich
 
@@ -1240,23 +1240,23 @@ class CyclusOutput:
 
         # Cache cascade splits by unique enrichment
         cache = {}
-        for p in prototypes:
-            for e in enr[p]:
-                if e > 0:
-                    key = round(float(e), 8)
+        for prototype in prototypes:
+            for enrichment in enr[p]:
+                if enrichment > 0:
+                    key = round(float(enrichment), 8)
                     if key not in cache:
-                        c = enrichment_cascade(
+                        cascade = enrichment_cascade(
                             feed_enr=natu_assay,
-                            prod_enr=e,
+                            prod_enr=enrichment,
                             tail_enr=tails_assay,
                             cascade_splits=cascade_splits,
                         )
                         # For natural uranium, use only the first stage,
                         # because the rest is reused by the next stage
                         cache[key] = {
-                            "natu": c["feed"][0],
-                            "tails": np.asarray(c["tails"], dtype=float),
-                            "swu": np.asarray(c["swu"], dtype=float),
+                            "natu": cascade["feed"][0],
+                            "tails": np.asarray(cascade["tails"], dtype=float),
+                            "swu": np.asarray(cascade["swu"], dtype=float),
                         }
 
         # Ensure a consistent number of stages
@@ -1269,17 +1269,17 @@ class CyclusOutput:
 
         res = {"natu": {}, "tails": {}, "swu": {}}
 
-        for p in prototypes:
+        for prototype in prototypes:
             # Natural-uranium feed
             r_natu = np.array(
                 [
                     cache.get(round(float(e), 8), {"natu": 0})[
                         "natu"] if e > 0 else 0
-                    for e in enr[p]
+                    for e in enr[prototype]
                 ],
                 dtype=float,
             )
-            res["natu"][p] = r_natu.T * fuel_mass[p]
+            res["natu"][prototype] = r_natu.T * fuel_mass[p]
 
             # Tails
             r_tails = np.array(
@@ -1290,14 +1290,14 @@ class CyclusOutput:
                         if e > 0
                         else zeros
                     )
-                    for e in enr[p]
+                    for e in enr[prototype]
                 ],
                 dtype=float,
             )
-            tails_val = r_tails.T * fuel_mass[p]
+            tails_val = r_tails.T * fuel_mass[prototype]
             if not split_cat:
                 tails_val = np.sum(tails_val, axis=0)
-            res["tails"][p] = tails_val
+            res["tails"][prototype] = tails_val
 
             # SWU
             r_swu = np.array(
@@ -1307,14 +1307,14 @@ class CyclusOutput:
                         if e > 0
                         else zeros
                     )
-                    for e in enr[p]
+                    for e in enr[prototype]
                 ],
                 dtype=float,
             )
-            swu_val = r_swu.T * fuel_mass[p]
+            swu_val = r_swu.T * fuel_mass[prototype]
             if not split_cat:
                 swu_val = np.sum(swu_val, axis=0)
-            res["swu"][p] = swu_val
+            res["swu"][prototype] = swu_val
 
         if return_sum:
             return {k: sum(v.values()) for k, v in res.items()}
