@@ -10,7 +10,7 @@ from .plugin import PluginGeneric, _find_executable
 from .results import Results, ExecInfo
 from .fileutils import PathLike
 from .parameters import Parameters
-from .enr_utils import enrichment_cascade
+from .enrichment_utils import enrichment_cascade
 
 
 class ResultsDYMOND(Results):
@@ -462,7 +462,7 @@ class DYMONDOutput:
         # Cache cascade splits by unique enrichment
         cache = {}
         for reactor in reactors:
-            for enrichment in enr[p]:
+            for enrichment in enr[reactor]:
                 if enrichment > 0:
                     key = round(float(enrichment), 8)
                     if key not in cache:
@@ -515,7 +515,7 @@ class DYMONDOutput:
                 ],
                 dtype=float,
             )
-            tails_val = r_tails.T * fuel_mass[p]
+            tails_val = r_tails.T * fuel_mass[reactor]
             if not split_cat:
                 tails_val = np.sum(tails_val, axis=0)
             res["tails"][reactor] = tails_val

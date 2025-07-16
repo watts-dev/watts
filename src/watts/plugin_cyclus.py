@@ -1241,7 +1241,7 @@ class CyclusOutput:
         # Cache cascade splits by unique enrichment
         cache = {}
         for prototype in prototypes:
-            for enrichment in enr[prototypes]:
+            for enrichment in enr[prototype]:
                 if enrichment > 0:
                     key = round(float(enrichment), 8)
                     if key not in cache:
