@@ -13,11 +13,11 @@ def feed_to_product_ratio(
     Parameters
     ----------
     feed_enr : float or list of float
-        Enrichment of the feed material.
+        Enrichment of the feed material as a decimal.
     prod_enr : float or list of float
-        Enrichment of the product material.
+        Enrichment of the product material as a decimal.
     tail_enr : float or list of float
-        Enrichment of the tails material.
+        Enrichment of the tails material as a decimal.
 
     Returns
     -------
@@ -59,11 +59,11 @@ def tails_to_product_ratio(
     Parameters
     ----------
     feed_enr : float or list of float
-        Enrichment of the feed material.
+        Enrichment of the feed material as a decimal.
     prod_enr : float or list of float
-        Enrichment of the product material.
+        Enrichment of the product material as a decimal.
     tail_enr : float or list of float
-        Enrichment of the tails material.
+        Enrichment of the tails material as a decimal.
 
     Returns
     -------
@@ -198,7 +198,7 @@ def enrichment_cascade(
         Feed enrichment level, expressed as a decimal
         (default is 0.00711)
     cascade_splits: list of float, optional
-        Enrichment levels at intermediate stages (default is
+        Enrichment levels (as decimals) at intermediate stages (default is
         [0.1, 0.2], corresponding to CAT-III, II, I)
     printing: bool
         for debugging.
@@ -317,7 +317,7 @@ def multistage_enr(feed_enrs, prod_enrs, tails_enrs, printing=True):
     --------
     dict
         Dictionary containing lists of SWU, feed, and tails quantities
-        for each stage.
+        for each stage, in units of kg.
     """
     if printing:
         print("Calculating SWU for multi-stage enrichment process:")

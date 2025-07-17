@@ -427,16 +427,16 @@ class DYMONDOutput:
         reactors : str or list[str]
             Prototype name(s).
         natu_assay : float
-            Enrichment of the feed (typically natural uranium).
+            Enrichment of the feed (typically natural uranium) as a decimal.
         tails_assay : float
-            Enrichment of the tails material.
+            Enrichment of the tails material as a decimal.
         return_sum : bool, optional
             If True, returns the sum across reactors (default True).
         split_cat : bool, optional
             If True, return tails and SWU split by cascade stage;
             otherwise return totals (default False).
         cascade_splits : list of float
-            Intermediate enrichments that define cascade stages.
+            Intermediate enrichments (as decimals) that define cascade stages.
             Defaults to [0.1, 0.2].
 
         Returns:
@@ -557,13 +557,13 @@ class DYMONDOutput:
         reactors : str or list[str]
             Prototype name(s).
         natu_assay : float
-            Enrichment of the feed (typically natural uranium).
+            Enrichment of the feed (typically natural uranium) as a decimal.
         tails_assay : float
-            Enrichment of the tails material.
+            Enrichment of the tails material as a decimal.
         return_sum : bool, optional
             If True, returns the sum across reactors (default True).
         cascade_splits : list of float
-            Intermediate enrichments that define cascade stages.
+            Intermediate enrichments (as decimals) that define cascade stages.
             Defaults to [0.1, 0.2].
 
         Returns:
@@ -596,16 +596,16 @@ class DYMONDOutput:
         reactors : str or list[str]
             Prototype name(s).
         natu_assay : float
-            Enrichment of the feed (typically natural uranium).
+            Enrichment of the feed (typically natural uranium) as a decimal.
         tails_assay : float
-            Enrichment of the tails material.
+            Enrichment of the tails material as a decimal.
         return_sum : bool, optional
             If True, returns the sum across reactors (default True).
         split_cat : bool, optional
             If True, return tails split by cascade stage; otherwise
             return total tails per reactor (default False).
         cascade_splits : list of float
-            Intermediate enrichments that define cascade stages.
+            Intermediate enrichments (as decimals) that define cascade stages.
             Defaults to [0.1, 0.2].
 
         Returns:
@@ -639,16 +639,16 @@ class DYMONDOutput:
         reactors : str or list[str]
             Prototype name(s).
         natu_assay : float
-            Enrichment of the feed (typically natural uranium).
+            Enrichment of the feed (typically natural uranium) as a decimal.
         tails_assay : float
-            Enrichment of the tails material.
+            Enrichment of the tails material as a decimal.
         return_sum : bool, optional
             If True, returns the sum across reactors (default True).
         split_cat : bool, optional
             If True, return SWU split by cascade stage; otherwise
             return total SWU per reactor (default False).
         cascade_splits : list of float
-            Intermediate enrichments that define cascade stages.
+            Intermediate enrichments (as decimals) that define cascade stages.
             Defaults to [0.1, 0.2].
 
         Returns:
