@@ -874,12 +874,29 @@ class CyclusOutput:
             # if it's zero no need to keep it
             power_dict.pop(rest_key)
 
+        # check if sum is equal to total
+        tot_pow_query = self.sql_query(
+            f"""SELECT time, SUM(value)
+            FROM timeseriespower
+            GROUP BY timeseriespower.time"""
+            )
+        tpq = [dict(q) for q in tot_pow_query]
+        times = [q["Time"] for q in tpq]
+        pows = [q["SUM(value)"]*1e-3 for q in tpq]  # convert to GW
+        arr = np.zeros(self.duration)
+        for indx, val in enumerate(times):
+            arr[val-1] = pows[indx]
+        assert(np.all(arr == sum(power_dict.values()))), "Sum of individual reactor powers does not equal total power"
+
         # If yearly is True, convert monthly data to yearly data
         if yearly:
             power_dict = {
                 k: np.mean(v.reshape(-1, 12), axis=1)
                 for k, v in power_dict.items()
             }
+            
+            
+        
 
         # If return_sum is True, sum the power across all reactors
         if return_sum:
