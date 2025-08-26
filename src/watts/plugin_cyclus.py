@@ -856,7 +856,7 @@ class CyclusOutput:
                GROUP BY timeseriespower.value"""
             )
             assert(len(pow_query) == 1)
-            pow_cap_dict[reactor] = dict(pow_query[0])['Prototype']
+            pow_cap_dict[reactor] = dict(pow_query[0])['Value']
 
 
         for row in query:
