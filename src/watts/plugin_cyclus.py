@@ -843,21 +843,21 @@ class CyclusOutput:
         pow_cap_dict = {}
         
         # ensure nonzero power output is the same
-        for reactor in prototypes:
-            pow_query = self.sql_query(
-            f"""SELECT prototype, value
+        pow_query = self.sql_query(
+            """SELECT prototype, value
                FROM agententry
                INNER JOIN timeseriespower
                ON agententry.agentid = timeseriespower.agentid
                WHERE agententry.spec
                LIKE "%Reactor"
-               AND value != 0
-               AND prototype == "{reactor}"
-               GROUP BY timeseriespower.value"""
-            )
-            assert(len(pow_query) == 1)
-            pow_cap_dict[reactor] = dict(pow_query[0])['Value']
-
+               AND value != 0 """
+        )
+        pow_query_dict = [dict(q) for q in pow_query]
+        for reactor in prototypes:
+            l = [q for q in pow_query_dict if q['Prototype'] == reactor]
+            vals = [q['Value'] for q in l]
+            assert(len(list(set(vals))) == 1)
+            pow_cap_dict[reactor] = vals[0]
 
         for row in query:
             proto = row["prototype"]
@@ -874,7 +874,6 @@ class CyclusOutput:
             # if it's zero no need to keep it
             power_dict.pop(rest_key)
 
-
         # If yearly is True, convert monthly data to yearly data
         if yearly:
             power_dict = {
@@ -882,8 +881,6 @@ class CyclusOutput:
                 for k, v in power_dict.items()
             }
             
-            
-        
 
         # If return_sum is True, sum the power across all reactors
         if return_sum:
