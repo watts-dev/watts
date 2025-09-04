@@ -786,6 +786,7 @@ class CyclusOutput:
         return_sum: bool = False,
         yearly: bool = True,
         reactors: str | list[str] | None = None,
+        rest_key: str = 'legacy'
     ) -> np.ndarray | dict[str, np.ndarray]:
         """
         Determines the amount of deployed power for each time step for
@@ -837,20 +838,41 @@ class CyclusOutput:
 
         power_dict = {prototype: np.zeros(
             self.duration) for prototype in prototypes}
-        pow_cap_dict = {prototype: 0 for prototype in prototypes}
+        assert(rest_key not in power_dict), f"Key '{rest_key}' already exists in power_dict"
+        power_dict[rest_key] = np.zeros(self.duration)
+        pow_cap_dict = {}
+        
+        # ensure nonzero power output is the same
+        pow_query = self.sql_query(
+            """SELECT prototype, value
+               FROM agententry
+               INNER JOIN timeseriespower
+               ON agententry.agentid = timeseriespower.agentid
+               WHERE agententry.spec
+               LIKE "%Reactor"
+               AND value != 0 """
+        )
+        pow_query_dict = [dict(q) for q in pow_query]
+        for reactor in prototypes:
+            l = [q for q in pow_query_dict if q['Prototype'] == reactor]
+            vals = [q['Value'] for q in l]
+            assert(len(list(set(vals))) == 1)
+            pow_cap_dict[reactor] = vals[0]
 
         for row in query:
             proto = row["prototype"]
             t0 = row["entertime"]
             t1 = row["lifetime"]
+            pow = row['value']
+            if proto in power_dict.keys():
+                assert(pow == pow_cap_dict[proto]), f"Power output for {proto} is not consistent: {pow} != {pow_cap_dict[proto]}"
+                power_dict[proto][t0 - 1: t0 + t1 - 1] += pow * 1e-3
+            else:
+                power_dict[rest_key][t0 - 1: t0 + t1 - 1] += pow * 1e-3
 
-            for reactor in prototypes:
-                if reactor in proto:
-                    key = reactor
-                    if reactor == proto:
-                        # Want powers in GW
-                        pow_cap_dict[reactor] = row["value"] * 1e-3
-                    power_dict[key][t0 - 1: t0 + t1 - 1] += row["value"] * 1e-3
+        if sum(power_dict[rest_key]) == 0:
+            # if it's zero no need to keep it
+            power_dict.pop(rest_key)
 
         # If yearly is True, convert monthly data to yearly data
         if yearly:
@@ -858,6 +880,7 @@ class CyclusOutput:
                 k: np.mean(v.reshape(-1, 12), axis=1)
                 for k, v in power_dict.items()
             }
+            
 
         # If return_sum is True, sum the power across all reactors
         if return_sum:
