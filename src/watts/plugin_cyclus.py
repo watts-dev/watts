@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import List
 
 import sqlite3 as lite
+import xml.etree.ElementTree as ET
 import numpy as np
 import os
 
@@ -93,6 +94,15 @@ class ResultsCyclus(Results):
             dictionary[self.commodities[indx]] = arr[indx, :]
         return dictionary
 
+    @property
+    def input_text(self) -> str:
+        """Return the Cyclus input text stored in the output SQLite file."""
+        return self.obj.get_input_text()
+
+    @property
+    def input_dict(self) -> dict:
+        """Return the Cyclus input as a dictionary parsed from XML."""
+        return self.obj.get_input_dict()
 
 class PluginCyclus(PluginGeneric):
     """Plugin for running Cyclus
@@ -143,7 +153,6 @@ class PluginCyclus(PluginGeneric):
         )
         self.input_name = "cyclus_input"
 
-
 class CyclusOutput:
     def __init__(self, path, by_proto=True):
         """
@@ -161,14 +170,110 @@ class CyclusOutput:
         con = lite.connect(path)
         con.row_factory = lite.Row
         self.cur = con.cursor()
-        # get times
+
+        # Store input text and input dict
+        self.input_text = self.get_input_text()
+        self.input_dict = self.get_input_dict()
+
+        # Store times
         td = self.get_times()
         for k, v in td.items():
             setattr(self, k, v)
+
+        # Store nuclides, agents, reactors
         self.nucids = self.get_nucids()
         self.agent_dict = self.get_facility_agents()
         self.reactors = np.unique(
             list(self.get_facility_agents("reactor").values()))
+
+    def get_input_text(self) -> str:
+        """
+        Returns the Cyclus input file text stored in the SQLite database.
+
+        Returns:
+        -------
+        str
+            Cyclus input file content as a string.
+        """
+
+        # Get table content
+        rows = self.sql_query("SELECT * FROM InputFiles")
+
+        # Ensure there is a single row
+        assert len(rows) == 1, f"Expected 1 row in InputFiles, found {len(rows)}"
+        row = rows[0]
+
+        # Ensure the key "Data" exists
+        keys = list(row.keys())
+        assert "Data" in keys, f"'Data' key not found in InputFiles. Keys: {keys}"
+        return row["Data"].decode("utf-8")
+
+    def get_input_dict(self) -> dict:
+        """
+        Returns the Cyclus input file parsed as a nested dictionary
+        from XML.
+
+        Returns:
+        -------
+        dict
+            Cyclus input file content as a dictionary.
+        """
+        input_text = self.get_input_text()
+        xml = ET.fromstring(input_text)
+
+        def xml_to_dict(elem):
+            """Recursively convert XML element to dictionary.
+                Rules:
+                - Child tags become keys
+                - Repeated tags become lists
+                - Attributes are stored under '@attributes'
+                - Text content stored under '#text' if mixed
+            """
+            result = {}
+
+            # Attributes
+            if elem.attrib:
+                result["@attributes"] = dict(elem.attrib)
+
+            # Children
+            children = list(elem)
+            if children:
+                grouped = {}
+                for child in children:
+                    child_result = xml_to_dict(child)
+                    tag, value = next(iter(child_result.items()))
+
+                    grouped.setdefault(tag, []).append(value)
+
+                # Post-process groups
+                for tag, values in grouped.items():
+                    # If every entry has a 'name', key by name
+                    if all(
+                        isinstance(v, dict) and "name" in v
+                        for v in values
+                    ):
+                        result[tag] = {
+                            v["name"]: {
+                                k: val for k, val in v.items()
+                                if k != "name"
+                            }
+                            for v in values
+                        }
+                    else:
+                        # Single element -> unwrap
+                        result[tag] = values[0] if len(values) == 1 else values
+
+            # Text
+            text = (elem.text or "").strip()
+            if text:
+                if result:
+                    result["#text"] = text
+                else:
+                    return {elem.tag: text}
+
+            return {elem.tag: result}
+
+        return xml_to_dict(xml)
 
     def get_facility_agents(self, spec_keywords=None):
         """Returns all facility agents in the simulation
@@ -841,7 +946,7 @@ class CyclusOutput:
         assert(rest_key not in power_dict), f"Key '{rest_key}' already exists in power_dict"
         power_dict[rest_key] = np.zeros(self.duration)
         pow_cap_dict = {}
-        
+
         # ensure nonzero power output is the same
         pow_query = self.sql_query(
             """SELECT prototype, value
@@ -880,7 +985,7 @@ class CyclusOutput:
                 k: np.mean(v.reshape(-1, 12), axis=1)
                 for k, v in power_dict.items()
             }
-            
+
 
         # If return_sum is True, sum the power across all reactors
         if return_sum:
@@ -1117,7 +1222,7 @@ class CyclusOutput:
         -------
         enrichment : dict[str, np.ndarray]
             Annual enrichment time series for each prototype, or a total array.
-            Enrichments are expressed as decimals. 
+            Enrichments are expressed as decimals.
         """
         assert (
             prototypes is None or reactors is None
@@ -1230,7 +1335,7 @@ class CyclusOutput:
             If True, return tails and SWU split by cascade stage;
             otherwise return totals (default False).
         cascade_splits : list of float
-            Intermediate enrichments that define cascade stages, expressed as 
+            Intermediate enrichments that define cascade stages, expressed as
             decimals.
             Defaults to [0.1, 0.2].
         reactors : str or list[str], optional
