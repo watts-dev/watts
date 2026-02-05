@@ -985,12 +985,11 @@ class CyclusOutput:
         self,
         prototypes: str | list[str] | None = None,
         return_sum: bool = True,
+        yearly: bool = True,
         reactors: str | list[str] | None = None,
     ) -> np.ndarray | dict[str, np.ndarray]:
         """
         Get generated electricity over time for one or more prototypes.
-        This accounts for the fact that get_generated_power outputs 
-        yearly values.
 
         Parameters:
         ----------
@@ -1000,6 +999,8 @@ class CyclusOutput:
         return_sum : bool
             If True, return summed arrays across all prototypes.
             If False, return per-prototype dict.
+        yearly : bool
+            If True, return yearly sums instead of monthly data.
         reactors : str or list of str, optional
             alias for prototypes, used for compatibility with DYMOND plugin.
             reactors and prototypes cannot both be specified.
@@ -1012,15 +1013,18 @@ class CyclusOutput:
         """
         power_dict = self.get_generated_power(
             prototypes,
-            return_sum=return_sum,
-            yearly=True,
+            return_sum=False,
+            yearly=yearly,
             reactors=reactors,
         )
         electricity_dict = {}        
-        
+        if yearly:
+            hours_in_period = 365.25 * 24  # average year length
+        else:
+            hours_in_period = 365.25 * 24 / 12  # average month length
         for reactor, power in power_dict.items():
             # Convert power (GW) to electricity (GWh)
-            electricity_dict[reactor] = power * 8760  # hours in a year
+            electricity_dict[reactor] = power * hours_in_period
         if return_sum:
             return np.sum(list(electricity_dict.values()), axis=0)
         return electricity_dict
