@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import List, Optional
 import numpy as np
 import json
+import os
 
 from .plugin import PluginGeneric, _find_executable
 from .results import Results, ExecInfo
@@ -135,6 +136,10 @@ class DYMONDOutput:
         path: str
             path to output file, including file name
         """
+        # Convert to Path objects if necessary
+        input_files = [Path(inp) for inp in input_files]
+        output_files = [Path(oup) for oup in output_files]
+        
         # Check if files exist
         for inp in input_files:
             assert inp.is_file(), f"Input file {inp} does not exist."
@@ -158,10 +163,10 @@ class DYMONDOutput:
         self.inputs = input_files
         self.reactors, self.reprocess_plants = self._get_type_names()
         self.outputs = output_files
-        self.stocks, self.flows, self.operations, self.output_data = (
+        self.stocks, self.flows, self.operations, self.output_data, self.reactor_data = (
             self._get_DYMOND_json_data()
         )
-
+   
     def _get_DYMOND_json_data(self) -> dict:
         """Read abbreviated DYMOND output JSON files and return it
         as dictionaries"""
@@ -175,7 +180,16 @@ class DYMONDOutput:
             elif "output" in str(oup):
                 output_data_dict = json.loads(oup.read_text())
 
-        return (stocks_dict, flows_dict, operations_dict, output_data_dict)
+        # Get reactor data from input data
+        # Input data is contained in output_data_dict
+        reactor_data = output_data_dict.get("input", {}).get("types", {}).get("reactor", [])
+        reactor_data_dict = {}
+        for r in reactor_data:
+            reactor = str(r["name"])
+            del r["name"]
+            reactor_data_dict[reactor] = r
+            
+        return (stocks_dict, flows_dict, operations_dict, output_data_dict, reactor_data_dict)
 
     def _get_type_names(self) -> list[str]:
         """Read DYMOND input for type definitions and return the type names"""
@@ -220,16 +234,40 @@ class DYMONDOutput:
             "years": years,
         }
 
-    def get_deployment_dict(
-        self, reactors=None, return_sum=True
-    ) -> dict[str, np.ndarray] | np.ndarray:
+    def get_capacity_factors(self, reactors=None):
         """
-        Determines the amount of deployed power for each time step for
-        each reactor
+        Get capacity factors for reactors.
 
         Parameters:
         -----------
-        reactors: list of str
+        reactors: list of str or None
+            List of reactor names to get capacity factors for. 
+            If None, use all reactors.
+
+        Returns:
+        --------
+        dict
+            Dictionary with reactor names as keys and capacity factors as values.
+        """
+        if reactors is None:
+            reactors = self.reactors
+        reactors = np.atleast_1d(reactors)
+        cf_dict = {
+            reactor: self.reactor_data[reactor].get("capacity factor", np.nan) 
+            for reactor in reactors
+        }
+        return cf_dict
+
+    def get_generated_power(
+        self, reactors=None, return_sum=True
+    ) -> dict[str, np.ndarray] | np.ndarray:
+        """
+        Determines the amount of generated power (GW) for 
+        each time step for each reactor.
+
+        Parameters:
+        -----------
+        reactors: list of str or None
             names of reactors in the simulation
 
         Returns:
@@ -238,8 +276,8 @@ class DYMONDOutput:
             keys are strings, the reactor names
             the values are a numpy array with one element for
             each time step in the scenario, indicating how
-            much power is deployed for each key during the
-            smulation.
+            much power is generated for each key during the
+            simulation.
         """
         if reactors is None:
             reactors = self.reactors
@@ -256,6 +294,78 @@ class DYMONDOutput:
             return np.sum(list(power_dict.values()), axis=0)
         return power_dict
 
+    def get_generated_electricity(
+        self, reactors=None, return_sum=True
+    ) -> dict[str, np.ndarray] | np.ndarray:
+        """
+        Determines the amount of generated electricity (GWh) for 
+        each time step for each reactor.
+        This accounts for the fact that DYMOND outputs yearly values.
+        
+        Parameters:
+        -----------
+        reactors: list of str or None
+            names of reactors in the simulation
+
+        Returns:
+        --------
+        electricity_dict: dictionary
+            keys are strings, the reactor names
+            the values are a numpy array with one element for
+            each time step in the scenario, indicating how
+            much electricity is generated for each key during the
+            simulation.
+        """
+        power_dict = self.get_generated_power(reactors, return_sum=False)
+        electricity_dict = {}        
+        
+        for reactor, power in power_dict.items():
+            # Convert power (GW) to electricity (GWh)
+            electricity_dict[reactor] = power * 8760  # hours in a year
+        if return_sum:
+            return np.sum(list(electricity_dict.values()), axis=0)
+        return electricity_dict
+    
+    def get_deployed_capacity(
+        self, reactors=None, return_sum=True
+    ) -> dict[str, np.ndarray] | np.ndarray:
+        """
+        Determines the deployed capacity (GW) for each time step
+        for each reactor. It corresponds to the generated power
+        divided by the corresponding capacity factor for each reactor.
+
+        Parameters:
+        -----------
+        reactors: list of str or None
+            names of reactors in the simulation
+
+        Returns:
+        --------
+        capacity_dict: dictionary
+            keys are strings, the reactor names
+            the values are a numpy array with one element for
+            each time step in the scenario, indicating how
+            much capacity is deployed for each key during the
+            simulation.
+        """
+        if reactors is None:
+            reactors = self.reactors
+        reactors = np.atleast_1d(reactors)
+        capacity_factors = self.get_capacity_factors(reactors)
+        power_dict = self.get_generated_power(reactors, return_sum=False)
+        capacity_dict = {}
+        for reactor in reactors:
+            cf = capacity_factors[reactor]
+            if cf == 0 or np.isnan(cf):
+                raise ValueError(
+                    f"Capacity factor for reactor '{reactor}' is zero or NaN."
+                    " Cannot compute deployed capacity."
+                )
+            capacity_dict[reactor] = power_dict[reactor] / cf
+        if return_sum:
+            return np.sum(list(capacity_dict.values()), axis=0)
+        return capacity_dict
+    
     def get_fuel_mass_and_enrichment(
         self,
         reactors: str | list[str] | None = None,
@@ -806,8 +916,8 @@ class DYMONDOutput:
         for mat in material:
             if mat not in storage_dict:
                 raise ValueError(
-                    (f"Material '{mat}' not found in stocks data for ")
-                    (f"storage '{storage}'")
+                    f"Material '{mat}' not found in stocks data for "
+                    f"storage '{storage}'"
                 )
             cumulative_mass_dict[mat] = np.array(
                 storage_dict[mat]
