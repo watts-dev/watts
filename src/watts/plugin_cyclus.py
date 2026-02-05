@@ -535,7 +535,7 @@ class CyclusOutput:
         --------
         dict
             {'init_year':int, 'init_month':int,
-             'duration':int, 'time': int, 'years':int}
+             'duration':int, 'years':float, 'years_int':int}
         """
         duration = self.sql_query(
             """SELECT InitialYear, InitialMonth, Duration
@@ -551,6 +551,7 @@ class CyclusOutput:
             "init_month": init_month,
             "duration": duration,
             "years": years,
+            "years_int": np.unique(np.floor(years).astype(int)),
         }
 
     def get_nucids(self):
@@ -780,7 +781,7 @@ class CyclusOutput:
 
     # --------------- Direct fuel-related functions ---------------
 
-    def get_deployment_dict(
+    def get_deployed_capacity(
         self,
         prototypes: str | list[str] | None = None,
         return_sum: bool = False,
@@ -789,8 +790,8 @@ class CyclusOutput:
         rest_key: str = 'legacy'
     ) -> np.ndarray | dict[str, np.ndarray]:
         """
-        Determines the amount of deployed power for each time step for
-        each reactor prototype
+        Determines the amount of deployed power (GW) for each time step 
+        for each reactor prototype
 
         Parameters:
         -----------
@@ -888,6 +889,142 @@ class CyclusOutput:
             power_dict = np.sum(list(power_dict.values()), axis=0)
         return power_dict
 
+    def get_capacity_factors(
+        self,
+        prototypes: str | list[str] | None = None,
+        reactors: str | list[str] | None = None,
+    ) -> dict[str, float]:
+        """
+        Capacity factor per reactor prototype:
+            CF = sum(cycle_time) / sum(cycle_time + refuel_time)
+        for all agents belonging to that prototype.
+        """
+        # Match the house style: prototypes/reactors aliasing
+        assert (
+            prototypes is None or reactors is None
+        ), f"Either 'prototypes' or 'reactors' must be specified, but not both: " \
+        f"prototypes={prototypes}, reactors={reactors}"
+
+        if prototypes is None and reactors is None:
+            prototypes = self.reactors
+        elif reactors is not None:
+            prototypes = reactors
+
+        prototypes = np.atleast_1d(prototypes)
+
+        if len(prototypes) == 0:
+            return {}
+
+        proto_csv = ", ".join(f'"{p}"' for p in prototypes)
+
+        rows = self.sql_query(f"""
+            SELECT
+                p.Prototype AS prototype,
+                SUM(r.cycle_time) * 1.0
+                / NULLIF(SUM(r.cycle_time + r.refuel_time), 0) AS capacity_factor
+            FROM AgentState_cycamore_ReactorInfo r
+            JOIN Prototypes p
+            ON p.AgentId = r.AgentId
+            WHERE p.Prototype IN ({proto_csv})
+            AND r.cycle_time IS NOT NULL
+            AND r.refuel_time IS NOT NULL
+            GROUP BY p.Prototype;
+        """)
+
+        return {row["prototype"]: row["capacity_factor"] for row in rows}
+
+    def get_generated_power(
+        self,
+        prototypes: str | list[str] | None = None,
+        return_sum: bool = True,
+        yearly: bool = True,
+        reactors: str | list[str] | None = None,
+    ) -> np.ndarray | dict[str, np.ndarray]:
+        """
+        Get generated power (GW) over time for one or more prototypes.
+
+        Parameters:
+        ----------
+        prototypes : str, list of str, or None
+            Reactor prototype(s) to analyze. If None, use all reactor types
+            in the simulation.
+        return_sum : bool
+            If True, return summed arrays across all prototypes.
+            If False, return per-prototype dict.
+        yearly : bool
+            If True, return yearly sums instead of monthly data.
+        reactors : str or list of str, optional
+            alias for prototypes, used for compatibility with DYMOND plugin.
+            reactors and prototypes cannot both be specified.
+
+        Returns:
+        -------
+        np.ndarray or dict
+            If return_sum=True, returns summed array.
+            If return_sum=False, returns dict of arrays per prototype.
+        """
+        deployed_power = self.get_deployed_capacity(
+            prototypes,
+            return_sum=False,
+            yearly=yearly,
+            reactors=reactors,
+        )
+        capacity_factors = self.get_capacity_factors(
+            prototypes,
+            reactors=reactors,
+        )
+        # Intersection between keys
+        generated_power = {} 
+        for proto in set(deployed_power.keys()) & set(capacity_factors.keys()):
+            generated_power[proto] = deployed_power[proto] * capacity_factors[proto]
+        if return_sum:
+            generated_power = np.sum(list(generated_power.values()), axis=0)
+        return generated_power
+
+    def get_generated_electricity(
+        self,
+        prototypes: str | list[str] | None = None,
+        return_sum: bool = True,
+        reactors: str | list[str] | None = None,
+    ) -> np.ndarray | dict[str, np.ndarray]:
+        """
+        Get generated electricity over time for one or more prototypes.
+        This accounts for the fact that get_generated_power outputs 
+        yearly values.
+
+        Parameters:
+        ----------
+        prototypes : str, list of str, or None
+            Reactor prototype(s) to analyze. If None, use all reactor types
+            in the simulation.
+        return_sum : bool
+            If True, return summed arrays across all prototypes.
+            If False, return per-prototype dict.
+        reactors : str or list of str, optional
+            alias for prototypes, used for compatibility with DYMOND plugin.
+            reactors and prototypes cannot both be specified.
+
+        Returns:
+        -------
+        np.ndarray or dict
+            If return_sum=True, returns summed array.
+            If return_sum=False, returns dict of arrays per prototype.
+        """
+        power_dict = self.get_generated_power(
+            prototypes,
+            return_sum=return_sum,
+            yearly=True,
+            reactors=reactors,
+        )
+        electricity_dict = {}        
+        
+        for reactor, power in power_dict.items():
+            # Convert power (GW) to electricity (GWh)
+            electricity_dict[reactor] = power * 8760  # hours in a year
+        if return_sum:
+            return np.sum(list(electricity_dict.values()), axis=0)
+        return electricity_dict
+    
     def get_fuel_mass_and_enrichment(
         self,
         prototypes: str | list[str] | None = None,
