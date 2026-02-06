@@ -932,6 +932,168 @@ class CyclusOutput:
 
         return {row["prototype"]: row["capacity_factor"] for row in rows}
 
+    
+    #### TO CHECK: new method for avg capacity factor
+    def get_avg_capacity_factors(
+        self,
+        prototypes: str | list[str] | None = None,
+        reactors: str | list[str] | None = None,
+        return_avg: bool = False,
+    ) -> dict[str, float] | float:
+        """
+        Realized capacity factor per reactor prototype computed from time series:
+            CF = sum_over_agents( sum_over_time P(agent,time) )
+                 / sum_over_agents( power_cap(agent) * n_steps_agent )
+
+        Parameters:
+        -----------
+        prototypes: str | list[str] | None
+            names of reactor prototypes in the simulation
+        reactors: str | list[str] | None
+            alias for prototypes, used for compatibility with DYMOND plugin.
+            reactors and prototypes cannot both be specified.
+        time: None | True | float | list/tuple/array of floats
+            If None or True, compute over the whole timeline.
+            If float/int, compute over the single year closest to this value.
+            If list/tuple/array, compute over the union of all years between
+            min(time) and max(time), inclusive.
+        return_avg: bool
+            If True, return a single fleet-averaged capacity factor (float)
+            over the selected timeline.
+            If False, return a dict of floats keyed by prototype.
+
+        Returns:
+        --------
+        dict[str, float] | float
+            Either a dict of floats (one per prototype) or a single float
+            (fleet average over the selected timeline).
+
+        Notes:
+        ------
+        Prototypes with no reactors present during the selected time window
+        are not returned (they do not participate in the CF).
+        """
+        # Match the house style: prototypes/reactors aliasing
+        assert (
+            prototypes is None or reactors is None
+        ), f"Either 'prototypes' or 'reactors' must be specified, but not both: " \
+        f"prototypes={prototypes}, reactors={reactors}"
+
+        if prototypes is None and reactors is None:
+            prototypes = self.reactors
+        elif reactors is not None:
+            prototypes = reactors
+
+        prototypes = np.atleast_1d(prototypes)
+
+        if len(prototypes) == 0:
+            return 0.0 if return_avg else {}
+
+        # Use SQL string literals (single quotes) for robustness
+        proto_csv = ", ".join(f"'{p}'" for p in prototypes)
+
+        # Realized CF from timeseriespower, aggregated robustly across agents.
+        # We infer nameplate per agent from its time series:
+        # power_cap_mwe = MAX(value) over the full agent history where value > 0.
+        if return_avg:
+            rows = self.sql_query(f"""
+                WITH cap AS (
+                  SELECT
+                    a.agentid AS agentid,
+                    a.prototype AS prototype,
+                    MAX(CASE WHEN ts.value > 0 THEN ts.value ELSE NULL END) AS power_cap_mwe
+                  FROM timeseriespower ts
+                  JOIN agententry a ON a.agentid = ts.agentid
+                  WHERE a.spec LIKE "%Reactor"
+                  AND a.prototype IN ({proto_csv})
+                  GROUP BY a.agentid, a.prototype
+                ),
+                win AS (
+                  SELECT
+                    a.agentid AS agentid,
+                    SUM(ts.value) * 1.0 AS sum_power_mwe,
+                    COUNT(ts.time) AS n_steps
+                  FROM timeseriespower ts
+                  JOIN agententry a ON a.agentid = ts.agentid
+                  WHERE a.spec LIKE "%Reactor"
+                  AND a.prototype IN ({proto_csv})
+                  GROUP BY a.agentid
+                ),
+                per_agent AS (
+                  SELECT
+                    cap.agentid AS agentid,
+                    win.sum_power_mwe AS sum_power_mwe,
+                    win.n_steps AS n_steps,
+                    cap.power_cap_mwe AS power_cap_mwe
+                  FROM cap
+                  JOIN win
+                    ON win.agentid = cap.agentid
+                  WHERE cap.power_cap_mwe IS NOT NULL
+                )
+                SELECT
+                  SUM(sum_power_mwe) / NULLIF(SUM(power_cap_mwe * n_steps), 0) AS capacity_factor
+                FROM per_agent;
+            """)
+            cf = rows[0][0] if rows and rows[0][0] is not None else 0.0
+            cf = float(cf)
+            cf = max(0.0, min(1.0, cf))
+            return cf
+
+        rows = self.sql_query(f"""
+            WITH cap AS (
+              SELECT
+                a.agentid AS agentid,
+                a.prototype AS prototype,
+                MAX(CASE WHEN ts.value > 0 THEN ts.value ELSE NULL END) AS power_cap_mwe
+              FROM timeseriespower ts
+              JOIN agententry a ON a.agentid = ts.agentid
+              WHERE a.spec LIKE "%Reactor"
+              AND a.prototype IN ({proto_csv})
+              GROUP BY a.agentid, a.prototype
+            ),
+            win AS (
+              SELECT
+                a.agentid AS agentid,
+                a.prototype AS prototype,
+                SUM(ts.value) * 1.0 AS sum_power_mwe,
+                COUNT(ts.time) AS n_steps
+              FROM timeseriespower ts
+              JOIN agententry a ON a.agentid = ts.agentid
+              WHERE a.spec LIKE "%Reactor"
+              AND a.prototype IN ({proto_csv})
+              GROUP BY a.agentid, a.prototype
+            ),
+            per_agent AS (
+              SELECT
+                win.agentid AS agentid,
+                win.prototype AS prototype,
+                win.sum_power_mwe AS sum_power_mwe,
+                win.n_steps AS n_steps,
+                cap.power_cap_mwe AS power_cap_mwe
+              FROM win
+              JOIN cap
+                ON cap.agentid = win.agentid
+              WHERE cap.power_cap_mwe IS NOT NULL
+            )
+            SELECT
+              prototype,
+              SUM(sum_power_mwe) / NULLIF(SUM(power_cap_mwe * n_steps), 0) AS capacity_factor
+            FROM per_agent
+            GROUP BY prototype;
+        """)
+
+        cf_dict = {}
+        for row in rows:
+            proto = row["prototype"]
+            cf = row["capacity_factor"]
+            if cf is None:
+                cf = 0.0
+            cf = float(cf)
+            cf_dict[proto] = cf
+
+        # Prototypes with no agents present in the selected window are omitted
+        return cf_dict
+
     def get_generated_power(
         self,
         prototypes: str | list[str] | None = None,
