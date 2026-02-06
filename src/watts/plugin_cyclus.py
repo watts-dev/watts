@@ -932,8 +932,6 @@ class CyclusOutput:
 
         return {row["prototype"]: row["capacity_factor"] for row in rows}
 
-    
-    #### TO CHECK: new method for avg capacity factor
     def get_avg_capacity_factors(
         self,
         prototypes: str | list[str] | None = None,
@@ -1100,6 +1098,8 @@ class CyclusOutput:
         return_sum: bool = True,
         yearly: bool = True,
         reactors: str | list[str] | None = None,
+        capacity_factors: dict[str, float] | None = None,
+        default_capacity_factor: float = 0.9,
     ) -> np.ndarray | dict[str, np.ndarray]:
         """
         Get generated power (GW) over time for one or more prototypes.
@@ -1117,6 +1117,13 @@ class CyclusOutput:
         reactors : str or list of str, optional
             alias for prototypes, used for compatibility with DYMOND plugin.
             reactors and prototypes cannot both be specified.
+        capacity_factors : dict[str, float] or None
+            If None, compute generated power directly from timeseriespower.
+            If provided, use deployed capacity (GW) multiplied by capacity
+            factor(s) to compute generated power.
+        default_capacity_factor : float
+            If capacity_factors is provided but missing entries for some
+            prototypes, use this value as the default capacity factor.
 
         Returns:
         -------
@@ -1139,6 +1146,25 @@ class CyclusOutput:
         if len(prototypes) == 0:
             return {} if not return_sum else np.zeros(0)
 
+        # If capacity_factors are provided,
+        # compute generation from deployed capacity
+        if capacity_factors is not None:
+            deployed_power = self.get_deployed_capacity(
+                prototypes,
+                return_sum=False,
+                yearly=yearly,
+                reactors=reactors,
+            )
+            gen_dict = {}
+            for proto in deployed_power.keys():
+                gen_dict[proto] = deployed_power[proto] * \
+                    float(capacity_factors.get(proto, default_capacity_factor))
+
+            if return_sum:
+                return np.sum(list(gen_dict.values()), axis=0)
+            return gen_dict
+
+        # Otherwise, compute generated power directly from time series
         proto_csv = ", ".join(f'"{p}"' for p in prototypes)
 
         # Direct aggregation in SQL: sum p.value (MWe) per prototype/time
@@ -1185,9 +1211,12 @@ class CyclusOutput:
         return_sum: bool = True,
         yearly: bool = True,
         reactors: str | list[str] | None = None,
+        capacity_factors: dict[str, float] | None = None,
+        default_capacity_factor: float = 0.9,
     ) -> np.ndarray | dict[str, np.ndarray]:
         """
-        Get generated electricity (GWh) over time for one or more prototypes.
+        Get generated electricity (GW-yr) over time for one or more
+        prototypes.
 
         Parameters:
         ----------
@@ -1202,34 +1231,36 @@ class CyclusOutput:
         reactors : str or list of str, optional
             alias for prototypes, used for compatibility with DYMOND plugin.
             reactors and prototypes cannot both be specified.
+        capacity_factors : dict[str, float] or None
+            If None, compute generated electricity from timeseriespower-derived
+            generated power.
+            If provided, compute generated power from deployed capacity multiplied
+            by capacity factors, then convert to electricity.
 
         Returns:
         -------
         np.ndarray or dict
             If return_sum=True, returns summed array.
             If return_sum=False, returns dict of arrays per prototype.
-            Arrays represent generated electricity in GWh for each period.
+            Arrays represent generated electricity in GW-yr for each period.
         """
         power_dict = self.get_generated_power(
             prototypes,
             return_sum=False,
             yearly=yearly,
             reactors=reactors,
+            capacity_factors=capacity_factors,
         )
         electricity_dict = {}
-        # hours in period: if yearly True, multiply by hours in year;
-        # if monthly, hours per month
-        if yearly:
-            hours_in_period = 365.25 * 24  # average year length
-        else:
-            hours_in_period = 365.25 * 24 / 12  # average month length
         for reactor, power in power_dict.items():
-            # Convert power (GW) to electricity (GWh)
-            electricity_dict[reactor] = power * hours_in_period
+            # Convert power (GW) to electricity (GW-yr)
+            # If monthly data, multiply by 1/12
+            elec = power * (1.0 if yearly else 1.0 / 12.0)
+            electricity_dict[reactor] = elec
+
         if return_sum:
             return np.sum(list(electricity_dict.values()), axis=0)
         return electricity_dict
-
 
     def get_fuel_mass_and_enrichment(
         self,
