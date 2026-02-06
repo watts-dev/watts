@@ -790,7 +790,7 @@ class CyclusOutput:
         rest_key: str = 'legacy'
     ) -> np.ndarray | dict[str, np.ndarray]:
         """
-        Determines the amount of deployed power (GW) for each time step 
+        Determines the amount of deployed power (GW) for each time step
         for each reactor prototype
 
         Parameters:
@@ -804,6 +804,8 @@ class CyclusOutput:
         reactors: list of str
             alias for prototypes, used for compatibility with DYMOND plugin.
             reactors and prototypes cannot both be specified.
+        rest_key: str
+            key used to accumulate any prototypes not in the `prototypes` list
 
         Returns:
         --------
@@ -812,7 +814,7 @@ class CyclusOutput:
             the values are a numpy array with one element for
             each time step in the scenario, indicating how
             much power is deployed for each key during the
-            simulation.
+            simulation (GW).
         """
         # Convert reactors/prototypes to a numpy array
         assert (
@@ -842,7 +844,7 @@ class CyclusOutput:
         assert(rest_key not in power_dict), f"Key '{rest_key}' already exists in power_dict"
         power_dict[rest_key] = np.zeros(self.duration)
         pow_cap_dict = {}
-        
+
         # ensure nonzero power output is the same
         pow_query = self.sql_query(
             """SELECT prototype, value
@@ -877,11 +879,8 @@ class CyclusOutput:
 
         # If yearly is True, convert monthly data to yearly data
         if yearly:
-            power_dict = {
-                k: np.mean(v.reshape(-1, 12), axis=1)
-                for k, v in power_dict.items()
-            }
-            
+            for key in power_dict.keys():
+                power_dict[key] = self.get_yearly_sum(power_dict[key]) / 12.0
 
         # If return_sum is True, sum the power across all reactors
         if return_sum:
@@ -895,9 +894,9 @@ class CyclusOutput:
         reactors: str | list[str] | None = None,
     ) -> dict[str, float]:
         """
-        Capacity factor per reactor prototype:
-            CF = sum(cycle_time) / sum(cycle_time + refuel_time)
-        for all agents belonging to that prototype.
+        Capacity factor per reactor prototype (realized from time series):
+            CF = sum_over_agents( sum_over_time P(agent,time) )
+                 / sum_over_agents( power_cap(agent) * n_steps_agent )
         """
         # Match the house style: prototypes/reactors aliasing
         assert (
@@ -962,24 +961,61 @@ class CyclusOutput:
         np.ndarray or dict
             If return_sum=True, returns summed array.
             If return_sum=False, returns dict of arrays per prototype.
+            Arrays represent generated power in GW for each time step (monthly),
+            or yearly means if yearly=True.
         """
-        deployed_power = self.get_deployed_capacity(
-            prototypes,
-            return_sum=False,
-            yearly=yearly,
-            reactors=reactors,
-        )
-        capacity_factors = self.get_capacity_factors(
-            prototypes,
-            reactors=reactors,
-        )
-        # Intersection between keys
-        generated_power = {} 
-        for proto in set(deployed_power.keys()) & set(capacity_factors.keys()):
-            generated_power[proto] = deployed_power[proto] * capacity_factors[proto]
+        # aliasing for prototypes/reactors
+        assert (
+            prototypes is None or reactors is None
+        ), "Either 'prototypes' or 'reactors' must be specified, but not both."
+        if prototypes is None and reactors is None:
+            prototypes = self.reactors
+        elif reactors is not None:
+            prototypes = reactors
+        prototypes = np.atleast_1d(prototypes)
+
+        if len(prototypes) == 0:
+            return {} if not return_sum else np.zeros(0)
+
+        proto_csv = ", ".join(f'"{p}"' for p in prototypes)
+
+        # Direct aggregation in SQL: sum p.value (MWe) per prototype/time
+        rows = self.sql_query(f"""
+            SELECT
+              a.prototype AS prototype,
+              p.time AS time,
+              SUM(p.value) * 1.0 AS sum_mwe
+            FROM timeseriespower p
+            JOIN agententry a ON a.agentid = p.agentid
+            WHERE a.prototype IN ({proto_csv})
+            GROUP BY a.prototype, p.time
+            ORDER BY a.prototype, p.time;
+        """)
+
+        # Initialize arrays (monthly) and fill with zeros
+        gen_dict = {prototype: np.zeros(self.duration) for prototype in prototypes}
+
+        # Fill arrays (convert MWe -> GW)
+        for row in rows:
+            proto = row["prototype"]
+            t = int(row["time"])
+            sum_mwe = float(row["sum_mwe"])
+            gen_gw = sum_mwe * 1e-3
+            idx = t - 1
+            if idx >= 0:
+                gen_dict[proto][idx] += gen_gw
+
+        # If yearly requested, convert monthly to yearly mean GW
+        if yearly:
+            for proto in gen_dict.keys():
+                yearly_sum = self.get_yearly_sum(gen_dict[proto])
+                gen_dict[proto] = yearly_sum / 12.0
+
+        # If return_sum True, sum across prototypes
         if return_sum:
-            generated_power = np.sum(list(generated_power.values()), axis=0)
-        return generated_power
+            return np.sum(list(gen_dict.values()), axis=0)
+        return gen_dict
+
 
     def get_generated_electricity(
         self,
@@ -989,7 +1025,7 @@ class CyclusOutput:
         reactors: str | list[str] | None = None,
     ) -> np.ndarray | dict[str, np.ndarray]:
         """
-        Get generated electricity over time for one or more prototypes.
+        Get generated electricity (GWh) over time for one or more prototypes.
 
         Parameters:
         ----------
@@ -1010,6 +1046,7 @@ class CyclusOutput:
         np.ndarray or dict
             If return_sum=True, returns summed array.
             If return_sum=False, returns dict of arrays per prototype.
+            Arrays represent generated electricity in GWh for each period.
         """
         power_dict = self.get_generated_power(
             prototypes,
@@ -1017,7 +1054,9 @@ class CyclusOutput:
             yearly=yearly,
             reactors=reactors,
         )
-        electricity_dict = {}        
+        electricity_dict = {}
+        # hours in period: if yearly True, multiply by hours in year;
+        # if monthly, hours per month
         if yearly:
             hours_in_period = 365.25 * 24  # average year length
         else:
@@ -1028,7 +1067,8 @@ class CyclusOutput:
         if return_sum:
             return np.sum(list(electricity_dict.values()), axis=0)
         return electricity_dict
-    
+
+
     def get_fuel_mass_and_enrichment(
         self,
         prototypes: str | list[str] | None = None,
@@ -1258,7 +1298,7 @@ class CyclusOutput:
         -------
         enrichment : dict[str, np.ndarray]
             Annual enrichment time series for each prototype, or a total array.
-            Enrichments are expressed as decimals. 
+            Enrichments are expressed as decimals.
         """
         assert (
             prototypes is None or reactors is None
@@ -1371,7 +1411,7 @@ class CyclusOutput:
             If True, return tails and SWU split by cascade stage;
             otherwise return totals (default False).
         cascade_splits : list of float
-            Intermediate enrichments that define cascade stages, expressed as 
+            Intermediate enrichments that define cascade stages, expressed as
             decimals.
             Defaults to [0.1, 0.2].
         reactors : str or list[str], optional
