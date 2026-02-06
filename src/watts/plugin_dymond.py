@@ -298,9 +298,11 @@ class DYMONDOutput:
         self, reactors=None, return_sum=True
     ) -> dict[str, np.ndarray] | np.ndarray:
         """
-        Determines the amount of generated electricity (GWh) for 
+        Determines the amount of generated electricity (GW-yr) for 
         each time step for each reactor.
-        This accounts for the fact that DYMOND outputs yearly values.
+        This accounts for the fact that DYMOND outputs yearly values,
+        so no conversion is needed, but the function is provided for 
+        consistency with the cyclus plugin.
         
         Parameters:
         -----------
@@ -316,18 +318,14 @@ class DYMONDOutput:
             much electricity is generated for each key during the
             simulation.
         """
-        power_dict = self.get_generated_power(reactors, return_sum=False)
-        electricity_dict = {}        
-        
-        for reactor, power in power_dict.items():
-            # Convert power (GW) to electricity (GWh)
-            electricity_dict[reactor] = power * 8760  # hours in a year
-        if return_sum:
-            return np.sum(list(electricity_dict.values()), axis=0)
-        return electricity_dict
+        elec_dict = self.get_generated_power(reactors, 
+                                             return_sum=return_sum)
+        return elec_dict
     
     def get_deployed_capacity(
-        self, reactors=None, return_sum=True
+        self, reactors=None, return_sum=True,
+        capacity_factors=None,
+        default_capacity_factor=0.9
     ) -> dict[str, np.ndarray] | np.ndarray:
         """
         Determines the deployed capacity (GW) for each time step
@@ -338,6 +336,12 @@ class DYMONDOutput:
         -----------
         reactors: list of str or None
             names of reactors in the simulation
+        capacity_factors: dict[str, np.ndarray] or None
+            Capacity factors for the reactors. If None, they will be
+            retrieved using the get_capacity_factors method.
+        default_capacity_factor: float
+            Default capacity factor to use if a reactor's capacity factor
+            is not in the provided capacity_factors.
 
         Returns:
         --------
@@ -351,11 +355,13 @@ class DYMONDOutput:
         if reactors is None:
             reactors = self.reactors
         reactors = np.atleast_1d(reactors)
-        capacity_factors = self.get_capacity_factors(reactors)
+        if capacity_factors is None:
+            capacity_factors = self.get_capacity_factors(reactors)
+        
         power_dict = self.get_generated_power(reactors, return_sum=False)
         capacity_dict = {}
         for reactor in reactors:
-            cf = capacity_factors[reactor]
+            cf = capacity_factors.get(reactor, default_capacity_factor)
             if cf == 0 or np.isnan(cf):
                 raise ValueError(
                     f"Capacity factor for reactor '{reactor}' is zero or NaN."
