@@ -894,11 +894,10 @@ class CyclusOutput:
         reactors: str | list[str] | None = None,
     ) -> dict[str, float]:
         """
-        Capacity factor per reactor prototype (realized from time series):
-            CF = sum_over_agents( sum_over_time P(agent,time) )
-                 / sum_over_agents( power_cap(agent) * n_steps_agent )
+        Capacity factor per reactor prototype from cycle time c
+        and refueling time r steps: CF = c/(r+c)
         """
-        # Match the house style: prototypes/reactors aliasing
+
         assert (
             prototypes is None or reactors is None
         ), f"Either 'prototypes' or 'reactors' must be specified, but not both: " \
