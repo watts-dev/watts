@@ -269,7 +269,7 @@ class DYMONDOutput:
     ) -> dict[str, np.ndarray] | np.ndarray:
         """
         Determines the amount of generated power (GW) for 
-        each time step for each reactor.
+        each time step for each reactor type.
 
         Parameters:
         -----------
@@ -305,7 +305,7 @@ class DYMONDOutput:
     ) -> dict[str, np.ndarray] | np.ndarray:
         """
         Determines the amount of generated electricity (GW-yr) for 
-        each time step for each reactor.
+        each time step for each reactor type.
         This accounts for the fact that DYMOND outputs yearly values,
         so no conversion is needed, but the function is provided for 
         consistency with the cyclus plugin.
@@ -335,8 +335,9 @@ class DYMONDOutput:
     ) -> dict[str, np.ndarray] | np.ndarray:
         """
         Determines the deployed capacity (GW) for each time step
-        for each reactor. It corresponds to the generated power
-        divided by the corresponding capacity factor for each reactor.
+        for each reactor type. It corresponds to the generated power
+        divided by the corresponding capacity factor for each reactor 
+        type.
 
         Parameters:
         -----------
@@ -476,7 +477,8 @@ class DYMONDOutput:
         Returns
         -------
         enrichment : dict[str, np.ndarray]
-            Annual enrichment time series for each reactor, or a total array.
+            Annual enrichment time series for each reactor type, 
+            or a total array.
         """
         # Convert reactor to a numpy array
         if reactors is None:
