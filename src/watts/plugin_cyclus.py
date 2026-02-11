@@ -145,7 +145,7 @@ class PluginCyclus(PluginGeneric):
 
 
 class CyclusOutput:
-    def __init__(self, path, by_proto=True):
+    def __init__(self, path):
         """
         Class to access and browse an output file from Cyclus.
         Output file MUST be an SQLite database (.sqlite)
