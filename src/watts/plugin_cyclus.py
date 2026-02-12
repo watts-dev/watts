@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import List
 
 import sqlite3 as lite
+import xml.etree.ElementTree as ET
 import numpy as np
 import os
 
@@ -93,6 +94,15 @@ class ResultsCyclus(Results):
             dictionary[self.commodities[indx]] = arr[indx, :]
         return dictionary
 
+    @property
+    def input_text(self) -> str:
+        """Return the Cyclus input text stored in the output SQLite file."""
+        return self.obj.get_input_text()
+
+    @property
+    def input_dict(self) -> dict:
+        """Return the Cyclus input as a dictionary parsed from XML."""
+        return self.obj.get_input_dict()
 
 class PluginCyclus(PluginGeneric):
     """Plugin for running Cyclus
@@ -143,7 +153,6 @@ class PluginCyclus(PluginGeneric):
         )
         self.input_name = "cyclus_input"
 
-
 class CyclusOutput:
     def __init__(self, path):
         """
@@ -161,14 +170,110 @@ class CyclusOutput:
         con = lite.connect(path)
         con.row_factory = lite.Row
         self.cur = con.cursor()
-        # get times
+
+        # Store input text and input dict
+        self.input_text = self.get_input_text()
+        self.input_dict = self.get_input_dict()
+
+        # Store times
         td = self.get_times()
         for k, v in td.items():
             setattr(self, k, v)
+
+        # Store nuclides, agents, reactors
         self.nucids = self.get_nucids()
         self.agent_dict = self.get_facility_agents()
         self.reactors = np.unique(
             list(self.get_facility_agents("reactor").values()))
+
+    def get_input_text(self) -> str:
+        """
+        Returns the Cyclus input file text stored in the SQLite database.
+
+        Returns:
+        -------
+        str
+            Cyclus input file content as a string.
+        """
+
+        # Get table content
+        rows = self.sql_query("SELECT * FROM InputFiles")
+
+        # Ensure there is a single row
+        assert len(rows) == 1, f"Expected 1 row in InputFiles, found {len(rows)}"
+        row = rows[0]
+
+        # Ensure the key "Data" exists
+        keys = list(row.keys())
+        assert "Data" in keys, f"'Data' key not found in InputFiles. Keys: {keys}"
+        return row["Data"].decode("utf-8")
+
+    def get_input_dict(self) -> dict:
+        """
+        Returns the Cyclus input file parsed as a nested dictionary
+        from XML.
+
+        Returns:
+        -------
+        dict
+            Cyclus input file content as a dictionary.
+        """
+        input_text = self.get_input_text()
+        xml = ET.fromstring(input_text)
+
+        def xml_to_dict(elem):
+            """Recursively convert XML element to dictionary.
+                Rules:
+                - Child tags become keys
+                - Repeated tags become lists
+                - Attributes are stored under '@attributes'
+                - Text content stored under '#text' if mixed
+            """
+            result = {}
+
+            # Attributes
+            if elem.attrib:
+                result["@attributes"] = dict(elem.attrib)
+
+            # Children
+            children = list(elem)
+            if children:
+                grouped = {}
+                for child in children:
+                    child_result = xml_to_dict(child)
+                    tag, value = next(iter(child_result.items()))
+
+                    grouped.setdefault(tag, []).append(value)
+
+                # Post-process groups
+                for tag, values in grouped.items():
+                    # If every entry has a 'name', key by name
+                    if all(
+                        isinstance(v, dict) and "name" in v
+                        for v in values
+                    ):
+                        result[tag] = {
+                            v["name"]: {
+                                k: val for k, val in v.items()
+                                if k != "name"
+                            }
+                            for v in values
+                        }
+                    else:
+                        # Single element -> unwrap
+                        result[tag] = values[0] if len(values) == 1 else values
+
+            # Text
+            text = (elem.text or "").strip()
+            if text:
+                if result:
+                    result["#text"] = text
+                else:
+                    return {elem.tag: text}
+
+            return {elem.tag: result}
+
+        return xml_to_dict(xml)
 
     def get_facility_agents(self, spec_keywords=None):
         """Returns all facility agents in the simulation
