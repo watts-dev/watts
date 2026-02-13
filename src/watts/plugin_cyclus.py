@@ -154,7 +154,7 @@ class PluginCyclus(PluginGeneric):
         self.input_name = "cyclus_input"
 
 class CyclusOutput:
-    def __init__(self, path, by_proto=True):
+    def __init__(self, path):
         """
         Class to access and browse an output file from Cyclus.
         Output file MUST be an SQLite database (.sqlite)
@@ -640,7 +640,7 @@ class CyclusOutput:
         --------
         dict
             {'init_year':int, 'init_month':int,
-             'duration':int, 'time': int, 'years':int}
+             'duration':int, 'years':float, 'years_int':int}
         """
         duration = self.sql_query(
             """SELECT InitialYear, InitialMonth, Duration
@@ -656,6 +656,7 @@ class CyclusOutput:
             "init_month": init_month,
             "duration": duration,
             "years": years,
+            "years_int": np.unique(np.floor(years).astype(int)),
         }
 
     def get_nucids(self):
@@ -885,7 +886,7 @@ class CyclusOutput:
 
     # --------------- Direct fuel-related functions ---------------
 
-    def get_deployment_dict(
+    def get_deployed_capacity(
         self,
         prototypes: str | list[str] | None = None,
         return_sum: bool = False,
@@ -894,8 +895,8 @@ class CyclusOutput:
         rest_key: str = 'legacy'
     ) -> np.ndarray | dict[str, np.ndarray]:
         """
-        Determines the amount of deployed power for each time step for
-        each reactor prototype
+        Determines the amount of deployed power (GW) for each time step
+        for each reactor prototype
 
         Parameters:
         -----------
@@ -908,6 +909,8 @@ class CyclusOutput:
         reactors: list of str
             alias for prototypes, used for compatibility with DYMOND plugin.
             reactors and prototypes cannot both be specified.
+        rest_key: str
+            key used to accumulate any prototypes not in the `prototypes` list
 
         Returns:
         --------
@@ -916,7 +919,7 @@ class CyclusOutput:
             the values are a numpy array with one element for
             each time step in the scenario, indicating how
             much power is deployed for each key during the
-            simulation.
+            simulation (GW).
         """
         # Convert reactors/prototypes to a numpy array
         assert (
@@ -981,17 +984,387 @@ class CyclusOutput:
 
         # If yearly is True, convert monthly data to yearly data
         if yearly:
-            power_dict = {
-                k: np.mean(v.reshape(-1, 12), axis=1)
-                for k, v in power_dict.items()
-            }
-
+            for key in power_dict.keys():
+                power_dict[key] = self.get_yearly_sum(power_dict[key]) / 12.0
 
         # If return_sum is True, sum the power across all reactors
         if return_sum:
             # Sum all power arrays in the dictionary
             power_dict = np.sum(list(power_dict.values()), axis=0)
         return power_dict
+
+    def get_capacity_factors(
+        self,
+        prototypes: str | list[str] | None = None,
+        reactors: str | list[str] | None = None,
+    ) -> dict[str, float]:
+        """
+        Capacity factor per reactor prototype from cycle time c
+        and refueling time r steps: CF = c/(r+c)
+        """
+
+        assert (
+            prototypes is None or reactors is None
+        ), f"Either 'prototypes' or 'reactors' must be specified, but not both: " \
+        f"prototypes={prototypes}, reactors={reactors}"
+
+        if prototypes is None and reactors is None:
+            prototypes = self.reactors
+        elif reactors is not None:
+            prototypes = reactors
+
+        prototypes = np.atleast_1d(prototypes)
+
+        if len(prototypes) == 0:
+            return {}
+
+        proto_csv = ", ".join(f'"{p}"' for p in prototypes)
+
+        rows = self.sql_query(f"""
+            SELECT
+                p.Prototype AS prototype,
+                SUM(r.cycle_time) * 1.0
+                / NULLIF(SUM(r.cycle_time + r.refuel_time), 0) AS capacity_factor
+            FROM AgentState_cycamore_ReactorInfo r
+            JOIN Prototypes p
+            ON p.AgentId = r.AgentId
+            WHERE p.Prototype IN ({proto_csv})
+            AND r.cycle_time IS NOT NULL
+            AND r.refuel_time IS NOT NULL
+            GROUP BY p.Prototype;
+        """)
+
+        return {row["prototype"]: row["capacity_factor"] for row in rows}
+
+    def get_avg_capacity_factors(
+        self,
+        prototypes: str | list[str] | None = None,
+        reactors: str | list[str] | None = None,
+        return_avg: bool = False,
+    ) -> dict[str, float] | float:
+        """
+        Realized capacity factor per reactor prototype computed from time series:
+            CF = sum_over_agents( sum_over_time P(agent,time) )
+                 / sum_over_agents( power_cap(agent) * n_steps_agent )
+
+        Parameters:
+        -----------
+        prototypes: str | list[str] | None
+            names of reactor prototypes in the simulation
+        reactors: str | list[str] | None
+            alias for prototypes, used for compatibility with DYMOND plugin.
+            reactors and prototypes cannot both be specified.
+        time: None | True | float | list/tuple/array of floats
+            If None or True, compute over the whole timeline.
+            If float/int, compute over the single year closest to this value.
+            If list/tuple/array, compute over the union of all years between
+            min(time) and max(time), inclusive.
+        return_avg: bool
+            If True, return a single fleet-averaged capacity factor (float)
+            over the selected timeline.
+            If False, return a dict of floats keyed by prototype.
+
+        Returns:
+        --------
+        dict[str, float] | float
+            Either a dict of floats (one per prototype) or a single float
+            (fleet average over the selected timeline).
+
+        Notes:
+        ------
+        Prototypes with no reactors present during the selected time window
+        are not returned (they do not participate in the CF).
+        """
+        # Match the house style: prototypes/reactors aliasing
+        assert (
+            prototypes is None or reactors is None
+        ), f"Either 'prototypes' or 'reactors' must be specified, but not both: " \
+        f"prototypes={prototypes}, reactors={reactors}"
+
+        if prototypes is None and reactors is None:
+            prototypes = self.reactors
+        elif reactors is not None:
+            prototypes = reactors
+
+        prototypes = np.atleast_1d(prototypes)
+
+        if len(prototypes) == 0:
+            return 0.0 if return_avg else {}
+
+        # Use SQL string literals (single quotes) for robustness
+        proto_csv = ", ".join(f"'{p}'" for p in prototypes)
+
+        # Realized CF from timeseriespower, aggregated robustly across agents.
+        # We infer nameplate per agent from its time series:
+        # power_cap_mwe = MAX(value) over the full agent history where value > 0.
+        if return_avg:
+            rows = self.sql_query(f"""
+                WITH cap AS (
+                  SELECT
+                    a.agentid AS agentid,
+                    a.prototype AS prototype,
+                    MAX(CASE WHEN ts.value > 0 THEN ts.value ELSE NULL END) AS power_cap_mwe
+                  FROM timeseriespower ts
+                  JOIN agententry a ON a.agentid = ts.agentid
+                  WHERE a.spec LIKE "%Reactor"
+                  AND a.prototype IN ({proto_csv})
+                  GROUP BY a.agentid, a.prototype
+                ),
+                win AS (
+                  SELECT
+                    a.agentid AS agentid,
+                    SUM(ts.value) * 1.0 AS sum_power_mwe,
+                    COUNT(ts.time) AS n_steps
+                  FROM timeseriespower ts
+                  JOIN agententry a ON a.agentid = ts.agentid
+                  WHERE a.spec LIKE "%Reactor"
+                  AND a.prototype IN ({proto_csv})
+                  GROUP BY a.agentid
+                ),
+                per_agent AS (
+                  SELECT
+                    cap.agentid AS agentid,
+                    win.sum_power_mwe AS sum_power_mwe,
+                    win.n_steps AS n_steps,
+                    cap.power_cap_mwe AS power_cap_mwe
+                  FROM cap
+                  JOIN win
+                    ON win.agentid = cap.agentid
+                  WHERE cap.power_cap_mwe IS NOT NULL
+                )
+                SELECT
+                  SUM(sum_power_mwe) / NULLIF(SUM(power_cap_mwe * n_steps), 0) AS capacity_factor
+                FROM per_agent;
+            """)
+            cf = rows[0][0] if rows and rows[0][0] is not None else 0.0
+            cf = float(cf)
+            cf = max(0.0, min(1.0, cf))
+            return cf
+
+        rows = self.sql_query(f"""
+            WITH cap AS (
+              SELECT
+                a.agentid AS agentid,
+                a.prototype AS prototype,
+                MAX(CASE WHEN ts.value > 0 THEN ts.value ELSE NULL END) AS power_cap_mwe
+              FROM timeseriespower ts
+              JOIN agententry a ON a.agentid = ts.agentid
+              WHERE a.spec LIKE "%Reactor"
+              AND a.prototype IN ({proto_csv})
+              GROUP BY a.agentid, a.prototype
+            ),
+            win AS (
+              SELECT
+                a.agentid AS agentid,
+                a.prototype AS prototype,
+                SUM(ts.value) * 1.0 AS sum_power_mwe,
+                COUNT(ts.time) AS n_steps
+              FROM timeseriespower ts
+              JOIN agententry a ON a.agentid = ts.agentid
+              WHERE a.spec LIKE "%Reactor"
+              AND a.prototype IN ({proto_csv})
+              GROUP BY a.agentid, a.prototype
+            ),
+            per_agent AS (
+              SELECT
+                win.agentid AS agentid,
+                win.prototype AS prototype,
+                win.sum_power_mwe AS sum_power_mwe,
+                win.n_steps AS n_steps,
+                cap.power_cap_mwe AS power_cap_mwe
+              FROM win
+              JOIN cap
+                ON cap.agentid = win.agentid
+              WHERE cap.power_cap_mwe IS NOT NULL
+            )
+            SELECT
+              prototype,
+              SUM(sum_power_mwe) / NULLIF(SUM(power_cap_mwe * n_steps), 0) AS capacity_factor
+            FROM per_agent
+            GROUP BY prototype;
+        """)
+
+        cf_dict = {}
+        for row in rows:
+            proto = row["prototype"]
+            cf = row["capacity_factor"]
+            if cf is None:
+                cf = 0.0
+            cf = float(cf)
+            cf_dict[proto] = cf
+
+        # Prototypes with no agents present in the selected window are omitted
+        return cf_dict
+
+    def get_generated_power(
+        self,
+        prototypes: str | list[str] | None = None,
+        return_sum: bool = True,
+        yearly: bool = True,
+        reactors: str | list[str] | None = None,
+        capacity_factors: dict[str, float] | None = None,
+        default_capacity_factor: float = 0.9,
+    ) -> np.ndarray | dict[str, np.ndarray]:
+        """
+        Get generated power (GW) over time for one or more prototypes.
+
+        Parameters:
+        ----------
+        prototypes : str, list of str, or None
+            Reactor prototype(s) to analyze. If None, use all reactor types
+            in the simulation.
+        return_sum : bool
+            If True, return summed arrays across all prototypes.
+            If False, return per-prototype dict.
+        yearly : bool
+            If True, return yearly sums instead of monthly data.
+        reactors : str or list of str, optional
+            alias for prototypes, used for compatibility with DYMOND plugin.
+            reactors and prototypes cannot both be specified.
+        capacity_factors : dict[str, float] or None
+            If None, compute generated power directly from timeseriespower.
+            If provided, use deployed capacity (GW) multiplied by capacity
+            factor(s) to compute generated power.
+        default_capacity_factor : float
+            If capacity_factors is provided but missing entries for some
+            prototypes, use this value as the default capacity factor.
+
+        Returns:
+        -------
+        np.ndarray or dict
+            If return_sum=True, returns summed array.
+            If return_sum=False, returns dict of arrays per prototype.
+            Arrays represent generated power in GW for each time step (monthly),
+            or yearly means if yearly=True.
+        """
+        # aliasing for prototypes/reactors
+        assert (
+            prototypes is None or reactors is None
+        ), "Either 'prototypes' or 'reactors' must be specified, but not both."
+        if prototypes is None and reactors is None:
+            prototypes = self.reactors
+        elif reactors is not None:
+            prototypes = reactors
+        prototypes = np.atleast_1d(prototypes)
+
+        if len(prototypes) == 0:
+            return {} if not return_sum else np.zeros(0)
+
+        # If capacity_factors are provided,
+        # compute generation from deployed capacity
+        if capacity_factors is not None:
+            deployed_power = self.get_deployed_capacity(
+                prototypes,
+                return_sum=False,
+                yearly=yearly,
+                reactors=reactors,
+            )
+            gen_dict = {}
+            for proto in deployed_power.keys():
+                gen_dict[proto] = deployed_power[proto] * \
+                    float(capacity_factors.get(proto, default_capacity_factor))
+
+            if return_sum:
+                return np.sum(list(gen_dict.values()), axis=0)
+            return gen_dict
+
+        # Otherwise, compute generated power directly from time series
+        proto_csv = ", ".join(f'"{p}"' for p in prototypes)
+
+        # Direct aggregation in SQL: sum p.value (MWe) per prototype/time
+        rows = self.sql_query(f"""
+            SELECT
+              a.prototype AS prototype,
+              p.time AS time,
+              SUM(p.value) * 1.0 AS sum_mwe
+            FROM timeseriespower p
+            JOIN agententry a ON a.agentid = p.agentid
+            WHERE a.prototype IN ({proto_csv})
+            GROUP BY a.prototype, p.time
+            ORDER BY a.prototype, p.time;
+        """)
+
+        # Initialize arrays (monthly) and fill with zeros
+        gen_dict = {prototype: np.zeros(self.duration) for prototype in prototypes}
+
+        # Fill arrays (convert MWe -> GW)
+        for row in rows:
+            proto = row["prototype"]
+            t = int(row["time"])
+            sum_mwe = float(row["sum_mwe"])
+            gen_gw = sum_mwe * 1e-3
+            idx = t - 1
+            if idx >= 0:
+                gen_dict[proto][idx] += gen_gw
+
+        # If yearly requested, convert monthly to yearly mean GW
+        if yearly:
+            for proto in gen_dict.keys():
+                yearly_sum = self.get_yearly_sum(gen_dict[proto])
+                gen_dict[proto] = yearly_sum / 12.0
+
+        # If return_sum True, sum across prototypes
+        if return_sum:
+            return np.sum(list(gen_dict.values()), axis=0)
+        return gen_dict
+
+
+    def get_generated_electricity(
+        self,
+        prototypes: str | list[str] | None = None,
+        return_sum: bool = True,
+        yearly: bool = True,
+        reactors: str | list[str] | None = None,
+        capacity_factors: dict[str, float] | None = None,
+        default_capacity_factor: float = 0.9,
+    ) -> np.ndarray | dict[str, np.ndarray]:
+        """
+        Get generated electricity (GW-yr) over time for one or more
+        prototypes.
+
+        Parameters:
+        ----------
+        prototypes : str, list of str, or None
+            Reactor prototype(s) to analyze. If None, use all reactor types
+            in the simulation.
+        return_sum : bool
+            If True, return summed arrays across all prototypes.
+            If False, return per-prototype dict.
+        yearly : bool
+            If True, return yearly sums instead of monthly data.
+        reactors : str or list of str, optional
+            alias for prototypes, used for compatibility with DYMOND plugin.
+            reactors and prototypes cannot both be specified.
+        capacity_factors : dict[str, float] or None
+            If None, compute generated electricity from timeseriespower-derived
+            generated power.
+            If provided, compute generated power from deployed capacity multiplied
+            by capacity factors, then convert to electricity.
+
+        Returns:
+        -------
+        np.ndarray or dict
+            If return_sum=True, returns summed array.
+            If return_sum=False, returns dict of arrays per prototype.
+            Arrays represent generated electricity in GW-yr for each period.
+        """
+        power_dict = self.get_generated_power(
+            prototypes,
+            return_sum=False,
+            yearly=yearly,
+            reactors=reactors,
+            capacity_factors=capacity_factors,
+        )
+        electricity_dict = {}
+        for reactor, power in power_dict.items():
+            # Convert power (GW) to electricity (GW-yr)
+            # If monthly data, multiply by 1/12
+            elec = power * (1.0 if yearly else 1.0 / 12.0)
+            electricity_dict[reactor] = elec
+
+        if return_sum:
+            return np.sum(list(electricity_dict.values()), axis=0)
+        return electricity_dict
 
     def get_fuel_mass_and_enrichment(
         self,
