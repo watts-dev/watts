@@ -243,6 +243,8 @@ class DYMONDOutput:
     def get_capacity_factors(self, reactors=None):
         """
         Get capacity factors for reactors.
+        These capacity factors are directly read
+        from input reactor data.
 
         Parameters:
         -----------
