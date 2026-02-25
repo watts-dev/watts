@@ -880,7 +880,8 @@ class CyclusOutput:
         return np.array(
             self.get_yearly_sum(
                 self.query_to_array(query, self.duration,
-                                    "time", "sum(quantity)")
+                                    time_label="time",
+                                    value_label="sum(quantity)")
             )
         )
 
