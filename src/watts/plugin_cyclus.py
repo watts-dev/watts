@@ -104,6 +104,7 @@ class ResultsCyclus(Results):
         """Return the Cyclus input as a dictionary parsed from XML."""
         return self.obj.get_input_dict()
 
+
 class PluginCyclus(PluginGeneric):
     """Plugin for running Cyclus
 
@@ -153,6 +154,7 @@ class PluginCyclus(PluginGeneric):
         )
         self.input_name = "cyclus_input"
 
+
 class CyclusOutput:
     def __init__(self, path):
         """
@@ -200,7 +202,8 @@ class CyclusOutput:
         rows = self.sql_query("SELECT * FROM InputFiles")
 
         # Ensure there is a single row
-        assert len(rows) == 1, f"Expected 1 row in InputFiles, found {len(rows)}"
+        assert len(
+            rows) == 1, f"Expected 1 row in InputFiles, found {len(rows)}"
         row = rows[0]
 
         # Ensure the key "Data" exists
@@ -884,7 +887,318 @@ class CyclusOutput:
             )
         )
 
-    # --------------- Direct fuel-related functions ---------------
+    # --------------- Deployment-related functions ---------------
+
+    def get_new_deployments(
+        self,
+        prototypes: str | list[str] | None = None,
+        return_sum: bool = False,
+        yearly: bool = True,
+        reactors: str | list[str] | None = None,
+        rest_key: str = "legacy",
+    ) -> np.ndarray | dict[str, np.ndarray]:
+        """
+        Determines the number of newly deployed reactors for each time step
+        for each reactor prototype.
+
+        Parameters:
+        -----------
+        prototypes: str | list[str] | None
+            Names of reactor prototypes in the simulation. If None and reactors
+            is None, uses all reactor types in the simulation.
+        return_sum: bool
+            If True, returns a single array summed over all prototypes.
+        yearly: bool
+            If True, returns yearly counts instead of monthly counts.
+        reactors: str | list[str] | None
+            Alias for prototypes, used for compatibility with DYMOND plugin.
+            reactors and prototypes cannot both be specified.
+        rest_key: str
+            Key used to accumulate any prototypes not in the `prototypes` list.
+
+        Returns:
+        --------
+        deploy_dict: dict[str, np.ndarray] or np.ndarray
+            Keys are strings (reactor prototypes and possibly `rest_key`),
+            values are arrays giving the count of new deployments at each
+            time step (monthly) or each year (yearly=True).
+
+            If return_sum=True, returns a single array summed across keys.
+        """
+        # Match the prototypes/reactors aliasing style used elsewhere
+        assert (
+            prototypes is None or reactors is None
+        ), f"Either 'prototypes' or 'reactors' must be specified, but not both: " \
+            f"prototypes={prototypes}, reactors={reactors}"
+
+        if prototypes is None and reactors is None:
+            prototypes = self.reactors
+        elif reactors is not None:
+            prototypes = reactors
+        prototypes = np.atleast_1d(prototypes)
+
+        # Monthly event counts (one event at EnterTime)
+        deploy = {p: np.zeros(self.duration) for p in prototypes}
+        assert rest_key not in deploy, f"Key '{rest_key}' already exists in deploy dict"
+        deploy[rest_key] = np.zeros(self.duration)
+
+        # Pull all reactor agents and their entry times
+        rows = self.sql_query("""
+            SELECT prototype, entertime
+            FROM agententry
+            WHERE spec LIKE "%Reactor"
+        """)
+
+        for r in rows:
+            proto = r["prototype"]
+            # Convert Cyclus timestep (effectively 1-based here) to 0-based index
+            idx = int(r["entertime"]) - 1
+            if idx < 0 or idx >= self.duration:
+                continue
+            key = proto if proto in deploy else rest_key
+            deploy[key][idx] += 1.0
+
+        # Drop rest_key if unused
+        if np.sum(deploy[rest_key]) == 0:
+            deploy.pop(rest_key)
+
+        # If yearly is True, convert monthly counts to yearly counts
+        if yearly:
+            for key in list(deploy.keys()):
+                deploy[key] = self.get_yearly_sum(deploy[key])
+
+        # If return_sum is True, sum the deployments across all prototypes
+        # included (excludes rest_key)
+        if return_sum:
+            # Only sum explicitly requested prototypes
+            keys_to_sum = [p for p in prototypes if p in deploy]
+            return np.sum([deploy[k] for k in keys_to_sum], axis=0)
+
+        return deploy
+
+    def get_retirements(
+        self,
+        prototypes: str | list[str] | None = None,
+        return_sum: bool = False,
+        yearly: bool = True,
+        reactors: str | list[str] | None = None,
+        rest_key: str = "legacy",
+    ) -> np.ndarray | dict[str, np.ndarray]:
+        """
+        Determines the number of reactor retirements for each time step
+        for each reactor prototype.
+
+        Retirement time is taken from AgentExit.ExitTime when available; otherwise
+        inferred as EnterTime + Lifetime (Lifetime=-1 => never retires).
+
+        Parameters:
+        -----------
+        prototypes: str | list[str] | None
+            Names of reactor prototypes in the simulation. If None and reactors
+            is None, uses all reactor types in the simulation.
+        return_sum: bool
+            If True, returns a single array summed over all prototypes.
+        yearly: bool
+            If True, returns yearly counts instead of monthly counts.
+        reactors: str | list[str] | None
+            Alias for prototypes, used for compatibility with DYMOND plugin.
+            reactors and prototypes cannot both be specified.
+        rest_key: str
+            Key used to accumulate any prototypes not in the `prototypes` list.
+
+        Returns:
+        --------
+        retire_dict: dict[str, np.ndarray] or np.ndarray
+            Keys are strings (reactor prototypes and possibly `rest_key`),
+            values are arrays giving the count of retirements at each
+            time step (monthly) or each year (yearly=True).
+
+            If return_sum=True, returns a single array summed across keys.
+        """
+        # Match the prototypes/reactors aliasing style used elsewhere
+        assert (
+            prototypes is None or reactors is None
+        ), f"Either 'prototypes' or 'reactors' must be specified, but not both: " \
+            f"prototypes={prototypes}, reactors={reactors}"
+
+        if prototypes is None and reactors is None:
+            prototypes = self.reactors
+        elif reactors is not None:
+            prototypes = reactors
+        prototypes = np.atleast_1d(prototypes)
+
+        # Monthly event counts (one event at retirement time)
+        retire = {p: np.zeros(self.duration) for p in prototypes}
+        assert rest_key not in retire, f"Key '{rest_key}' already exists in retire dict"
+        retire[rest_key] = np.zeros(self.duration)
+
+        # Detect AgentExit table (if present)
+        has_exit = False
+        try:
+            chk = self.sql_query(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='AgentExit';"
+            )
+            has_exit = len(chk) > 0
+        except Exception:
+            has_exit = False
+
+        exit_map = {}
+        if has_exit:
+            # Build map: agentid -> exittime
+            try:
+                ex = self.sql_query("SELECT agentid, exittime FROM agentexit;")
+                exit_map = {row["agentid"]: row["exittime"] for row in ex}
+            except Exception:
+                exit_map = {}
+
+        # Pull all reactor agents with entry/lifetime info
+        rows = self.sql_query("""
+            SELECT agentid, prototype, entertime, lifetime
+            FROM agententry
+            WHERE spec LIKE "%Reactor"
+        """)
+
+        for r in rows:
+            proto = r["prototype"]
+            agentid = r["agentid"]
+            t0 = int(r["entertime"])
+            life = int(r["lifetime"])
+
+            # Prefer actual exit time when available
+            exittime = exit_map.get(agentid, None)
+            if exittime is not None:
+                t_ret = int(exittime)
+            else:
+                # If no exit table/entry, infer from lifetime
+                if life == -1:
+                    continue  # never retires
+                t_ret = t0 + life  # retirement event at end of lifetime
+
+            # Convert Cyclus timestep to 0-based index
+            idx = t_ret - 1
+            if idx < 0 or idx >= self.duration:
+                continue
+
+            key = proto if proto in retire else rest_key
+            retire[key][idx] += 1.0
+
+        # Drop rest_key if unused
+        if np.sum(retire[rest_key]) == 0:
+            retire.pop(rest_key)
+
+        # If yearly is True, convert monthly counts to yearly counts
+        if yearly:
+            for key in list(retire.keys()):
+                retire[key] = self.get_yearly_sum(retire[key])
+
+        # If return_sum is True, sum the retirements across all prototypes
+        # included (excludes rest_key)
+        if return_sum:
+            # Only sum explicitly requested prototypes
+            keys_to_sum = [p for p in prototypes if p in retire]
+            return np.sum([retire[k] for k in keys_to_sum], axis=0)
+
+        return retire
+
+    def get_fleet_size(
+        self,
+        prototypes: str | list[str] | None = None,
+        return_sum: bool = False,
+        yearly: bool = True,
+        reactors: str | list[str] | None = None,
+        rest_key: str = "legacy",
+    ) -> np.ndarray | dict[str, np.ndarray]:
+        """
+        Determines the size of the deployed reactor fleet for each time step
+        for each reactor prototype.
+
+        Fleet size is computed from deployments and retirements:
+            fleet[t] = fleet[t-1] + new_deployments[t] - retirements[t]
+
+        Parameters:
+        -----------
+        prototypes: str | list[str] | None
+            Names of reactor prototypes in the simulation. If None and reactors
+            is None, uses all reactor types in the simulation.
+        return_sum: bool
+            If True, returns a single array summed over all prototypes.
+        yearly: bool
+            If True, returns yearly fleet size instead of monthly.
+            The yearly fleet size is the end-of-year fleet count, aligned to
+            the same year-binning convention used by get_yearly_sum()
+            (prepends an initial 0.0 and drops the final year).
+        reactors: str | list[str] | None
+            Alias for prototypes, used for compatibility with DYMOND plugin.
+            reactors and prototypes cannot both be specified.
+        rest_key: str
+            Key used to accumulate any prototypes not in the `prototypes` list.
+
+        Returns:
+        --------
+        fleet_dict: dict[str, np.ndarray] or np.ndarray
+            Keys are strings (reactor prototypes and possibly `rest_key`),
+            values are arrays giving fleet size at each time step (monthly)
+            or each year-end (yearly=True).
+
+            If return_sum=True, returns a single array summed across keys.
+        """
+        # Compute monthly deployment/retirement events (always monthly here)
+        new_m = self.get_new_deployments(
+            prototypes=prototypes,
+            return_sum=False,
+            yearly=False,
+            reactors=reactors,
+            rest_key=rest_key,
+        )
+        ret_m = self.get_retirements(
+            prototypes=prototypes,
+            return_sum=False,
+            yearly=False,
+            reactors=reactors,
+            rest_key=rest_key,
+        )
+
+        # Union of keys (should typically match, but be robust)
+        keys = sorted(set(new_m.keys()) | set(ret_m.keys()))
+
+        # Monthly fleet size per key
+        fleet = {}
+        for k in keys:
+            n = new_m.get(k, None)
+            r = ret_m.get(k, None)
+            if n is None:
+                n = np.zeros_like(r)
+            if r is None:
+                r = np.zeros_like(n)
+
+            # Cumulative fleet size from net events
+            fleet[k] = np.cumsum(n - r)
+
+        # If yearly is True, convert monthly fleet to end-of-year fleet size
+        if yearly:
+            # Match get_yearly_sum's truncation convention:
+            # - Only full years are considered
+            # - The final year is dropped
+            # - An initial 0.0 is prepended
+            n_full_years = (self.duration // 12)
+            end_of_year_idx = 12 * \
+                np.arange(1, n_full_years + 1) - 1  # 0-based
+            # Drop the last year (to match get_yearly_sum behavior)
+            end_of_year_idx = end_of_year_idx[:-1]
+
+            for k in list(fleet.keys()):
+                y = fleet[k][end_of_year_idx] if len(
+                    end_of_year_idx) > 0 else np.zeros(0)
+                fleet[k] = np.insert(y, 0, 0.0)
+
+        # If return_sum is True, sum the fleet size across all prototypes
+        # included (excludes rest_key)
+        if return_sum:
+            # Only sum explicitly requested prototypes
+            keys_to_sum = [p for p in prototypes if p in fleet]
+            return np.sum([fleet[k] for k in keys_to_sum], axis=0)
+
+        return fleet
 
     def get_deployed_capacity(
         self,
@@ -946,7 +1260,8 @@ class CyclusOutput:
 
         power_dict = {prototype: np.zeros(
             self.duration) for prototype in prototypes}
-        assert(rest_key not in power_dict), f"Key '{rest_key}' already exists in power_dict"
+        assert (
+            rest_key not in power_dict), f"Key '{rest_key}' already exists in power_dict"
         power_dict[rest_key] = np.zeros(self.duration)
         pow_cap_dict = {}
 
@@ -964,7 +1279,7 @@ class CyclusOutput:
         for reactor in prototypes:
             l = [q for q in pow_query_dict if q['Prototype'] == reactor]
             vals = [q['Value'] for q in l]
-            assert(len(list(set(vals))) == 1)
+            assert (len(list(set(vals))) == 1)
             pow_cap_dict[reactor] = vals[0]
 
         for row in query:
@@ -973,7 +1288,8 @@ class CyclusOutput:
             t1 = row["lifetime"]
             pow = row['value']
             if proto in power_dict.keys():
-                assert(pow == pow_cap_dict[proto]), f"Power output for {proto} is not consistent: {pow} != {pow_cap_dict[proto]}"
+                assert (
+                    pow == pow_cap_dict[proto]), f"Power output for {proto} is not consistent: {pow} != {pow_cap_dict[proto]}"
                 power_dict[proto][t0 - 1: t0 + t1 - 1] += pow * 1e-3
             else:
                 power_dict[rest_key][t0 - 1: t0 + t1 - 1] += pow * 1e-3
@@ -987,10 +1303,12 @@ class CyclusOutput:
             for key in power_dict.keys():
                 power_dict[key] = self.get_yearly_sum(power_dict[key]) / 12.0
 
-        # If return_sum is True, sum the power across all reactors
+        # If return_sum is True, sum the powers  across all prototypes
+        # included (excludes rest_key)
         if return_sum:
-            # Sum all power arrays in the dictionary
-            power_dict = np.sum(list(power_dict.values()), axis=0)
+            # Only sum explicitly requested prototypes
+            keys_to_sum = [p for p in prototypes if p in power_dict]
+            return np.sum([power_dict[k] for k in keys_to_sum], axis=0)
         return power_dict
 
     def get_capacity_factors(
@@ -1006,7 +1324,7 @@ class CyclusOutput:
         assert (
             prototypes is None or reactors is None
         ), f"Either 'prototypes' or 'reactors' must be specified, but not both: " \
-        f"prototypes={prototypes}, reactors={reactors}"
+            f"prototypes={prototypes}, reactors={reactors}"
 
         if prototypes is None and reactors is None:
             prototypes = self.reactors
@@ -1079,7 +1397,7 @@ class CyclusOutput:
         assert (
             prototypes is None or reactors is None
         ), f"Either 'prototypes' or 'reactors' must be specified, but not both: " \
-        f"prototypes={prototypes}, reactors={reactors}"
+            f"prototypes={prototypes}, reactors={reactors}"
 
         if prototypes is None and reactors is None:
             prototypes = self.reactors
@@ -1285,7 +1603,8 @@ class CyclusOutput:
         """)
 
         # Initialize arrays (monthly) and fill with zeros
-        gen_dict = {prototype: np.zeros(self.duration) for prototype in prototypes}
+        gen_dict = {prototype: np.zeros(self.duration)
+                    for prototype in prototypes}
 
         # Fill arrays (convert MWe -> GW)
         for row in rows:
@@ -1307,7 +1626,6 @@ class CyclusOutput:
         if return_sum:
             return np.sum(list(gen_dict.values()), axis=0)
         return gen_dict
-
 
     def get_generated_electricity(
         self,
@@ -1365,6 +1683,8 @@ class CyclusOutput:
         if return_sum:
             return np.sum(list(electricity_dict.values()), axis=0)
         return electricity_dict
+
+    # --------------- Direct fuel-related functions ---------------
 
     def get_fuel_mass_and_enrichment(
         self,
