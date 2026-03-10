@@ -208,7 +208,8 @@ class CyclusOutput:
 
         # Ensure the key "Data" exists
         keys = list(row.keys())
-        assert "Data" in keys, f"'Data' key not found in InputFiles. Keys: {keys}"
+        assert "Data" in keys, \
+            f"'Data' key not found in InputFiles. Keys: {keys}"
         return row["Data"].decode("utf-8")
 
     def get_input_dict(self) -> dict:
@@ -928,8 +929,11 @@ class CyclusOutput:
         # Match the prototypes/reactors aliasing style used elsewhere
         assert (
             prototypes is None or reactors is None
-        ), f"Either 'prototypes' or 'reactors' must be specified, but not both: " \
-            f"prototypes={prototypes}, reactors={reactors}"
+        ), (
+            "Either 'prototypes' or 'reactors' must be specified, "
+            f"but not both: prototypes={prototypes}, "
+            f"reactors={reactors}"
+        )
 
         if prototypes is None and reactors is None:
             prototypes = self.reactors
@@ -939,7 +943,8 @@ class CyclusOutput:
 
         # Monthly event counts (one event at EnterTime)
         deploy = {p: np.zeros(self.duration) for p in prototypes}
-        assert rest_key not in deploy, f"Key '{rest_key}' already exists in deploy dict"
+        assert rest_key not in deploy, \
+            f"Key '{rest_key}' already exists in deploy dict"
         deploy[rest_key] = np.zeros(self.duration)
 
         # Pull all reactor agents and their entry times
@@ -951,7 +956,8 @@ class CyclusOutput:
 
         for r in rows:
             proto = r["prototype"]
-            # Convert Cyclus timestep (effectively 1-based here) to 0-based index
+            # Convert Cyclus timestep (effectively 1-based here)
+            # to 0-based index
             idx = int(r["entertime"]) - 1
             if idx < 0 or idx >= self.duration:
                 continue
@@ -988,8 +994,9 @@ class CyclusOutput:
         Determines the number of reactor retirements for each time step
         for each reactor prototype.
 
-        Retirement time is taken from AgentExit.ExitTime when available; otherwise
-        inferred as EnterTime + Lifetime (Lifetime=-1 => never retires).
+        Retirement time is taken from AgentExit.ExitTime when available,
+        otherwise it is computed as EnterTime + Lifetime
+        (Lifetime=-1 => never retires).
 
         Parameters:
         -----------
@@ -1018,8 +1025,11 @@ class CyclusOutput:
         # Match the prototypes/reactors aliasing style used elsewhere
         assert (
             prototypes is None or reactors is None
-        ), f"Either 'prototypes' or 'reactors' must be specified, but not both: " \
-            f"prototypes={prototypes}, reactors={reactors}"
+        ), (
+            "Either 'prototypes' or 'reactors' must be specified, "
+            f"but not both: prototypes={prototypes}, "
+            f"reactors={reactors}"
+        )
 
         if prototypes is None and reactors is None:
             prototypes = self.reactors
@@ -1029,14 +1039,16 @@ class CyclusOutput:
 
         # Monthly event counts (one event at retirement time)
         retire = {p: np.zeros(self.duration) for p in prototypes}
-        assert rest_key not in retire, f"Key '{rest_key}' already exists in retire dict"
+        assert rest_key not in retire, \
+            f"Key '{rest_key}' already exists in retire dict"
         retire[rest_key] = np.zeros(self.duration)
 
         # Detect AgentExit table (if present)
         has_exit = False
         try:
             chk = self.sql_query(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='AgentExit';"
+                "SELECT name FROM sqlite_master "
+                "WHERE type='table' AND name='AgentExit';"
             )
             has_exit = len(chk) > 0
         except Exception:
@@ -1260,8 +1272,8 @@ class CyclusOutput:
 
         power_dict = {prototype: np.zeros(
             self.duration) for prototype in prototypes}
-        assert (
-            rest_key not in power_dict), f"Key '{rest_key}' already exists in power_dict"
+        assert (rest_key not in power_dict), \
+            f"Key '{rest_key}' already exists in power_dict"
         power_dict[rest_key] = np.zeros(self.duration)
         pow_cap_dict = {}
 
@@ -1276,11 +1288,16 @@ class CyclusOutput:
                AND value != 0 """
         )
         pow_query_dict = [dict(q) for q in pow_query]
+
         for reactor in prototypes:
-            l = [q for q in pow_query_dict if q['Prototype'] == reactor]
-            vals = [q['Value'] for q in l]
-            assert (len(list(set(vals))) == 1)
-            pow_cap_dict[reactor] = vals[0]
+            reactor_rows = [
+                q for q in pow_query_dict
+                if q["Prototype"] == reactor
+            ]
+            values = [q["Value"] for q in reactor_rows]
+
+            assert len(set(values)) == 1
+            pow_cap_dict[reactor] = values[0]
 
         for row in query:
             proto = row["prototype"]
@@ -1289,7 +1306,11 @@ class CyclusOutput:
             pow = row['value']
             if proto in power_dict.keys():
                 assert (
-                    pow == pow_cap_dict[proto]), f"Power output for {proto} is not consistent: {pow} != {pow_cap_dict[proto]}"
+                    pow == pow_cap_dict[proto]
+                ), (
+                    f"Power output for {proto} is not consistent: "
+                    f"{pow} != {pow_cap_dict[proto]}"
+                )
                 power_dict[proto][t0 - 1: t0 + t1 - 1] += pow * 1e-3
             else:
                 power_dict[rest_key][t0 - 1: t0 + t1 - 1] += pow * 1e-3
@@ -1323,8 +1344,11 @@ class CyclusOutput:
 
         assert (
             prototypes is None or reactors is None
-        ), f"Either 'prototypes' or 'reactors' must be specified, but not both: " \
-            f"prototypes={prototypes}, reactors={reactors}"
+        ), (
+            "Either 'prototypes' or 'reactors' must be specified, "
+            f"but not both: prototypes={prototypes}, "
+            f"reactors={reactors}"
+        )
 
         if prototypes is None and reactors is None:
             prototypes = self.reactors
@@ -1338,19 +1362,24 @@ class CyclusOutput:
 
         proto_csv = ", ".join(f'"{p}"' for p in prototypes)
 
-        rows = self.sql_query(f"""
+        rows = self.sql_query(
+            f"""
             SELECT
                 p.Prototype AS prototype,
                 SUM(r.cycle_time) * 1.0
-                / NULLIF(SUM(r.cycle_time + r.refuel_time), 0) AS capacity_factor
+                    / NULLIF(
+                        SUM(r.cycle_time + r.refuel_time),
+                        0
+                    ) AS capacity_factor
             FROM AgentState_cycamore_ReactorInfo r
             JOIN Prototypes p
-            ON p.AgentId = r.AgentId
+                ON p.AgentId = r.AgentId
             WHERE p.Prototype IN ({proto_csv})
             AND r.cycle_time IS NOT NULL
             AND r.refuel_time IS NOT NULL
             GROUP BY p.Prototype;
-        """)
+            """
+        )
 
         return {row["prototype"]: row["capacity_factor"] for row in rows}
 
@@ -1361,7 +1390,8 @@ class CyclusOutput:
         return_avg: bool = False,
     ) -> dict[str, float] | float:
         """
-        Realized capacity factor per reactor prototype computed from time series:
+        Realized capacity factor per reactor prototype computed
+        from time series:
             CF = sum_over_agents( sum_over_time P(agent,time) )
                  / sum_over_agents( power_cap(agent) * n_steps_agent )
 
@@ -1396,8 +1426,11 @@ class CyclusOutput:
         # Match the house style: prototypes/reactors aliasing
         assert (
             prototypes is None or reactors is None
-        ), f"Either 'prototypes' or 'reactors' must be specified, but not both: " \
-            f"prototypes={prototypes}, reactors={reactors}"
+        ), (
+            "Either 'prototypes' or 'reactors' must be specified, "
+            f"but not both: prototypes={prototypes}, "
+            f"reactors={reactors}"
+        )
 
         if prototypes is None and reactors is None:
             prototypes = self.reactors
@@ -1414,93 +1447,122 @@ class CyclusOutput:
 
         # Realized CF from timeseriespower, aggregated robustly across agents.
         # We infer nameplate per agent from its time series:
-        # power_cap_mwe = MAX(value) over the full agent history where value > 0.
+        # power_cap_mwe = MAX(value) over the full agent history where
+        # value > 0.
         if return_avg:
-            rows = self.sql_query(f"""
+            rows = self.sql_query(
+                f"""
                 WITH cap AS (
-                  SELECT
-                    a.agentid AS agentid,
-                    a.prototype AS prototype,
-                    MAX(CASE WHEN ts.value > 0 THEN ts.value ELSE NULL END) AS power_cap_mwe
-                  FROM timeseriespower ts
-                  JOIN agententry a ON a.agentid = ts.agentid
-                  WHERE a.spec LIKE "%Reactor"
-                  AND a.prototype IN ({proto_csv})
-                  GROUP BY a.agentid, a.prototype
+                    SELECT
+                        a.agentid AS agentid,
+                        a.prototype AS prototype,
+                        MAX(
+                            CASE
+                                WHEN ts.value > 0
+                                THEN ts.value
+                                ELSE NULL
+                            END
+                        ) AS power_cap_mwe
+                    FROM timeseriespower ts
+                    JOIN agententry a
+                        ON a.agentid = ts.agentid
+                    WHERE a.spec LIKE "%Reactor"
+                    AND a.prototype IN ({proto_csv})
+                    GROUP BY a.agentid, a.prototype
                 ),
                 win AS (
-                  SELECT
-                    a.agentid AS agentid,
-                    SUM(ts.value) * 1.0 AS sum_power_mwe,
-                    COUNT(ts.time) AS n_steps
-                  FROM timeseriespower ts
-                  JOIN agententry a ON a.agentid = ts.agentid
-                  WHERE a.spec LIKE "%Reactor"
-                  AND a.prototype IN ({proto_csv})
-                  GROUP BY a.agentid
+                    SELECT
+                        a.agentid AS agentid,
+                        SUM(ts.value) * 1.0 AS sum_power_mwe,
+                        COUNT(ts.time) AS n_steps
+                    FROM timeseriespower ts
+                    JOIN agententry a
+                        ON a.agentid = ts.agentid
+                    WHERE a.spec LIKE "%Reactor"
+                    AND a.prototype IN ({proto_csv})
+                    GROUP BY a.agentid
                 ),
                 per_agent AS (
-                  SELECT
-                    cap.agentid AS agentid,
-                    win.sum_power_mwe AS sum_power_mwe,
-                    win.n_steps AS n_steps,
-                    cap.power_cap_mwe AS power_cap_mwe
-                  FROM cap
-                  JOIN win
-                    ON win.agentid = cap.agentid
-                  WHERE cap.power_cap_mwe IS NOT NULL
+                    SELECT
+                        cap.agentid AS agentid,
+                        win.sum_power_mwe AS sum_power_mwe,
+                        win.n_steps AS n_steps,
+                        cap.power_cap_mwe AS power_cap_mwe
+                    FROM cap
+                    JOIN win
+                        ON win.agentid = cap.agentid
+                    WHERE cap.power_cap_mwe IS NOT NULL
                 )
                 SELECT
-                  SUM(sum_power_mwe) / NULLIF(SUM(power_cap_mwe * n_steps), 0) AS capacity_factor
+                    SUM(sum_power_mwe)
+                        / NULLIF(
+                            SUM(power_cap_mwe * n_steps),
+                            0
+                        ) AS capacity_factor
                 FROM per_agent;
-            """)
+                """
+            )
             cf = rows[0][0] if rows and rows[0][0] is not None else 0.0
             cf = float(cf)
             cf = max(0.0, min(1.0, cf))
             return cf
 
-        rows = self.sql_query(f"""
+        rows = self.sql_query(
+            f"""
             WITH cap AS (
-              SELECT
-                a.agentid AS agentid,
-                a.prototype AS prototype,
-                MAX(CASE WHEN ts.value > 0 THEN ts.value ELSE NULL END) AS power_cap_mwe
-              FROM timeseriespower ts
-              JOIN agententry a ON a.agentid = ts.agentid
-              WHERE a.spec LIKE "%Reactor"
-              AND a.prototype IN ({proto_csv})
-              GROUP BY a.agentid, a.prototype
+                SELECT
+                    a.agentid AS agentid,
+                    a.prototype AS prototype,
+                    MAX(
+                        CASE
+                            WHEN ts.value > 0
+                            THEN ts.value
+                            ELSE NULL
+                        END
+                    ) AS power_cap_mwe
+                FROM timeseriespower ts
+                JOIN agententry a
+                    ON a.agentid = ts.agentid
+                WHERE a.spec LIKE "%Reactor"
+                  AND a.prototype IN ({proto_csv})
+                GROUP BY a.agentid, a.prototype
             ),
             win AS (
-              SELECT
-                a.agentid AS agentid,
-                a.prototype AS prototype,
-                SUM(ts.value) * 1.0 AS sum_power_mwe,
-                COUNT(ts.time) AS n_steps
-              FROM timeseriespower ts
-              JOIN agententry a ON a.agentid = ts.agentid
-              WHERE a.spec LIKE "%Reactor"
-              AND a.prototype IN ({proto_csv})
-              GROUP BY a.agentid, a.prototype
+                SELECT
+                    a.agentid AS agentid,
+                    a.prototype AS prototype,
+                    SUM(ts.value) * 1.0 AS sum_power_mwe,
+                    COUNT(ts.time) AS n_steps
+                FROM timeseriespower ts
+                JOIN agententry a
+                    ON a.agentid = ts.agentid
+                WHERE a.spec LIKE "%Reactor"
+                  AND a.prototype IN ({proto_csv})
+                GROUP BY a.agentid, a.prototype
             ),
             per_agent AS (
-              SELECT
-                win.agentid AS agentid,
-                win.prototype AS prototype,
-                win.sum_power_mwe AS sum_power_mwe,
-                win.n_steps AS n_steps,
-                cap.power_cap_mwe AS power_cap_mwe
-              FROM win
-              JOIN cap
-                ON cap.agentid = win.agentid
-              WHERE cap.power_cap_mwe IS NOT NULL
+                SELECT
+                    win.agentid AS agentid,
+                    win.prototype AS prototype,
+                    win.sum_power_mwe AS sum_power_mwe,
+                    win.n_steps AS n_steps,
+                    cap.power_cap_mwe AS power_cap_mwe
+                FROM win
+                JOIN cap
+                    ON cap.agentid = win.agentid
+                WHERE cap.power_cap_mwe IS NOT NULL
             )
             SELECT
-              prototype,
-              SUM(sum_power_mwe) / NULLIF(SUM(power_cap_mwe * n_steps), 0) AS capacity_factor
+                prototype,
+                SUM(sum_power_mwe)
+                    / NULLIF(
+                        SUM(power_cap_mwe * n_steps),
+                        0
+                    ) AS capacity_factor
             FROM per_agent
             GROUP BY prototype;
-        """)
+            """
+        )
 
         cf_dict = {}
         for row in rows:
@@ -1552,7 +1614,8 @@ class CyclusOutput:
         np.ndarray or dict
             If return_sum=True, returns summed array.
             If return_sum=False, returns dict of arrays per prototype.
-            Arrays represent generated power in GW for each time step (monthly),
+            Arrays represent generated power in GW for each time step
+            (monthly),
             or yearly means if yearly=True.
         """
         # aliasing for prototypes/reactors
@@ -1656,8 +1719,8 @@ class CyclusOutput:
         capacity_factors : dict[str, float] or None
             If None, compute generated electricity from timeseriespower-derived
             generated power.
-            If provided, compute generated power from deployed capacity multiplied
-            by capacity factors, then convert to electricity.
+            If provided, compute generated power from deployed capacity
+            multiplied by capacity factors, then convert to electricity.
 
         Returns:
         -------
