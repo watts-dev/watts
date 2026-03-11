@@ -891,6 +891,27 @@ class CyclusOutput:
 
     # --------------- Deployment-related functions ---------------
 
+    def _get_power_agents(self):
+        """
+        Return rows for all power-producing reactor agents.
+
+        Returns:
+        -------
+        list
+            Rows containing agentid, prototype, entertime, and lifetime.
+        """
+        return self.sql_query("""
+            SELECT DISTINCT
+                a.agentid,
+                a.prototype,
+                a.entertime,
+                a.lifetime
+            FROM agententry a
+            JOIN timeseriespower p
+                ON a.agentid = p.agentid
+            WHERE a.spec LIKE "%Reactor"
+        """)
+    
     def get_new_deployments(
         self,
         prototypes: str | list[str] | None = None,
@@ -928,7 +949,7 @@ class CyclusOutput:
             If return_sum=True, returns a single array summed across keys.
         """
         # Check prototypes/reactors and ensure prototypes are a numpy array
-        prototypes = self._normalize_prototypes_reactors(prototypes, reactors)
+        prototypes = self._normalize_prototypes(prototypes, reactors)
 
         # Monthly event counts (one event at EnterTime)
         deploy = {p: np.zeros(self.duration) for p in prototypes}
@@ -936,12 +957,8 @@ class CyclusOutput:
             f"Key '{rest_key}' already exists in deploy dict"
         deploy[rest_key] = np.zeros(self.duration)
 
-        # Pull all reactor agents and their entry times
-        rows = self.sql_query("""
-            SELECT prototype, entertime
-            FROM agententry
-            WHERE spec LIKE "%Reactor"
-        """)
+        # Pull all power-producing reactor agents and their entry times
+        rows = self._get_power_agents()
 
         for r in rows:
             proto = r["prototype"]
@@ -1012,7 +1029,7 @@ class CyclusOutput:
             If return_sum=True, returns a single array summed across keys.
         """
         # Check prototypes/reactors and ensure prototypes are a numpy array
-        prototypes = self._normalize_prototypes_reactors(prototypes, reactors)
+        prototypes = self._normalize_prototypes(prototypes, reactors)
 
         # Monthly event counts (one event at retirement time)
         retire = {p: np.zeros(self.duration) for p in prototypes}
@@ -1040,12 +1057,8 @@ class CyclusOutput:
             except Exception:
                 exit_map = {}
 
-        # Pull all reactor agents with entry/lifetime info
-        rows = self.sql_query("""
-            SELECT agentid, prototype, entertime, lifetime
-            FROM agententry
-            WHERE spec LIKE "%Reactor"
-        """)
+        # Pull all power-producing reactor agents with entry/lifetime info
+        rows = self._get_power_agents()
 
         for r in rows:
             proto = r["prototype"]
@@ -1225,7 +1238,7 @@ class CyclusOutput:
             simulation (GW).
         """
         # Check prototypes/reactors and ensure prototypes are a numpy array
-        prototypes = self._normalize_prototypes_reactors(prototypes, reactors)
+        prototypes = self._normalize_prototypes(prototypes, reactors)
 
         # Query the database for reactor deployments with non-zero power
         query = self.sql_query(
@@ -1311,7 +1324,7 @@ class CyclusOutput:
         and refueling time r steps: CF = c/(r+c)
         """
         # Check prototypes/reactors and ensure prototypes are a numpy array
-        prototypes = self._normalize_prototypes_reactors(prototypes, reactors)
+        prototypes = self._normalize_prototypes(prototypes, reactors)
 
         if len(prototypes) == 0:
             return {}
@@ -1380,7 +1393,7 @@ class CyclusOutput:
         are not returned (they do not participate in the CF).
         """
         # Check prototypes/reactors and ensure prototypes are a numpy array
-        prototypes = self._normalize_prototypes_reactors(prototypes, reactors)
+        prototypes = self._normalize_prototypes(prototypes, reactors)
 
         if len(prototypes) == 0:
             return 0.0 if return_avg else {}
@@ -1562,7 +1575,7 @@ class CyclusOutput:
             or yearly means if yearly=True.
         """
         # Check prototypes/reactors and ensure prototypes are a numpy array
-        prototypes = self._normalize_prototypes_reactors(prototypes, reactors)
+        prototypes = self._normalize_prototypes(prototypes, reactors)
 
         if len(prototypes) == 0:
             return {} if not return_sum else np.zeros(0)
@@ -1746,7 +1759,7 @@ class CyclusOutput:
             Yearly fuel mass per prototype, or total if return_sum=True.
         """
         # Check prototypes/reactors and ensure prototypes are a numpy array
-        prototypes = self._normalize_prototypes_reactors(prototypes, reactors)
+        prototypes = self._normalize_prototypes(prototypes, reactors)
 
         # Get agent IDs for the specified prototypes (flat list)
         ids_by_proto = self.get_proto_ids(prototypes)
@@ -1825,7 +1838,7 @@ class CyclusOutput:
             or total if return_sum=True.
         """
         # Check prototypes/reactors and ensure prototypes are a numpy array
-        prototypes = self._normalize_prototypes_reactors(prototypes, reactors)
+        prototypes = self._normalize_prototypes(prototypes, reactors)
 
         # Get agent IDs for the specified prototypes (flat list)
         ids_by_proto = self.get_proto_ids(prototypes)
@@ -1903,7 +1916,7 @@ class CyclusOutput:
             Enrichments are expressed as decimals.
         """
         # Check prototypes/reactors and ensure prototypes are a numpy array
-        prototypes = self._normalize_prototypes_reactors(prototypes, reactors)
+        prototypes = self._normalize_prototypes(prototypes, reactors)
 
         # Get agent IDs for the specified prototypes (flat list)
         ids_by_proto = self.get_proto_ids(prototypes)
@@ -2024,7 +2037,7 @@ class CyclusOutput:
             cascade_splits = [np.inf]
 
         # Check prototypes/reactors and ensure prototypes are a numpy array
-        prototypes = self._normalize_prototypes_reactors(prototypes, reactors)
+        prototypes = self._normalize_prototypes(prototypes, reactors)
 
         # Mass and enrichment arrays
         fuel_mass, enr = self.get_fuel_mass_and_enrichment(
@@ -2249,7 +2262,7 @@ class CyclusOutput:
             reactors=reactors,
         )["swu"]
 
-    def _normalize_prototypes(self, prototypes, reactors,):
+    def _normalize_prototypes(self, prototypes, reactors):
         """
         Ensure that exactly one of prototypes or reactors is specified,
         and return a normalized array of prototypes.
