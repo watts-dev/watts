@@ -927,20 +927,8 @@ class CyclusOutput:
 
             If return_sum=True, returns a single array summed across keys.
         """
-        # Match the prototypes/reactors aliasing style used elsewhere
-        assert (
-            prototypes is None or reactors is None
-        ), (
-            "Either 'prototypes' or 'reactors' must be specified, "
-            f"but not both: prototypes={prototypes}, "
-            f"reactors={reactors}"
-        )
-
-        if prototypes is None and reactors is None:
-            prototypes = self.reactors
-        elif reactors is not None:
-            prototypes = reactors
-        prototypes = np.atleast_1d(prototypes)
+        # Check prototypes/reactors and ensure prototypes are a numpy array
+        prototypes = self._normalize_prototypes_reactors(prototypes, reactors)
 
         # Monthly event counts (one event at EnterTime)
         deploy = {p: np.zeros(self.duration) for p in prototypes}
@@ -1023,20 +1011,8 @@ class CyclusOutput:
 
             If return_sum=True, returns a single array summed across keys.
         """
-        # Match the prototypes/reactors aliasing style used elsewhere
-        assert (
-            prototypes is None or reactors is None
-        ), (
-            "Either 'prototypes' or 'reactors' must be specified, "
-            f"but not both: prototypes={prototypes}, "
-            f"reactors={reactors}"
-        )
-
-        if prototypes is None and reactors is None:
-            prototypes = self.reactors
-        elif reactors is not None:
-            prototypes = reactors
-        prototypes = np.atleast_1d(prototypes)
+        # Check prototypes/reactors and ensure prototypes are a numpy array
+        prototypes = self._normalize_prototypes_reactors(prototypes, reactors)
 
         # Monthly event counts (one event at retirement time)
         retire = {p: np.zeros(self.duration) for p in prototypes}
@@ -1248,16 +1224,8 @@ class CyclusOutput:
             much power is deployed for each key during the
             simulation (GW).
         """
-        # Convert reactors/prototypes to a numpy array
-        assert (
-            prototypes is None or reactors is None
-        ), f"Either 'prototypes' or 'reactors' must be specified, \
-            but not both: prototypes={prototypes}, reactors={reactors}"
-        if prototypes is None and reactors is None:
-            prototypes = self.reactors
-        elif reactors is not None:
-            prototypes = reactors
-        prototypes = np.atleast_1d(prototypes)
+        # Check prototypes/reactors and ensure prototypes are a numpy array
+        prototypes = self._normalize_prototypes_reactors(prototypes, reactors)
 
         # Query the database for reactor deployments with non-zero power
         query = self.sql_query(
@@ -1342,21 +1310,8 @@ class CyclusOutput:
         Capacity factor per reactor prototype from cycle time c
         and refueling time r steps: CF = c/(r+c)
         """
-
-        assert (
-            prototypes is None or reactors is None
-        ), (
-            "Either 'prototypes' or 'reactors' must be specified, "
-            f"but not both: prototypes={prototypes}, "
-            f"reactors={reactors}"
-        )
-
-        if prototypes is None and reactors is None:
-            prototypes = self.reactors
-        elif reactors is not None:
-            prototypes = reactors
-
-        prototypes = np.atleast_1d(prototypes)
+        # Check prototypes/reactors and ensure prototypes are a numpy array
+        prototypes = self._normalize_prototypes_reactors(prototypes, reactors)
 
         if len(prototypes) == 0:
             return {}
@@ -1424,21 +1379,8 @@ class CyclusOutput:
         Prototypes with no reactors present during the selected time window
         are not returned (they do not participate in the CF).
         """
-        # Match the house style: prototypes/reactors aliasing
-        assert (
-            prototypes is None or reactors is None
-        ), (
-            "Either 'prototypes' or 'reactors' must be specified, "
-            f"but not both: prototypes={prototypes}, "
-            f"reactors={reactors}"
-        )
-
-        if prototypes is None and reactors is None:
-            prototypes = self.reactors
-        elif reactors is not None:
-            prototypes = reactors
-
-        prototypes = np.atleast_1d(prototypes)
+        # Check prototypes/reactors and ensure prototypes are a numpy array
+        prototypes = self._normalize_prototypes_reactors(prototypes, reactors)
 
         if len(prototypes) == 0:
             return 0.0 if return_avg else {}
@@ -1619,15 +1561,8 @@ class CyclusOutput:
             (monthly),
             or yearly means if yearly=True.
         """
-        # aliasing for prototypes/reactors
-        assert (
-            prototypes is None or reactors is None
-        ), "Either 'prototypes' or 'reactors' must be specified, but not both."
-        if prototypes is None and reactors is None:
-            prototypes = self.reactors
-        elif reactors is not None:
-            prototypes = reactors
-        prototypes = np.atleast_1d(prototypes)
+        # Check prototypes/reactors and ensure prototypes are a numpy array
+        prototypes = self._normalize_prototypes_reactors(prototypes, reactors)
 
         if len(prototypes) == 0:
             return {} if not return_sum else np.zeros(0)
@@ -1810,15 +1745,8 @@ class CyclusOutput:
         fuel_mass : np.ndarray or dict[str, np.ndarray]
             Yearly fuel mass per prototype, or total if return_sum=True.
         """
-        assert (
-            prototypes is None or reactors is None
-        ), f"Either 'prototypes' or 'reactors' must be specified, \
-            but not both: prototypes={prototypes}, reactors={reactors}"
-        if prototypes is None and reactors is None:
-            prototypes = self.reactors
-        elif reactors is not None:
-            prototypes = reactors
-        prototypes = np.atleast_1d(prototypes)
+        # Check prototypes/reactors and ensure prototypes are a numpy array
+        prototypes = self._normalize_prototypes_reactors(prototypes, reactors)
 
         # Get agent IDs for the specified prototypes (flat list)
         ids_by_proto = self.get_proto_ids(prototypes)
@@ -1896,15 +1824,8 @@ class CyclusOutput:
             Yearly discharged fuel mass per prototype,
             or total if return_sum=True.
         """
-        assert (
-            prototypes is None or reactors is None
-        ), f"Either 'prototypes' or 'reactors' must be specified, \
-            but not both: prototypes={prototypes}, reactors={reactors}"
-        if prototypes is None and reactors is None:
-            prototypes = self.reactors
-        elif reactors is not None:
-            prototypes = reactors
-        prototypes = np.atleast_1d(prototypes)
+        # Check prototypes/reactors and ensure prototypes are a numpy array
+        prototypes = self._normalize_prototypes_reactors(prototypes, reactors)
 
         # Get agent IDs for the specified prototypes (flat list)
         ids_by_proto = self.get_proto_ids(prototypes)
@@ -1981,15 +1902,8 @@ class CyclusOutput:
             Annual enrichment time series for each prototype, or a total array.
             Enrichments are expressed as decimals.
         """
-        assert (
-            prototypes is None or reactors is None
-        ), f"Either 'prototypes' or 'reactors' must be specified, \
-            but not both: prototypes={prototypes}, reactors={reactors}"
-        if prototypes is None and reactors is None:
-            prototypes = self.reactors
-        elif reactors is not None:
-            prototypes = reactors
-        prototypes = np.atleast_1d(prototypes)
+        # Check prototypes/reactors and ensure prototypes are a numpy array
+        prototypes = self._normalize_prototypes_reactors(prototypes, reactors)
 
         # Get agent IDs for the specified prototypes (flat list)
         ids_by_proto = self.get_proto_ids(prototypes)
@@ -2109,16 +2023,8 @@ class CyclusOutput:
         if not cascade_splits:
             cascade_splits = [np.inf]
 
-        # Reactor list
-        assert (
-            prototypes is None or reactors is None
-        ), f"Either 'prototypes' or 'reactors' must be specified, \
-            but not both: prototypes={prototypes}, reactors={reactors}"
-        if prototypes is None and reactors is None:
-            prototypes = self.reactors
-        elif reactors is not None:
-            prototypes = reactors
-        prototypes = np.atleast_1d(prototypes)
+        # Check prototypes/reactors and ensure prototypes are a numpy array
+        prototypes = self._normalize_prototypes_reactors(prototypes, reactors)
 
         # Mass and enrichment arrays
         fuel_mass, enr = self.get_fuel_mass_and_enrichment(
@@ -2342,3 +2248,37 @@ class CyclusOutput:
             cascade_splits=cascade_splits,
             reactors=reactors,
         )["swu"]
+
+    def _normalize_prototypes(self, prototypes, reactors,):
+        """
+        Ensure that exactly one of prototypes or reactors is specified,
+        and return a normalized array of prototypes.
+
+        Parameters:
+        ----------
+        prototypes : str, list of str, or None
+            Reactor prototype(s) to analyze. If None, use all reactor types
+            in the simulation.
+        reactors : str or list of str, optional
+            alias for prototypes, used for compatibility with DYMOND plugin.
+            reactors and prototypes cannot both be specified.
+
+        Returns:
+        -------
+        np.ndarray
+            Normalized array of prototypes to analyze.
+        """
+        assert (
+            prototypes is None or reactors is None
+        ), (
+            "Either 'prototypes' or 'reactors' must be specified, "
+            f"but not both: prototypes={prototypes}, "
+            f"reactors={reactors}"
+        )
+
+        if prototypes is None and reactors is None:
+            prototypes = self.reactors
+        elif reactors is not None:
+            prototypes = reactors
+        prototypes = np.atleast_1d(prototypes)
+        return prototypes
