@@ -291,3 +291,33 @@ prop1  prop2
     assert new_results.inputs == results.inputs
     assert new_results.outputs == results.outputs
     assert new_results.stdout == results.stdout
+
+def test_move_files(run_in_tmpdir):
+    # testing move files works properly after mpi changes
+    params = watts.Parameters(city='Chicago', population=2.7e6)
+    timestamp = time.time_ns()
+    exec_info = watts.ExecInfo(123, 'OpenMC', 'test', timestamp)
+
+    # Create some fake input and output files
+    geom_xml = Path('geometry.xml')
+    geom_xml.touch()
+    sp = Path('statepoint.50.h5')
+    sp.touch()
+    log_file = Path('OpenMC_log.txt')
+    log_file.write_text("output\n")
+
+    results = watts.ResultsOpenMC(params, exec_info, [geom_xml], [sp, log_file])
+
+    # Move fake files to a new location
+    dst = Path('new_location')
+    dst.mkdir()
+    results.move_files(dst)
+
+    # check that files are in new destination
+    assert (dst / 'geometry.xml').exists()
+    assert (dst / 'statepoint.50.h5').exists()
+    assert (dst / 'OpenMC_log.txt').exists()
+
+    # Check that path in results object are updated 
+    assert results.inputs[0] == dst / 'geometry.xml'
+    assert results.base_path == dst
