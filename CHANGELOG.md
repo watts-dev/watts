@@ -6,11 +6,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-
 ### Changes
-
 * Update ACCERT output name
   ([#120](https://github.com/watts-dev/watts/pull/120))
+
+### Fixed
+* Fixed `cd_tmpdir` and `move_files` to be MPI-aware, ensuring all MPI ranks
+  share the same temporary directory when running `PluginOpenMC` with
+  `integrator.integrate()` for depletion calculations
+  ([#121](https://github.com/watts-dev/watts/pull/121))
 
 ## [0.5.2]
 
