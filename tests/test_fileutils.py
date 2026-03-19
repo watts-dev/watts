@@ -4,10 +4,11 @@
 from contextlib import redirect_stdout
 import io
 from pathlib import Path
+import shutil
 import subprocess
 import sys
-
-from watts.fileutils import tee_stdout, tee_stderr, run
+import os
+from watts.fileutils import tee_stdout, tee_stderr, run, cd_tmpdir
 
 
 def test_tee_stdout(run_in_tmpdir, capsys):
@@ -55,3 +56,26 @@ def test_run(run_in_tmpdir):
         run(['env'])
     assert f.getvalue() == file_output
 
+# Last two tests make sure that cd_tmpdir functions after mpi changes for serial runs
+def test_cd_tmpdir(run_in_tmpdir):
+    original_cwd = Path.cwd()
+    with cd_tmpdir():
+        tmp_cwd = Path.cwd()
+        # Should have changed to a different directory
+        assert tmp_cwd != original_cwd
+        # Should be a real writable directory
+        Path('test_file.txt').touch()
+        assert Path('test_file.txt').exists()
+    # Should return to original directory after context manager exits
+    assert Path.cwd() == original_cwd
+    # Tmp dir should be cleaned up by default
+    assert not tmp_cwd.exists()
+
+
+def test_cd_tmpdir_no_cleanup(run_in_tmpdir):
+    with cd_tmpdir(cleanup=False):
+        tmp_cwd = Path.cwd()
+    # Tmp dir should still exist when cleanup=False
+    assert tmp_cwd.exists()
+    # Clean up manually
+    shutil.rmtree(tmp_cwd)

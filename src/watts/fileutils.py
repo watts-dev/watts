@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 from typing import Union
 
 if sys.platform != 'win32':
@@ -23,20 +24,53 @@ PathLike = Union[str, bytes, os.PathLike]
 def cd_tmpdir(cleanup: bool = True):
     """Context manager to change to/return from a tmpdir.
 
+    If running under MPI, all ranks will share the same temporary directory
+    to allow coordinated file I/O (e.g. HDF5 statepoint writing in OpenMC).
+
     Parameters
     ----------
     cleanup
         Whether to clean up the temporary directory
+
+    Yields
+    ------
+    None
+        Yields control to the caller while in the temporary directory
     """
-    tmpdir = tempfile.mkdtemp()
-    cwd = os.getcwd()
+    try:
+        from mpi4py import MPI
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+
+        # Only rank 0 creates the tmp directory
+        if rank == 0:
+            tmpdir = Path(tempfile.mkdtemp())
+        else:
+            tmpdir = None
+
+        # Broadcast the path to all ranks so they share the same directory
+        tmpdir = Path(comm.bcast(str(tmpdir) if tmpdir else None, root=0))
+
+    except ImportError:
+        # mpi4py not available, fall back to normal serial behavior
+        tmpdir = Path(tempfile.mkdtemp())
+        rank = 0
+
+    cwd = Path.cwd()
     try:
         os.chdir(tmpdir)
         yield
     finally:
         os.chdir(cwd)
         if cleanup:
-            shutil.rmtree(tmpdir)
+            try:
+                from mpi4py import MPI
+                # Only rank 0 cleans up to avoid race conditions
+                MPI.COMM_WORLD.Barrier()    
+                if MPI.COMM_WORLD.Get_rank() == 0:
+                    shutil.rmtree(tmpdir)
+            except ImportError:
+                shutil.rmtree(tmpdir)
 
 
 def open_file(path: PathLike):

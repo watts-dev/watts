@@ -88,18 +88,40 @@ class Results:
             Destination path where files should be moved
 
         """
+        try:
+            from mpi4py import MPI
+            comm = MPI.COMM_WORLD
+            rank = comm.Get_rank()
+        except ImportError:
+            rank = 0
 
         dst_path = Path(dst)
-        # Move input/output files and change base -- note that trying to use the
-        # Path.replace method doesn't work across filesystems, so instead we use
-        # shutil.move
-        for i, input in enumerate(self.inputs):
-            shutil.move(str(input), str(dst_path / input.name))
-            self.inputs[i] = dst_path / input.name
-        for i, output in enumerate(self.outputs):
-            shutil.move(str(output), str(dst_path / output.name))
-            self.outputs[i] = dst_path / output.name
-        self.base_path = dst_path
+
+        # Only rank 0 moves files to avoid race conditions when all ranks
+        # share the same tmp directory (MPI-aware cd_tmpdir)
+        if rank == 0:
+            for i, inp in enumerate(self.inputs):
+                shutil.move(inp, dst_path / inp.name)
+                self.inputs[i] = dst_path / inp.name
+            for i, out in enumerate(self.outputs):
+                shutil.move(out, dst_path / out.name)
+                self.outputs[i] = dst_path / out.name
+            self.base_path = dst_path
+
+        # All ranks wait until rank 0 finishes moving files
+        try:
+            from mpi4py import MPI
+            MPI.COMM_WORLD.Barrier()
+        except ImportError:
+            pass
+
+        # Non-rank-0 processes need to update their paths too
+        if rank != 0:
+            for i, inp in enumerate(self.inputs):
+                self.inputs[i] = dst_path / inp.name
+            for i, out in enumerate(self.outputs):
+                self.outputs[i] = dst_path / out.name
+            self.base_path = dst_path
 
     def save(self, filename: PathLike):
         """Save results to a pickle file
