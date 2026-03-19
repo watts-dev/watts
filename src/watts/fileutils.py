@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 from typing import Union
 
 if sys.platform != 'win32':
@@ -30,6 +31,11 @@ def cd_tmpdir(cleanup: bool = True):
     ----------
     cleanup
         Whether to clean up the temporary directory
+
+    Yields
+    ------
+    None
+        Yields control to the caller while in the temporary directory
     """
     try:
         from mpi4py import MPI
@@ -38,19 +44,19 @@ def cd_tmpdir(cleanup: bool = True):
 
         # Only rank 0 creates the tmp directory
         if rank == 0:
-            tmpdir = tempfile.mkdtemp()
+            tmpdir = Path(tempfile.mkdtemp())
         else:
             tmpdir = None
 
         # Broadcast the path to all ranks so they share the same directory
-        tmpdir = comm.bcast(tmpdir, root=0)
+        tmpdir = Path(comm.bcast(str(tmpdir) if tmpdir else None, root=0))
 
     except ImportError:
         # mpi4py not available, fall back to normal serial behavior
-        tmpdir = tempfile.mkdtemp()
+        tmpdir = Path(tempfile.mkdtemp())
         rank = 0
 
-    cwd = os.getcwd()
+    cwd = Path.cwd()
     try:
         os.chdir(tmpdir)
         yield

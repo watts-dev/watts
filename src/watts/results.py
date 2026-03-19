@@ -100,12 +100,12 @@ class Results:
         # Only rank 0 moves files to avoid race conditions when all ranks
         # share the same tmp directory (MPI-aware cd_tmpdir)
         if rank == 0:
-            for i, input in enumerate(self.inputs):
-                shutil.move(str(input), str(dst_path / input.name))
-                self.inputs[i] = dst_path / input.name
-            for i, output in enumerate(self.outputs):
-                shutil.move(str(output), str(dst_path / output.name))
-                self.outputs[i] = dst_path / output.name
+            for i, inp in enumerate(self.inputs):
+                shutil.move(inp, dst_path / inp.name)
+                self.inputs[i] = dst_path / inp.name
+            for i, out in enumerate(self.outputs):
+                shutil.move(out, dst_path / out.name)
+                self.outputs[i] = dst_path / out.name
             self.base_path = dst_path
 
         # All ranks wait until rank 0 finishes moving files
@@ -117,10 +117,10 @@ class Results:
 
         # Non-rank-0 processes need to update their paths too
         if rank != 0:
-            for i, input in enumerate(self.inputs):
-                self.inputs[i] = dst_path / input.name
-            for i, output in enumerate(self.outputs):
-                self.outputs[i] = dst_path / output.name
+            for i, inp in enumerate(self.inputs):
+                self.inputs[i] = dst_path / inp.name
+            for i, out in enumerate(self.outputs):
+                self.outputs[i] = dst_path / out.name
             self.base_path = dst_path
 
     def save(self, filename: PathLike):

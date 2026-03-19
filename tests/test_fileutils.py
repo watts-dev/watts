@@ -4,6 +4,7 @@
 from contextlib import redirect_stdout
 import io
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import os
@@ -57,24 +58,24 @@ def test_run(run_in_tmpdir):
 
 # Last two tests make sure that cd_tmpdir functions after mpi changes for serial runs
 def test_cd_tmpdir(run_in_tmpdir):
-    original_cwd = os.getcwd()
+    original_cwd = Path.cwd()
     with cd_tmpdir():
-        tmp_cwd = os.getcwd()
+        tmp_cwd = Path.cwd()
         # Should have changed to a different directory
         assert tmp_cwd != original_cwd
         # Should be a real writable directory
         Path('test_file.txt').touch()
         assert Path('test_file.txt').exists()
     # Should return to original directory after context manager exits
-    assert os.getcwd() == original_cwd
+    assert Path.cwd() == original_cwd
     # Tmp dir should be cleaned up by default
-    assert not Path(tmp_cwd).exists()
+    assert not tmp_cwd.exists()
+
 
 def test_cd_tmpdir_no_cleanup(run_in_tmpdir):
     with cd_tmpdir(cleanup=False):
-        tmp_cwd = os.getcwd()
+        tmp_cwd = Path.cwd()
     # Tmp dir should still exist when cleanup=False
-    assert Path(tmp_cwd).exists()
+    assert tmp_cwd.exists()
     # Clean up manually
-    import shutil
     shutil.rmtree(tmp_cwd)
