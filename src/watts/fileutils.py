@@ -131,13 +131,17 @@ def run(args):
     Based on https://stackoverflow.com/a/12272262 and
     https://stackoverflow.com/a/7730201
     """
+    # Windows doesn't support select.select and fcntl module so just default to
+    # using subprocess.run. In this case, show_stdout/show_stderr won't work.
     if sys.platform == 'win32':
         subprocess.run(args)
         return
 
+    # Helper function to add the O_NONBLOCK flag to a file descriptor
     def make_async(fd):
         fcntl.fcntl(fd, fcntl.F_SETFL, fcntl.fcntl(fd, fcntl.F_GETFL) | os.O_NONBLOCK)
 
+    # Helper function to read some data from a file descriptor, ignoring EAGAIN errors
     def read_async(fd):
         try:
             return fd.read()
