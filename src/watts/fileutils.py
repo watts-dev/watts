@@ -23,12 +23,33 @@ PathLike = Union[str, bytes, os.PathLike]
 def cd_tmpdir(cleanup: bool = True):
     """Context manager to change to/return from a tmpdir.
 
+    If running under MPI, all ranks will share the same temporary directory
+    to allow coordinated file I/O (e.g. HDF5 statepoint writing in OpenMC).
+
     Parameters
     ----------
     cleanup
         Whether to clean up the temporary directory
     """
-    tmpdir = tempfile.mkdtemp()
+    try:
+        from mpi4py import MPI
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+
+        # Only rank 0 creates the tmp directory
+        if rank == 0:
+            tmpdir = tempfile.mkdtemp()
+        else:
+            tmpdir = None
+
+        # Broadcast the path to all ranks so they share the same directory
+        tmpdir = comm.bcast(tmpdir, root=0)
+
+    except ImportError:
+        # mpi4py not available, fall back to normal serial behavior
+        tmpdir = tempfile.mkdtemp()
+        rank = 0
+
     cwd = os.getcwd()
     try:
         os.chdir(tmpdir)
@@ -36,7 +57,13 @@ def cd_tmpdir(cleanup: bool = True):
     finally:
         os.chdir(cwd)
         if cleanup:
-            shutil.rmtree(tmpdir)
+            try:
+                from mpi4py import MPI
+                # Only rank 0 cleans up to avoid race conditions
+                if MPI.COMM_WORLD.Get_rank() == 0:
+                    shutil.rmtree(tmpdir)
+            except ImportError:
+                shutil.rmtree(tmpdir)
 
 
 def open_file(path: PathLike):
@@ -104,17 +131,13 @@ def run(args):
     Based on https://stackoverflow.com/a/12272262 and
     https://stackoverflow.com/a/7730201
     """
-    # Windows doesn't support select.select and fcntl module so just default to
-    # using subprocess.run. In this case, show_stdout/show_stderr won't work.
     if sys.platform == 'win32':
         subprocess.run(args)
         return
 
-    # Helper function to add the O_NONBLOCK flag to a file descriptor
     def make_async(fd):
         fcntl.fcntl(fd, fcntl.F_SETFL, fcntl.fcntl(fd, fcntl.F_GETFL) | os.O_NONBLOCK)
 
-    # Helper function to read some data from a file descriptor, ignoring EAGAIN errors
     def read_async(fd):
         try:
             return fd.read()
