@@ -1313,6 +1313,10 @@ class CyclusOutput:
             proto = row["prototype"]
             t0 = row["entertime"]
             t1 = row["lifetime"]
+            # If lifetime is -1, treat as running until
+            # the end of simulation
+            if t1 == -1:
+                t1 = self.duration - t0 + 1
             pow = row['value']
             if proto in power_dict.keys():
                 assert (
