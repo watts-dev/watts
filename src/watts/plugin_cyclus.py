@@ -631,6 +631,34 @@ class CyclusOutput:
         yearly = arr[:num_years].reshape(-1, 12).sum(axis=1)
         return np.insert(yearly[:-1], 0, 0.0)  # remove last year, prepend 0
 
+    def get_yearly_max(self, arr):
+        """
+        Convert monthly time series data into yearly maximums, with
+        initial alignment.
+
+        This function:
+        - Takes the maximum value over consecutive 12-month periods
+        - Prepends an initial 0.0 as a placeholder for the year
+          before data begins
+        - Returns one value per year, excluding the final year
+          of data
+
+        Parameters:
+        ----------
+        arr : array-like
+            1D array of monthly values
+
+        Returns:
+        -------
+        np.ndarray
+            1D array of yearly maximums, length = floor(len(arr) / 12),
+            plus one initial 0
+        """
+        arr = np.asarray(arr)
+        num_years = (len(arr) // 12) * 12  # truncate to full years
+        yearly = arr[:num_years].reshape(-1, 12).max(axis=1)
+        return np.insert(yearly[:-1], 0, 0.0)  # remove last year, prepend 0
+
     # --------------- Basic data extraction functions ---------------
 
     def get_times(self):
@@ -911,7 +939,7 @@ class CyclusOutput:
                 ON a.agentid = p.agentid
             WHERE a.spec LIKE "%Reactor"
         """)
-    
+
     def get_new_deployments(
         self,
         prototypes: str | list[str] | None = None,
@@ -1304,7 +1332,7 @@ class CyclusOutput:
         # If yearly is True, convert monthly data to yearly data
         if yearly:
             for key in power_dict.keys():
-                power_dict[key] = self.get_yearly_sum(power_dict[key]) / 12.0
+                power_dict[key] = self.get_yearly_max(power_dict[key])
 
         # If return_sum is True, sum the powers  across all prototypes
         # included (excludes rest_key)
