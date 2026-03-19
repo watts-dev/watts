@@ -66,6 +66,7 @@ def cd_tmpdir(cleanup: bool = True):
             try:
                 from mpi4py import MPI
                 # Only rank 0 cleans up to avoid race conditions
+                MPI.COMM_WORLD.Barrier()    
                 if MPI.COMM_WORLD.Get_rank() == 0:
                     shutil.rmtree(tmpdir)
             except ImportError:
