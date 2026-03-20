@@ -631,7 +631,8 @@ class CyclusOutput:
         yearly = arr[:num_years].reshape(-1, 12).sum(axis=1)
         return np.insert(yearly[:-1], 0, 0.0)  # remove last year, prepend 0
 
-    def get_yearly_max(self, arr):
+    @staticmethod
+    def get_yearly_max(arr):
         """
         Convert monthly time series data into yearly maximums, with
         initial alignment.
@@ -658,6 +659,37 @@ class CyclusOutput:
         num_years = (len(arr) // 12) * 12  # truncate to full years
         yearly = arr[:num_years].reshape(-1, 12).max(axis=1)
         return np.insert(yearly[:-1], 0, 0.0)  # remove last year, prepend 0
+
+    @staticmethod
+    def get_yearly_end(arr):
+        """
+        Convert monthly stock-like data into yearly end-of-year values,
+        with initial alignment.
+
+        This function:
+        - takes the value at the final month of each full year
+        - prepends an initial 0.0 as a placeholder for the year
+        before data begins
+        - returns one value per year, excluding the final year
+        of data
+
+        Parameters:
+        ----------
+        arr : array-like
+            1D array of monthly values
+
+        Returns:
+        -------
+        np.ndarray
+            1D array of yearly end-of-year values, plus one initial 0
+        """
+        arr = np.asarray(arr)
+        n_full_years = len(arr) // 12
+        end_of_year_idx = 12 * np.arange(1, n_full_years + 1) - 1
+        end_of_year_idx = end_of_year_idx[:-1]
+        yearly = arr[end_of_year_idx] if len(
+            end_of_year_idx) > 0 else np.zeros(0)
+        return np.insert(yearly, 0, 0.0)
 
     # --------------- Basic data extraction functions ---------------
 
@@ -921,23 +953,54 @@ class CyclusOutput:
 
     def _get_power_agents(self):
         """
-        Return rows for all power-producing reactor agents.
+        Return rows for all reactor agents that produce positive power.
+
+        This helper defines the power-based active window for each reactor
+        agent. It is used as the common source of truth for:
+        - first deployment into service
+        - retirement from service
+        - active fleet size
+        - deployed capacity
+
+        The following quantities are returned for each reactor agent:
+        - first_power_time:
+            first time step with strictly positive power
+        - last_power_time:
+            last time step with strictly positive power
+        - power_cap:
+            maximum positive power value observed for that agent
 
         Returns:
-        -------
+        --------
         list
-            Rows containing agentid, prototype, entertime, and lifetime.
+            Rows containing:
+            - agentid
+            - prototype
+            - entertime
+            - lifetime
+            - first_power_time
+            - last_power_time
+            - power_cap
         """
         return self.sql_query("""
-            SELECT DISTINCT
+            SELECT
                 a.agentid,
                 a.prototype,
                 a.entertime,
-                a.lifetime
+                a.lifetime,
+                MIN(CASE WHEN p.value > 0 THEN p.time END) AS first_power_time,
+                MAX(CASE WHEN p.value > 0 THEN p.time END) AS last_power_time,
+                MAX(CASE WHEN p.value > 0 THEN p.value END) AS power_cap
             FROM agententry a
             JOIN timeseriespower p
                 ON a.agentid = p.agentid
             WHERE a.spec LIKE "%Reactor"
+            GROUP BY
+                a.agentid,
+                a.prototype,
+                a.entertime,
+                a.lifetime
+            HAVING MAX(CASE WHEN p.value > 0 THEN 1 ELSE 0 END) = 1
         """)
 
     def get_new_deployments(
@@ -949,8 +1012,11 @@ class CyclusOutput:
         rest_key: str = "legacy",
     ) -> np.ndarray | dict[str, np.ndarray]:
         """
-        Determines the number of newly deployed reactors for each time step
+        Determine the number of newly active reactors for each time step
         for each reactor prototype.
+
+        A reactor is considered newly deployed at the first time step
+        where it produces strictly positive power.
 
         Parameters:
         -----------
@@ -979,22 +1045,30 @@ class CyclusOutput:
         # Check prototypes/reactors and ensure prototypes are a numpy array
         prototypes = self._normalize_prototypes(prototypes, reactors)
 
-        # Monthly event counts (one event at EnterTime)
+        # Monthly event counts (one event at first positive-power time)
         deploy = {p: np.zeros(self.duration) for p in prototypes}
         assert rest_key not in deploy, \
             f"Key '{rest_key}' already exists in deploy dict"
         deploy[rest_key] = np.zeros(self.duration)
 
-        # Pull all power-producing reactor agents and their entry times
+        # Pull all power-producing reactor agents and their power windows
         rows = self._get_power_agents()
 
-        for r in rows:
-            proto = r["prototype"]
-            # Convert Cyclus timestep (effectively 1-based here)
-            # to 0-based index
-            idx = int(r["entertime"]) - 1
+        for row in rows:
+            proto = row["prototype"]
+            first_power_time = row["first_power_time"]
+
+            # Skip agents with no positive-power time
+            if first_power_time is None:
+                continue
+
+            # timeseriespower.time is treated as a 0-based index
+            idx = int(first_power_time)
+
+            # Ignore any out-of-range indices
             if idx < 0 or idx >= self.duration:
                 continue
+
             key = proto if proto in deploy else rest_key
             deploy[key][idx] += 1.0
 
@@ -1010,8 +1084,9 @@ class CyclusOutput:
         # If return_sum is True, sum the deployments across all prototypes
         # included (excludes rest_key)
         if return_sum:
-            # Only sum explicitly requested prototypes
             keys_to_sum = [p for p in prototypes if p in deploy]
+            if len(keys_to_sum) == 0:
+                return np.zeros_like(next(iter(deploy.values())))
             return np.sum([deploy[k] for k in keys_to_sum], axis=0)
 
         return deploy
@@ -1025,12 +1100,11 @@ class CyclusOutput:
         rest_key: str = "legacy",
     ) -> np.ndarray | dict[str, np.ndarray]:
         """
-        Determines the number of reactor retirements for each time step
+        Determine the number of reactor retirements for each time step
         for each reactor prototype.
 
-        Retirement time is taken from AgentExit.ExitTime when available,
-        otherwise it is computed as EnterTime + Lifetime
-        (Lifetime=-1 => never retires).
+        A reactor is considered retired at the time step immediately after
+        its last strictly positive power production time.
 
         Parameters:
         -----------
@@ -1065,47 +1139,23 @@ class CyclusOutput:
             f"Key '{rest_key}' already exists in retire dict"
         retire[rest_key] = np.zeros(self.duration)
 
-        # Detect AgentExit table (if present)
-        has_exit = False
-        try:
-            chk = self.sql_query(
-                "SELECT name FROM sqlite_master "
-                "WHERE type='table' AND name='AgentExit';"
-            )
-            has_exit = len(chk) > 0
-        except Exception:
-            has_exit = False
-
-        exit_map = {}
-        if has_exit:
-            # Build map: agentid -> exittime
-            try:
-                ex = self.sql_query("SELECT agentid, exittime FROM agentexit;")
-                exit_map = {row["agentid"]: row["exittime"] for row in ex}
-            except Exception:
-                exit_map = {}
-
-        # Pull all power-producing reactor agents with entry/lifetime info
+        # Pull all power-producing reactor agents and their power windows
         rows = self._get_power_agents()
 
-        for r in rows:
-            proto = r["prototype"]
-            agentid = r["agentid"]
-            t0 = int(r["entertime"])
-            life = int(r["lifetime"])
+        for row in rows:
+            proto = row["prototype"]
+            last_power_time = row["last_power_time"]
 
-            # Prefer actual exit time when available
-            exittime = exit_map.get(agentid, None)
-            if exittime is not None:
-                t_ret = int(exittime)
-            else:
-                # If no exit table/entry, infer from lifetime
-                if life == -1:
-                    continue  # never retires
-                t_ret = t0 + life  # retirement event at end of lifetime
+            # Skip agents with no positive-power time
+            if last_power_time is None:
+                continue
 
-            # Convert Cyclus timestep to 0-based index
-            idx = t_ret - 1
+            # Retirement event occurs one step after the last
+            # positive-power timestep
+            idx = int(last_power_time) + 1
+
+            # If retirement occurs beyond the simulation horizon,
+            # do not count it
             if idx < 0 or idx >= self.duration:
                 continue
 
@@ -1124,8 +1174,9 @@ class CyclusOutput:
         # If return_sum is True, sum the retirements across all prototypes
         # included (excludes rest_key)
         if return_sum:
-            # Only sum explicitly requested prototypes
             keys_to_sum = [p for p in prototypes if p in retire]
+            if len(keys_to_sum) == 0:
+                return np.zeros_like(next(iter(retire.values())))
             return np.sum([retire[k] for k in keys_to_sum], axis=0)
 
         return retire
@@ -1139,11 +1190,16 @@ class CyclusOutput:
         rest_key: str = "legacy",
     ) -> np.ndarray | dict[str, np.ndarray]:
         """
-        Determines the size of the deployed reactor fleet for each time step
+        Determine the size of the power-active reactor fleet for each time step
         for each reactor prototype.
 
-        Fleet size is computed from deployments and retirements:
+        Fleet size is computed from power-based deployment and retirement
+        events:
             fleet[t] = fleet[t-1] + new_deployments[t] - retirements[t]
+
+        A reactor enters the fleet at its first strictly positive-power time
+        and exits the fleet immediately after its last strictly positive-power
+        time.
 
         Parameters:
         -----------
@@ -1206,20 +1262,8 @@ class CyclusOutput:
 
         # If yearly is True, convert monthly fleet to end-of-year fleet size
         if yearly:
-            # Match get_yearly_sum's truncation convention:
-            # - Only full years are considered
-            # - The final year is dropped
-            # - An initial 0.0 is prepended
-            n_full_years = (self.duration // 12)
-            end_of_year_idx = 12 * \
-                np.arange(1, n_full_years + 1) - 1  # 0-based
-            # Drop the last year (to match get_yearly_sum behavior)
-            end_of_year_idx = end_of_year_idx[:-1]
-
             for k in list(fleet.keys()):
-                y = fleet[k][end_of_year_idx] if len(
-                    end_of_year_idx) > 0 else np.zeros(0)
-                fleet[k] = np.insert(y, 0, 0.0)
+                fleet[k] = self.get_yearly_end(fleet[k])
 
         # If return_sum is True, sum the fleet size across all prototypes
         # included (excludes rest_key)
@@ -1236,114 +1280,131 @@ class CyclusOutput:
         return_sum: bool = False,
         yearly: bool = True,
         reactors: str | list[str] | None = None,
-        rest_key: str = 'legacy'
+        rest_key: str = "legacy"
     ) -> np.ndarray | dict[str, np.ndarray]:
         """
-        Determines the amount of deployed power (GW) for each time step
-        for each reactor prototype
+        Determine the amount of deployed power (GW) for each time step
+        for each reactor prototype.
+
+        Deployed capacity is based on the actual positive-power window of
+        each reactor agent.
+
+        For each reactor agent:
+        - the active interval begins at first_power_time
+        - the active interval ends at last_power_time
+        - the deployed capacity is taken as the maximum positive power
+        observed for that agent
 
         Parameters:
         -----------
-        prototypes: list of str
-            names of reactor prototypes in the simulation
+        prototypes: str | list[str] | None
+            Names of reactor prototypes in the simulation. If None and reactors
+            is None, uses all reactor types in the simulation.
         return_sum: bool
-            if True, returns a single array summed over all prototypes,
+            If True, returns a single array summed over all prototypes.
         yearly: bool
-            if True, returns yearly sums instead of monthly
-        reactors: list of str
-            alias for prototypes, used for compatibility with DYMOND plugin.
+            If True, returns yearly maximum deployed capacity instead of
+            monthly deployed capacity.
+        reactors: str | list[str] | None
+            Alias for prototypes, used for compatibility with DYMOND plugin.
             reactors and prototypes cannot both be specified.
         rest_key: str
-            key used to accumulate any prototypes not in the `prototypes` list
+            Key used to accumulate any prototypes not in the `prototypes` list.
 
         Returns:
         --------
-        power_dict: dictionary
-            keys are strings, the reactor names and 'legacy',
-            the values are a numpy array with one element for
-            each time step in the scenario, indicating how
-            much power is deployed for each key during the
-            simulation (GW).
+        power_dict: dict[str, np.ndarray] or np.ndarray
+            Keys are strings (reactor prototypes and possibly `rest_key`),
+            values are numpy arrays giving deployed capacity in GW at each
+            time step (monthly) or yearly maximum capacity (yearly=True).
+
+            If return_sum=True, returns a single array summed across keys.
         """
         # Check prototypes/reactors and ensure prototypes are a numpy array
         prototypes = self._normalize_prototypes(prototypes, reactors)
 
-        # Query the database for reactor deployments with non-zero power
-        query = self.sql_query(
-            """SELECT prototype, entertime, lifetime, Spec, value
-               FROM agententry
-               INNER JOIN timeseriespower
-               ON agententry.agentid = timeseriespower.agentid
-               WHERE agententry.spec
-               LIKE "%Reactor"
-               AND value != 0
-               GROUP BY agententry.agentid"""
-        )
-
-        power_dict = {prototype: np.zeros(
-            self.duration) for prototype in prototypes}
-        assert (rest_key not in power_dict), \
+        # Initialize monthly deployed-capacity arrays
+        power_dict = {prototype: np.zeros(self.duration)
+                      for prototype in prototypes}
+        assert rest_key not in power_dict, \
             f"Key '{rest_key}' already exists in power_dict"
         power_dict[rest_key] = np.zeros(self.duration)
+
+        # Pull all reactor power windows
+        rows = self._get_power_agents()
+
+        # Ensure each prototype has a consistent nameplate capacity
+        # across all of its agents
         pow_cap_dict = {}
-
-        # ensure nonzero power output is the same
-        pow_query = self.sql_query(
-            """SELECT prototype, value
-               FROM agententry
-               INNER JOIN timeseriespower
-               ON agententry.agentid = timeseriespower.agentid
-               WHERE agententry.spec
-               LIKE "%Reactor"
-               AND value != 0 """
-        )
-        pow_query_dict = [dict(q) for q in pow_query]
-
-        for reactor in prototypes:
-            reactor_rows = [
-                q for q in pow_query_dict
-                if q["Prototype"] == reactor
-            ]
-            values = [q["Value"] for q in reactor_rows]
-
-            assert len(set(values)) == 1
-            pow_cap_dict[reactor] = values[0]
-
-        for row in query:
+        for row in rows:
             proto = row["prototype"]
-            t0 = row["entertime"]
-            t1 = row["lifetime"]
-            # If lifetime is -1, treat as running until
-            # the end of simulation
-            if t1 == -1:
-                t1 = self.duration - t0 + 1
-            pow = row['value']
-            if proto in power_dict.keys():
-                assert (
-                    pow == pow_cap_dict[proto]
-                ), (
-                    f"Power output for {proto} is not consistent: "
-                    f"{pow} != {pow_cap_dict[proto]}"
-                )
-                power_dict[proto][t0 - 1: t0 + t1 - 1] += pow * 1e-3
-            else:
-                power_dict[rest_key][t0 - 1: t0 + t1 - 1] += pow * 1e-3
+            power_cap = row["power_cap"]
 
-        if sum(power_dict[rest_key]) == 0:
-            # if it's zero no need to keep it
+            if power_cap is None:
+                continue
+
+            power_cap = float(power_cap)
+
+            if proto not in pow_cap_dict:
+                pow_cap_dict[proto] = power_cap
+            else:
+                assert np.isclose(power_cap, pow_cap_dict[proto]), (
+                    f"Power output for {proto} is not consistent: "
+                    f"{power_cap} != {pow_cap_dict[proto]}"
+                )
+
+        # Fill the deployed-capacity arrays over each agent's
+        # positive-power activity window
+        for row in rows:
+            proto = row["prototype"]
+            first_power_time = row["first_power_time"]
+            last_power_time = row["last_power_time"]
+            power_cap = row["power_cap"]
+
+            # Skip malformed rows
+            if (
+                first_power_time is None or
+                last_power_time is None or
+                power_cap is None
+            ):
+                continue
+
+            # Convert to integer indices
+            i0 = int(first_power_time)
+            i1 = int(last_power_time)
+
+            # Skip windows completely outside the simulation range
+            if i1 < 0 or i0 >= self.duration:
+                continue
+
+            # Clip to simulation bounds
+            i0 = max(i0, 0)
+            i1 = min(i1, self.duration - 1)
+
+            # Convert MWe to GW
+            power_gw = float(power_cap) * 1e-3
+
+            key = proto if proto in power_dict else rest_key
+            power_dict[key][i0:i1 + 1] += power_gw
+
+        # Drop rest_key if unused
+        if np.sum(power_dict[rest_key]) == 0:
             power_dict.pop(rest_key)
 
-        # If yearly is True, convert monthly data to yearly data
+        # If yearly is True, convert monthly data to end-of-year
+        # capacity
         if yearly:
-            for key in power_dict.keys():
-                power_dict[key] = self.get_yearly_max(power_dict[key])
+            for key in list(power_dict.keys()):
+                power_dict[key] = self.get_yearly_end(power_dict[key])
 
-        # If return_sum is True, sum the powers  across all prototypes
+        # If return_sum is True, sum the powers across all prototypes
         # included (excludes rest_key)
         if return_sum:
-            # Only sum explicitly requested prototypes
             keys_to_sum = [p for p in prototypes if p in power_dict]
+            if len(keys_to_sum) == 0:
+                return np.zeros_like(next(iter(power_dict.values())))
             return np.sum([power_dict[k] for k in keys_to_sum], axis=0)
+
         return power_dict
 
     def get_capacity_factors(
