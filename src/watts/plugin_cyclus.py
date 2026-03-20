@@ -1304,7 +1304,7 @@ class CyclusOutput:
             of monthly deployed capacity.
         reactors: str | list[str] | None
             Alias for prototypes, used for compatibility with DYMOND plugin.
-            reactors and prototypes cannot both be specified.
+            Reactors and prototypes cannot both be specified.
         rest_key: str
             Key used to accumulate any prototypes not in the `prototypes` list.
 
