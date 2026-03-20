@@ -520,7 +520,7 @@ class CyclusOutput:
                     proto, get_isotopics
                 )
                 agent_flow_dict[proto] = flow_dict
-                agent_stock_dict[proto] = flow_dict
+                agent_stock_dict[proto] = agent_stock
                 print(f"\tCompleted prototype {count}/{len(uniq_protos)}")
                 count += 1
         else:
@@ -530,7 +530,7 @@ class CyclusOutput:
                     id, proto, get_isotopics
                 )
                 agent_flow_dict[id] = flow_dict
-                agent_stock_dict[id] = flow_dict
+                agent_stock_dict[id] = agent_stock
                 print(f"\tCompleted agent {count}/{len(self.agent_dict)}")
                 count += 1
 
