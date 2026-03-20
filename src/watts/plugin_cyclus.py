@@ -1062,7 +1062,6 @@ class CyclusOutput:
             if first_power_time is None:
                 continue
 
-            # timeseriespower.time is treated as a 0-based index
             idx = int(first_power_time)
 
             # Ignore any out-of-range indices
@@ -1150,8 +1149,6 @@ class CyclusOutput:
             if last_power_time is None:
                 continue
 
-            # Retirement event occurs one step after the last
-            # positive-power timestep
             idx = int(last_power_time) + 1
 
             # If retirement occurs beyond the simulation horizon,
@@ -1303,8 +1300,8 @@ class CyclusOutput:
         return_sum: bool
             If True, returns a single array summed over all prototypes.
         yearly: bool
-            If True, returns yearly maximum deployed capacity instead of
-            monthly deployed capacity.
+            If True, returns end-of-year deployed capacity instead 
+            of monthly deployed capacity.
         reactors: str | list[str] | None
             Alias for prototypes, used for compatibility with DYMOND plugin.
             reactors and prototypes cannot both be specified.
@@ -1316,7 +1313,7 @@ class CyclusOutput:
         power_dict: dict[str, np.ndarray] or np.ndarray
             Keys are strings (reactor prototypes and possibly `rest_key`),
             values are numpy arrays giving deployed capacity in GW at each
-            time step (monthly) or yearly maximum capacity (yearly=True).
+            time step (monthly) or year-end capacity (yearly=True).
 
             If return_sum=True, returns a single array summed across keys.
         """
@@ -1369,7 +1366,7 @@ class CyclusOutput:
             ):
                 continue
 
-            # Convert to integer indices
+            # Use Cyclus time steps directly as monthly array indices
             i0 = int(first_power_time)
             i1 = int(last_power_time)
 
@@ -1717,8 +1714,8 @@ class CyclusOutput:
             t = int(row["time"])
             sum_mwe = float(row["sum_mwe"])
             gen_gw = sum_mwe * 1e-3
-            idx = t - 1
-            if idx >= 0:
+            idx = t
+            if 0 <= idx < self.duration:
                 gen_dict[proto][idx] += gen_gw
 
         # If yearly requested, convert monthly to yearly mean GW
