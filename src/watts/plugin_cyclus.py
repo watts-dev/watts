@@ -1006,29 +1006,99 @@ class CyclusOutput:
 
     # --------------- Deployment-related functions ---------------
 
+    def _reactor_power_query(self, prototypes=None) -> str:
+        """
+        Build the SQL query used to retrieve reactor power history from
+        the Cyclus timeseriespower table.
+
+        Parameters
+        ----------
+        prototypes : str or array-like of str, optional
+            Reactor prototype names to include. If None, include all reactor
+            facilities with entries in timeseriespower.
+
+        Returns
+        -------
+        str
+            SQL query returning one row per reactor agent and time step,
+            with columns:
+            - agentid
+            - prototype
+            - entertime
+            - lifetime
+            - time
+            - power
+        """
+        if prototypes is None:
+            proto_filter = ""
+        else:
+            prototypes = np.atleast_1d(prototypes)
+            proto_csv = ", ".join(f'"{prototype}"' for prototype in prototypes)
+            proto_filter = f"\n            AND a.prototype IN ({proto_csv})"
+
+        return f"""
+            SELECT
+                a.agentid,
+                a.prototype,
+                a.entertime,
+                a.lifetime,
+                p.time AS time,
+                p.value AS power
+            FROM agententry a
+            JOIN timeseriespower p
+                ON a.agentid = p.agentid
+            WHERE a.spec LIKE "%Reactor"{proto_filter}
+        """
+
+    def _get_power_history(self, prototypes=None, positive_only: bool = False):
+        """
+        Return reactor power history rows from timeseriespower.
+
+        Parameters
+        ----------
+        prototypes : str or array-like of str, optional
+            Reactor prototype names to include. If None, include all reactor
+            facilities with entries in timeseriespower.
+        positive_only : bool, optional
+            If True, only return rows with positive power.
+
+        Returns
+        -------
+        list
+            SQLite rows with columns:
+            - agentid
+            - prototype
+            - entertime
+            - lifetime
+            - time
+            - power
+        """
+        where_statement = "WHERE power > 0" if positive_only else ""
+
+        return self.sql_query(f"""
+            WITH power_history AS (
+                {self._reactor_power_query(prototypes=prototypes)}
+            )
+            SELECT *
+            FROM power_history
+            {where_statement}
+            ORDER BY agentid, time
+        """)
+
     def _get_power_agents(self):
         """
-        Return rows for all reactor agents that produce positive power.
+        Return one summary row per power-producing reactor agent.
 
-        This helper defines the power-based active window for each reactor
-        agent. It is used as the common source of truth for:
-        - first deployment into service
-        - retirement from service
-        - active fleet size
-        - deployed capacity
+        The summary is derived from the reactor power history and provides
+        the quantities needed by the deployment and capacity helpers:
+        - first positive power time
+        - last positive power time
+        - maximum positive power
 
-        The following quantities are returned for each reactor agent:
-        - first_power_time:
-            first time step with strictly positive power
-        - last_power_time:
-            last time step with strictly positive power
-        - power_cap:
-            maximum positive power value observed for that agent
-
-        Returns:
-        --------
+        Returns
+        -------
         list
-            Rows containing:
+            SQLite rows containing:
             - agentid
             - prototype
             - entertime
@@ -1037,25 +1107,26 @@ class CyclusOutput:
             - last_power_time
             - power_cap
         """
-        return self.sql_query("""
+        return self.sql_query(f"""
+            WITH power_history AS (
+                {self._reactor_power_query()}
+            )
             SELECT
-                a.agentid,
-                a.prototype,
-                a.entertime,
-                a.lifetime,
-                MIN(CASE WHEN p.value > 0 THEN p.time END) AS first_power_time,
-                MAX(CASE WHEN p.value > 0 THEN p.time END) AS last_power_time,
-                MAX(CASE WHEN p.value > 0 THEN p.value END) AS power_cap
-            FROM agententry a
-            JOIN timeseriespower p
-                ON a.agentid = p.agentid
-            WHERE a.spec LIKE "%Reactor"
+                agentid,
+                prototype,
+                entertime,
+                lifetime,
+                MIN(CASE WHEN power > 0 THEN time END) AS first_power_time,
+                MAX(CASE WHEN power > 0 THEN time END) AS last_power_time,
+                MAX(CASE WHEN power > 0 THEN power END) AS power_cap
+            FROM power_history
             GROUP BY
-                a.agentid,
-                a.prototype,
-                a.entertime,
-                a.lifetime
-            HAVING MAX(CASE WHEN p.value > 0 THEN 1 ELSE 0 END) = 1
+                agentid,
+                prototype,
+                entertime,
+                lifetime
+            HAVING MAX(CASE WHEN power > 0 THEN 1 ELSE 0 END) = 1
+            ORDER BY agentid
         """)
 
     def get_new_deployments(
@@ -1115,11 +1186,9 @@ class CyclusOutput:
 
             # Skip agents with no positive-power time
             if first_power_time is None:
-                print(
-                    f"Warning: agentid {row['agentid']} has no positive "
-                    f"power time, but was included in _get_power_agents. "
-                    f"Skipping.")
-                continue
+                raise ValueError(
+                    f"agentid {row['agentid']} has no positive "
+                    f"power time, but was included in _get_power_agents.")
 
             # Check that enter time and first power time are consistent
             assert first_power_time == row["entertime"], \
@@ -1744,69 +1813,62 @@ class CyclusOutput:
             If return_sum=True, returns summed array.
             If return_sum=False, returns dict of arrays per prototype.
             Arrays represent generated power in GW for each time step
-            (monthly),
-            or yearly means if yearly=True.
+            (monthly), or yearly mean power if yearly=True.
         """
-        # Check prototypes/reactors and ensure prototypes are a numpy array
         prototypes = self._normalize_prototypes(prototypes, reactors)
 
         if len(prototypes) == 0:
             return {} if not return_sum else np.zeros(0)
 
-        # If capacity_factors are provided,
-        # compute generation from deployed capacity
         if capacity_factors is not None:
             deployed_power = self.get_deployed_capacity(
                 prototypes,
                 return_sum=False,
-                yearly=yearly,
+                yearly=False,
                 reactors=reactors,
             )
             gen_dict = {}
-            for proto in deployed_power.keys():
-                gen_dict[proto] = deployed_power[proto] * \
-                    float(capacity_factors.get(proto, default_capacity_factor))
+            for proto, power in deployed_power.items():
+                gen_dict[proto] = power * float(
+                    capacity_factors.get(proto, default_capacity_factor)
+                )
+
+            if yearly:
+                for proto in gen_dict.keys():
+                    gen_dict[proto] = self.get_yearly_avg(gen_dict[proto])
 
             if return_sum:
                 return np.sum(list(gen_dict.values()), axis=0)
             return gen_dict
 
-        # Otherwise, compute generated power directly from time series
-        proto_csv = ", ".join(f'"{p}"' for p in prototypes)
-
-        # Direct aggregation in SQL: sum p.value (MWe) per prototype/time
         rows = self.sql_query(f"""
+            WITH power_history AS (
+                {self._reactor_power_query(prototypes=prototypes)}
+            )
             SELECT
-              a.prototype AS prototype,
-              p.time AS time,
-              SUM(p.value) * 1.0 AS sum_mwe
-            FROM timeseriespower p
-            JOIN agententry a ON a.agentid = p.agentid
-            WHERE a.prototype IN ({proto_csv})
-            GROUP BY a.prototype, p.time
-            ORDER BY a.prototype, p.time;
+                prototype,
+                time,
+                SUM(power) * 1.0 AS sum_mwe
+            FROM power_history
+            GROUP BY prototype, time
+            ORDER BY prototype, time
         """)
 
-        # Initialize arrays (monthly) and fill with zeros
         gen_dict = {prototype: np.zeros(self.duration)
                     for prototype in prototypes}
 
-        # Fill arrays (convert MWe -> GW)
         for row in rows:
             proto = row["prototype"]
             t = int(row["time"])
             sum_mwe = float(row["sum_mwe"])
             gen_gw = sum_mwe * 1e-3
-            idx = t
-            if 0 <= idx < self.duration:
-                gen_dict[proto][idx] += gen_gw
+            if 0 <= t < self.duration:
+                gen_dict[proto][t] += gen_gw
 
-        # If yearly requested, convert monthly to yearly mean GW
         if yearly:
             for proto in gen_dict.keys():
                 gen_dict[proto] = self.get_yearly_avg(gen_dict[proto])
 
-        # If return_sum True, sum across prototypes
         if return_sum:
             return np.sum(list(gen_dict.values()), axis=0)
         return gen_dict
