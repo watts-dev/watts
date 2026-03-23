@@ -185,7 +185,7 @@ class CyclusOutput:
         # Store nuclides, agents, reactors
         self.nucids = self.get_nucids()
         self.agent_dict = self.get_facility_agents()
-        self.reactors = np.unique(
+        self.reactor_types = np.unique(
             list(self.get_facility_agents("reactor").values()))
 
     def get_input_text(self) -> str:
@@ -2384,7 +2384,7 @@ class CyclusOutput:
         )
 
         if prototypes is None and reactors is None:
-            prototypes = self.reactors
+            prototypes = self.reactor_types
         elif reactors is not None:
             prototypes = reactors
         prototypes = np.atleast_1d(prototypes)
