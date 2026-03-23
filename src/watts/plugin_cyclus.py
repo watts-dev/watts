@@ -708,8 +708,9 @@ class CyclusOutput:
         self.years_int.
 
         The yearly value is computed as the calendar-year sum divided by 12.
-        For partial first or last calendar years, this gives a 12-month-normalized
-        average rather than the mean over only the represented months.
+        For partial first or last calendar years, this gives a 12-month
+        normalized average rather than the mean over only the represented
+        months.
         """
         return self.get_yearly_sum(arr) / 12.0
 
@@ -733,8 +734,8 @@ class CyclusOutput:
                                   FROM Info"""
         )[0]
 
-        # If the dt is not months, raise a non-implemented error because the time handling
-        # in this module assumes monthly time steps.
+        # If the dt is not months, raise a non-implemented error because the
+        # time handling  in this module assumes monthly time steps.
         dt = self.sql_query(
             """SELECT DurationSecs FROM TimeStepDur"""
         )[0]["DurationSecs"]
@@ -746,13 +747,16 @@ class CyclusOutput:
         if dt < lo or dt > hi:
             print(lo, hi)
             raise NotImplementedError(
-                f"Time steps other than monthly are not implemented: dt={dt} seconds")
+                "Time steps other than monthly are not implemented: "
+                f"dt={dt} seconds"
+            )
 
         init_year = duration["InitialYear"]
         init_month = duration["InitialMonth"]
         duration = duration["Duration"]
 
-        # Assume each time step is one month, and calculate the calendar year for
+        # Assume each time step is one month, and calculate the
+        # calendar year for each time step accordingly
         time = init_year + (np.arange(duration) + init_month - 1) / 12
         years = time
 
