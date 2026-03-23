@@ -677,7 +677,8 @@ class CyclusOutput:
                 "Expected one of: 'sum', 'max', or 'end'."
             )
 
-        # Prepend a zero entry to align with self.years_int, which starts at the
+        # Prepend a zero entry to align with self.years_int,
+        # and drop the final aggregated year
         zeros = np.zeros((1, *yearly.shape[1:]), dtype=yearly.dtype)
         return np.concatenate((zeros, yearly[:-1]), axis=0)
 
@@ -706,9 +707,9 @@ class CyclusOutput:
         Return calendar-year averages for monthly data, aligned to
         self.years_int.
 
-        NOTE: If the start month is not January, the first and last 
-        calendar years will be partial but still count as full years in the 
-        average. 
+        The yearly value is computed as the calendar-year sum divided by 12.
+        For partial first or last calendar years, this gives a 12-month-normalized
+        average rather than the mean over only the represented months.
         """
         return self.get_yearly_sum(arr) / 12.0
 
@@ -977,7 +978,7 @@ class CyclusOutput:
         Returns:
         --------
         mass_flow: numpy array
-            length is the number of years in a simulations 
+            length is the number of years in a simulations
             with the data from arr summed up for each
             year
         """
