@@ -587,9 +587,12 @@ class CyclusOutput:
             # isotopic mass
             nucids = list(nucids)
             val = np.zeros((duration, len(nucids)))
-            assert "nucid" in query_result[0].keys(), print(
-                query_result[0].keys())
-            assert value_label != ""
+            assert len(query_result) > 0, \
+                "Query result is empty; cannot extract nuclides."
+            assert "nucid" in query_result[0].keys(), \
+                "Expected 'nucid' column in query result for isotopic data."
+            assert value_label != "", \
+                "Value label must be provided for isotopic data."
             for row in query_result:
                 val[row[time_label], nucids.index(
                     row["nucid"])] += row[value_label]
@@ -745,7 +748,6 @@ class CyclusOutput:
         # Upper bound for monthly time step in s (w/ leap years)
         hi = 365.26/12 * 24 * 3600
         if dt < lo or dt > hi:
-            print(lo, hi)
             raise NotImplementedError(
                 "Time steps other than monthly are not implemented: "
                 f"dt={dt} seconds"
@@ -1113,13 +1115,25 @@ class CyclusOutput:
 
             # Skip agents with no positive-power time
             if first_power_time is None:
+                print(
+                    f"Warning: agentid {row['agentid']} has no positive "
+                    f"power time, but was included in _get_power_agents. "
+                    f"Skipping.")
                 continue
+
+            # Check that enter time and first power time are consistent
+            assert first_power_time == row["entertime"], \
+                f"Agentid {row['agentid']} has enter time {row['entertime']}" \
+                f" but first positive power time {first_power_time}."
 
             idx = int(first_power_time)
 
-            # Ignore any out-of-range indices
+            # Check for any out-of-range indices
             if idx < 0 or idx >= self.duration:
-                continue
+                raise ValueError(
+                    f"First positive power time {first_power_time} for "
+                    f"agentid {row['agentid']} is out of range."
+                )
 
             key = proto if proto in deploy else rest_key
             deploy[key][idx] += 1.0
@@ -1198,9 +1212,12 @@ class CyclusOutput:
             proto = row["prototype"]
             last_power_time = row["last_power_time"]
 
-            # Skip agents with no positive-power time
+            # Check for agents with no positive-power time
             if last_power_time is None:
-                continue
+                raise ValueError(
+                    f"Agentid {row['agentid']} has no positive power time, "
+                    f"but was included in _get_power_agents."
+                )
 
             idx = int(last_power_time) + 1
 
@@ -1390,8 +1407,11 @@ class CyclusOutput:
             proto = row["prototype"]
             power_cap = row["power_cap"]
 
-            if power_cap is None:
-                continue
+            # Check that power_cap is not None,
+            # meaning reactor produced power at some point
+            assert power_cap is not None, \
+                f"Agentid {row['agentid']} has no positive power time, but " \
+                f"was included in _get_power_agents."
 
             power_cap = float(power_cap)
 
@@ -1408,24 +1428,34 @@ class CyclusOutput:
         for row in rows:
             proto = row["prototype"]
             first_power_time = row["first_power_time"]
+            entertime = row["entertime"]
             last_power_time = row["last_power_time"]
             power_cap = row["power_cap"]
 
-            # Skip malformed rows
-            if (
-                first_power_time is None or
-                last_power_time is None or
-                power_cap is None
-            ):
-                continue
+            # Check for malformed rows
+            assert first_power_time is not None, \
+                f"Agentid {row['agentid']} has no first positive power time."
+            assert last_power_time is not None, \
+                f"Agentid {row['agentid']} has no last positive power time."
+            assert power_cap is not None, \
+                f"Agentid {row['agentid']} has no power capacity."
+
+            # Check that enter time and first power time are consistent
+            assert first_power_time == entertime, \
+                f"Agentid {row['agentid']} has enter time {entertime} " \
+                f"but first positive power time {first_power_time}."
 
             # Use Cyclus time steps directly as monthly array indices
             i0 = int(first_power_time)
             i1 = int(last_power_time)
 
-            # Skip windows completely outside the simulation range
+            # Check for any out-of-range indices
             if i1 < 0 or i0 >= self.duration:
-                continue
+                raise ValueError(
+                    f"Power time window [{first_power_time}, "
+                    f"{last_power_time}] for agentid {row['agentid']} "
+                    f"is out of range."
+                )
 
             # Clip to simulation bounds
             i0 = max(i0, 0)
@@ -1696,7 +1726,7 @@ class CyclusOutput:
             If True, return summed arrays across all prototypes.
             If False, return per-prototype dict.
         yearly : bool
-            If True, return yearly sums instead of monthly data.
+            If True, return yearly averages instead of monthly data.
         reactors : str or list of str, optional
             alias for prototypes, used for compatibility with DYMOND plugin.
             reactors and prototypes cannot both be specified.
@@ -1845,8 +1875,8 @@ class CyclusOutput:
         prototypes: str | list[str] | None = None,
         return_sum: bool = True,
         reactors: str | list[str] | None = None,
-    ) -> tuple[np.ndarray, np.ndarray] | \
-            dict[str, tuple[np.ndarray, np.ndarray]]:
+    ) -> tuple[np.ndarray | dict[str, np.ndarray], dict[str, np.ndarray] |
+               np.ndarray]:
         """
         Get fuel mass and enrichment over time for one or more prototypes.
 
