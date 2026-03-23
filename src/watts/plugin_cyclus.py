@@ -587,12 +587,12 @@ class CyclusOutput:
             # isotopic mass
             nucids = list(nucids)
             val = np.zeros((duration, len(nucids)))
-            assert "NucId" in query_result[0].keys(), print(
+            assert "nucid" in query_result[0].keys(), print(
                 query_result[0].keys())
             assert value_label != ""
             for row in query_result:
                 val[row[time_label], nucids.index(
-                    row["NucId"])] += row[value_label]
+                    row["nucid"])] += row[value_label]
         else:
             val = np.zeros(duration)
             for row in query_result:
@@ -707,7 +707,8 @@ class CyclusOutput:
         self.years_int.
 
         NOTE: If the start month is not January, the first and last 
-        calendar years will be partial.
+        calendar years will be partial but still count as full years in the 
+        average. 
         """
         return self.get_yearly_sum(arr) / 12.0
 
