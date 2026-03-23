@@ -3,11 +3,11 @@
 
 from pathlib import Path
 from typing import List
+import os
 
 import sqlite3 as lite
 import xml.etree.ElementTree as ET
 import numpy as np
-import os
 
 from .fileutils import PathLike
 from .parameters import Parameters
@@ -349,7 +349,7 @@ class CyclusOutput:
                         WHERE prototype == "{protos}"'''
                 )
             ids = [q["agentid"] for q in query]
-            id_str = ", ".join([str(id) for id in ids])
+            id_str = ", ".join([str(aid) for aid in ids])
             query = self.sql_query(
                 f"""SELECT distinct(commodity)
                     FROM transactions
@@ -410,13 +410,13 @@ class CyclusOutput:
 
         return protos, flow_dict, agent_stock
 
-    def process_agent(self, id, get_isotopics):
+    def process_agent(self, agent_id, get_isotopics):
         """
         Process mass flows and compute stock over time for a given agent ID.
 
         Parameters:
         ----------
-        id : int
+        agent_id : int
             Agent ID to process.
         get_isotopics : bool
             If True, includes isotopic mass data; otherwise only total mass.
@@ -434,7 +434,7 @@ class CyclusOutput:
             query = self.sql_query(
                 f"""SELECT distinct(commodity)
                                    FROM transactions
-                                   WHERE {facility_type}=={id}"""
+                                   WHERE {facility_type}=={agent_id}"""
             )
             trade_commods = [q["commodity"] for q in query]
 
@@ -445,7 +445,7 @@ class CyclusOutput:
                             FROM transactions
                             INNER JOIN resources
                             ON transactions.resourceid = resources.resourceid
-                            WHERE {facility_type}=={id}
+                            WHERE {facility_type}=={agent_id}
                             AND commodity=="{commod}"
                             GROUP BY time"""
                     )
@@ -468,7 +468,7 @@ class CyclusOutput:
                             ON transactions.resourceid = resources.resourceid
                             JOIN compositions on
                             resources.qualid = compositions.qualid
-                            WHERE {facility_type}=={id}
+                            WHERE {facility_type}=={agent_id}
                             AND commodity=="{commod}"
                             GROUP BY time, nucid"""
                     )
@@ -488,7 +488,7 @@ class CyclusOutput:
             sum(flow_dict["sending"].values())
         )
 
-        return id, flow_dict, agent_stock
+        return agent_id, flow_dict, agent_stock
 
     def get_agent_flow_and_stock_dict(self, by_proto, get_isotopics=False):
         """
@@ -525,12 +525,12 @@ class CyclusOutput:
                 count += 1
         else:
             print(f"Going through {len(self.agent_dict)} agents.")
-            for id, proto in self.agent_dict.items():
-                id, flow_dict, agent_stock = self.process_agent(
-                    id, proto, get_isotopics
+            for agent_id, proto in self.agent_dict.items():
+                agent_id, flow_dict, agent_stock = self.process_agent(
+                    agent_id, get_isotopics
                 )
-                agent_flow_dict[id] = flow_dict
-                agent_stock_dict[id] = agent_stock
+                agent_flow_dict[agent_id] = flow_dict
+                agent_stock_dict[agent_id] = agent_stock
                 print(f"\tCompleted agent {count}/{len(self.agent_dict)}")
                 count += 1
 
@@ -602,98 +602,114 @@ class CyclusOutput:
                     val[row[time_label]] += row[value_label]
         return np.array(val)
 
-    @staticmethod
-    def get_yearly_sum(arr):
+    def _aggregate_calendar_years(self, arr, how: str) -> np.ndarray:
         """
-        Convert monthly time series data into yearly sums, with
-        initial alignment.
+        Aggregate monthly data by calendar year and align the result to
+        integer year starts.
 
-        This function:
-        - Sums values over consecutive 12-month periods
-        - Prepends an initial 0.0 as a placeholder for the year
-          before data begins
-        - Returns one value per year, excluding the final year
-          of data
+        Cyclus defines a simulation by its start year, start month, and a
+        duration in monthly time steps. In the output database,
+        InitialYear and InitialMonth identify the calendar year and
+        month represented by time step 0. Accordingly, yearly aggregation
+        must assign each monthly entry to the calendar year implied by
+        (self.init_year, self.init_month, time_index).
 
-        Parameters:
+        After aggregation, the yearly values are shifted by one entry.
+        We use start-of-year alignment: the value stored at integer
+        year Y represents the aggregate over the completed calendar year
+        Y - 1. In other words, the first entry is a zero placeholder, and
+        the final aggregated year is dropped.
+
+        Parameters
         ----------
         arr : array-like
-            1D array of monthly values
+            Monthly data indexed by time step. For one-dimensional input,
+            arr[t] is the value at monthly time step t. For
+            higher-dimensional input, time is along the first dimension and
+            any trailing dimensions are preserved.
+        how : {"sum", "max", "end"}
+            Aggregation applied within each calendar year:
+            - "sum": sum over all months in the year
+            - "max": maximum over all months in the year
+            - "end": value in the final month of the year
 
-        Returns:
+        Returns
         -------
         np.ndarray
-            1D array of yearly sums, length = floor(len(arr) / 12),
-            plus one initial 0
+            Array aligned to integer year starts. The first entry is a zero
+            placeholder. Entry i for i > 0 contains the aggregation
+            over calendar year self.years_int[i - 1].
         """
+        # Convert to array and validate shape
         arr = np.asarray(arr)
-        n_full_years = len(arr) // 12
-        n_months = n_full_years * 12
+        if arr.ndim == 0:
+            raise ValueError(
+                "Expected an array of monthly values indexed by time step; "
+                "got a scalar."
+            )
 
-        yearly = arr[:n_months].reshape(n_full_years, 12).sum(axis=1)
-        return np.insert(yearly[:-1], 0, 0.0)
+        if arr.shape[0] == 0:
+            return np.zeros((0, *arr.shape[1:]), dtype=arr.dtype)
 
-    @staticmethod
-    def get_yearly_max(arr):
+        # Determine calendar year for each time step, starting from
+        # self.init_year and self.init_month
+        calendar_years = (
+            self.init_year
+            + (self.init_month - 1 + np.arange(arr.shape[0])) // 12
+        )
+
+        # Identify indices where the calendar year changes and split the array
+        split_idx = np.flatnonzero(np.diff(calendar_years)) + 1
+        year_blocks = np.split(arr, split_idx, axis=0)
+
+        # Aggregate each calendar year's block according to the user's choice
+        if how == "sum":
+            yearly = np.stack([block.sum(axis=0)
+                              for block in year_blocks], axis=0)
+        elif how == "max":
+            yearly = np.stack([block.max(axis=0)
+                              for block in year_blocks], axis=0)
+        elif how == "end":
+            yearly = np.stack([block[-1] for block in year_blocks], axis=0)
+        else:
+            raise ValueError(
+                f"Unknown yearly aggregation '{how}'. "
+                "Expected one of: 'sum', 'max', or 'end'."
+            )
+
+        # Prepend a zero entry to align with self.years_int, which starts at the
+        zeros = np.zeros((1, *yearly.shape[1:]), dtype=yearly.dtype)
+        return np.concatenate((zeros, yearly[:-1]), axis=0)
+
+    def get_yearly_sum(self, arr) -> np.ndarray:
         """
-        Convert monthly time series data into yearly maximums, with
-        initial alignment.
-
-        This function:
-        - Takes the maximum value over consecutive 12-month periods
-        - Prepends an initial 0.0 as a placeholder for the year
-          before data begins
-        - Returns one value per year, excluding the final year
-          of data
-
-        Parameters:
-        ----------
-        arr : array-like
-            1D array of monthly values
-
-        Returns:
-        -------
-        np.ndarray
-            1D array of yearly maximums, length = floor(len(arr) / 12),
-            plus one initial 0
+        Return calendar-year sums for monthly data, aligned to self.years_int.
         """
-        arr = np.asarray(arr)
-        n_full_years = len(arr) // 12
-        n_months = n_full_years * 12
+        return self._aggregate_calendar_years(arr, how="sum")
 
-        yearly = arr[:n_months].reshape(n_full_years, 12).max(axis=1)
-        return np.insert(yearly[:-1], 0, 0.0)
-
-    @staticmethod
-    def get_yearly_end(arr):
+    def get_yearly_max(self, arr) -> np.ndarray:
         """
-        Convert monthly stock-like data into yearly end-of-year values,
-        with initial alignment.
-
-        This function:
-        - takes the value at the final month of each full year
-        - prepends an initial 0.0 as a placeholder for the year
-        before data begins
-        - returns one value per year, excluding the final year
-        of data
-
-        Parameters:
-        ----------
-        arr : array-like
-            1D array of monthly values
-
-        Returns:
-        -------
-        np.ndarray
-            1D array of yearly end-of-year values, plus one initial 0
+        Return calendar-year maximums for monthly data, aligned to
+        self.years_int.
         """
-        arr = np.asarray(arr)
-        n_full_years = len(arr) // 12
-        end_of_year_idx = 12 * np.arange(1, n_full_years + 1) - 1
-        end_of_year_idx = end_of_year_idx[:-1]
-        yearly = arr[end_of_year_idx] if len(
-            end_of_year_idx) > 0 else np.zeros(0)
-        return np.insert(yearly, 0, 0.0)
+        return self._aggregate_calendar_years(arr, how="max")
+
+    def get_yearly_end(self, arr) -> np.ndarray:
+        """
+        Return end-of-calendar-year values for monthly data, aligned to
+        self.years_int.
+        """
+        return self._aggregate_calendar_years(arr, how="end")
+
+    def get_yearly_avg(self, arr) -> np.ndarray:
+        """
+        Return calendar-year averages for monthly data, aligned to
+        self.years_int.
+
+        NOTE: If the start month is not January, the first and last 
+        calendar years will be partial.
+        """
+        return self.get_yearly_sum(arr) / 12.0
 
     # --------------- Basic data extraction functions ---------------
 
@@ -714,17 +730,44 @@ class CyclusOutput:
             """SELECT InitialYear, InitialMonth, Duration
                                   FROM Info"""
         )[0]
+
+        # If the dt is not months, raise a non-implemented error because the time handling
+        # in this module assumes monthly time steps.
+        dt = self.sql_query(
+            """SELECT DurationSecs FROM TimeStepDur"""
+        )[0]["DurationSecs"]
+
+        # Using 0.01 day tolerance
+        lo = 364.99/12 * 24 * 3600  # Lower bound for monthly time step in s
+        # Upper bound for monthly time step in s (w/ leap years)
+        hi = 365.26/12 * 24 * 3600
+        if dt < lo or dt > hi:
+            print(lo, hi)
+            raise NotImplementedError(
+                f"Time steps other than monthly are not implemented: dt={dt} seconds")
+
         init_year = duration["InitialYear"]
         init_month = duration["InitialMonth"]
         duration = duration["Duration"]
+
+        # Assume each time step is one month, and calculate the calendar year for
         time = init_year + (np.arange(duration) + init_month - 1) / 12
         years = time
+
+        # If we only want purely integer years,
+        # we create an array of the unique years represented
+        # in the time array.
+        years_int = np.unique(np.floor(years).astype(int))
+        n_yearly_points = len(years_int)
         return {
             "init_year": init_year,
             "init_month": init_month,
             "duration": duration,
             "years": years,
             "years_int": np.unique(np.floor(years).astype(int)),
+            "n_yearly_points": n_yearly_points,
+            "timestep_seconds": dt,
+            "timestep_years": dt / (365.25 * 24 * 3600)
         }
 
     def get_nucids(self):
@@ -768,8 +811,8 @@ class CyclusOutput:
             with the data being the yearly totals of
             each fuel form
         """
-        num_years = len(self.get_yearly_sum(np.zeros(self.duration)))
-        fuel_flow_array = np.zeros((len(fuel_forms), num_years))
+        n_yearly_points = self.n_yearly_points
+        fuel_flow_array = np.zeros((len(fuel_forms), n_yearly_points))
         for indx, ff in enumerate(fuel_forms):
             query = self.sql_query(
                 """SELECT sum(quantity), time
@@ -933,8 +976,8 @@ class CyclusOutput:
         Returns:
         --------
         mass_flow: numpy array
-            length is the number of years in a simulations (i.e.,
-            length of arr/12) with the data from arr summed up for each
+            length is the number of years in a simulations 
+            with the data from arr summed up for each
             year
         """
         query = self.sql_query(
@@ -1304,7 +1347,7 @@ class CyclusOutput:
         return_sum: bool
             If True, returns a single array summed over all prototypes.
         yearly: bool
-            If True, returns end-of-year deployed capacity instead 
+            If True, returns end-of-year deployed capacity instead
             of monthly deployed capacity.
         reactors: str | list[str] | None
             Alias for prototypes, used for compatibility with DYMOND plugin.
@@ -1725,8 +1768,7 @@ class CyclusOutput:
         # If yearly requested, convert monthly to yearly mean GW
         if yearly:
             for proto in gen_dict.keys():
-                yearly_sum = self.get_yearly_sum(gen_dict[proto])
-                gen_dict[proto] = yearly_sum / 12.0
+                gen_dict[proto] = self.get_yearly_avg(gen_dict[proto])
 
         # If return_sum True, sum across prototypes
         if return_sum:
@@ -1864,9 +1906,9 @@ class CyclusOutput:
         # If no IDs found, return empty arrays of the appropriate size
         if not all_ids:
             return (
-                np.zeros(self.duration // 12)
+                np.zeros(self.n_yearly_points)
                 if return_sum
-                else {p: np.zeros(self.duration // 12) for p in prototypes}
+                else {p: np.zeros(self.n_yearly_points) for p in prototypes}
             )
 
         # Get relevant commodities (fuel=into) for each prototype
@@ -1943,9 +1985,9 @@ class CyclusOutput:
         # If no IDs found, return empty arrays of the appropriate size
         if not all_ids:
             return (
-                np.zeros(self.duration // 12)
+                np.zeros(self.n_yearly_points)
                 if return_sum
-                else {p: np.zeros(self.duration // 12) for p in prototypes}
+                else {p: np.zeros(self.n_yearly_points) for p in prototypes}
             )
 
         # Get relevant commodities (discharged=out of) for each prototype
@@ -2020,7 +2062,7 @@ class CyclusOutput:
 
         # If no IDs found, return empty arrays of the appropriate size
         if not all_ids:
-            return {p: np.zeros(self.duration // 12) for p in prototypes}
+            return {p: np.zeros(self.n_yearly_points) for p in prototypes}
 
         # Get relevant commodities (fuel=into) for each prototype
         commods = self.get_commodity_into(agentids=all_ids)
