@@ -627,9 +627,11 @@ class CyclusOutput:
             plus one initial 0
         """
         arr = np.asarray(arr)
-        num_years = (len(arr) // 12) * 12  # truncate to full years
-        yearly = arr[:num_years].reshape(-1, 12).sum(axis=1)
-        return np.insert(yearly[:-1], 0, 0.0)  # remove last year, prepend 0
+        n_full_years = len(arr) // 12
+        n_months = n_full_years * 12
+
+        yearly = arr[:n_months].reshape(n_full_years, 12).sum(axis=1)
+        return np.insert(yearly[:-1], 0, 0.0)
 
     @staticmethod
     def get_yearly_max(arr):
@@ -656,9 +658,11 @@ class CyclusOutput:
             plus one initial 0
         """
         arr = np.asarray(arr)
-        num_years = (len(arr) // 12) * 12  # truncate to full years
-        yearly = arr[:num_years].reshape(-1, 12).max(axis=1)
-        return np.insert(yearly[:-1], 0, 0.0)  # remove last year, prepend 0
+        n_full_years = len(arr) // 12
+        n_months = n_full_years * 12
+
+        yearly = arr[:n_months].reshape(n_full_years, 12).max(axis=1)
+        return np.insert(yearly[:-1], 0, 0.0)
 
     @staticmethod
     def get_yearly_end(arr):
