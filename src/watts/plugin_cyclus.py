@@ -1097,7 +1097,7 @@ class CyclusOutput:
                               if reac["lifetime"] == -1 and reac["power"] > 0]
         if inifinite_in_entry:
             error = ", ".join(
-                f"agentid {reac['agentid']}, prototype {reac['prototype']},"\ 
+                f"agentid {reac['agentid']}, prototype {reac['prototype']},"
                 f"parentid {reac['parentid']}"
                 for reac in inifinite_in_entry
             )
@@ -1106,8 +1106,9 @@ class CyclusOutput:
                 "produce unexpected behavior in deployment and retirement " \
                 "calculations. Please specify their lifetimes in the " \
                 "institution that is deplyoing them in your Cyclus input " \
-                "file. Affected reactors: "
+                "file. Affected reactors: " \
                              f"{error}")
+        return rows
 
 
     def _get_power_agents(self):
@@ -1166,7 +1167,7 @@ class CyclusOutput:
                               if reac["lifetime"] == -1 and reac["power"] > 0]
         if inifinite_in_entry:
             error = ", ".join(
-                f"agentid {reac['agentid']}, prototype {reac['prototype']},"\
+                f"agentid {reac['agentid']}, prototype {reac['prototype']},"
                 f"parentid {reac['parentid']}"
                 for reac in inifinite_in_entry
             )
@@ -1175,7 +1176,7 @@ class CyclusOutput:
                 "produce unexpected behavior in deployment and retirement " \
                 "calculations. Please specify their lifetimes in the " \
                 "institution that is deplyoing them in your Cyclus input " \
-                "file. Affected reactors: "
+                "file. Affected reactors: " \
                              f"{error}")
         return rows
 
