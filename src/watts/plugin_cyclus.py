@@ -1042,6 +1042,7 @@ class CyclusOutput:
                 a.prototype,
                 a.entertime,
                 a.lifetime,
+                a.parentid,
                 p.time AS time,
                 p.value AS power
             FROM agententry a
@@ -1072,10 +1073,17 @@ class CyclusOutput:
             - lifetime
             - time
             - power
+        
+        Raises
+        ------
+        ValueError
+            If any reactor has a lifetime of -1 in the AgentEntry table but
+            produces positive power, which causes issues for deployment and
+            retirement calculations.
         """
         where_statement = "WHERE power > 0" if positive_only else ""
 
-        return self.sql_query(f"""
+        rows = self.sql_query(f"""
             WITH power_history AS (
                 {self._reactor_power_query(prototypes=prototypes)}
             )
@@ -1084,6 +1092,24 @@ class CyclusOutput:
             {where_statement}
             ORDER BY agentid, time
         """)
+
+        inifinite_in_entry = [reac for reac in rows \
+                              if reac["lifetime"] == -1 and reac["power"] > 0]
+        if inifinite_in_entry:
+            error = ", ".join(
+                f"agentid {reac['agentid']}, prototype {reac['prototype']},"
+                f"parentid {reac['parentid']}"
+                for reac in inifinite_in_entry
+            )
+            raise ValueError(
+                "Reactors that have lifetime of -1 in AgentEntry table " \
+                "produce unexpected behavior in deployment and retirement " \
+                "calculations. Please specify their lifetimes in the " \
+                "institution that is deplyoing them in your Cyclus input " \
+                "file. Affected reactors: " \
+                             f"{error}")
+        return rows
+
 
     def _get_power_agents(self):
         """
@@ -1106,8 +1132,16 @@ class CyclusOutput:
             - first_power_time
             - last_power_time
             - power_cap
+        
+        Raises
+        ------
+        ValueError
+            If any reactor has a lifetime of -1 in the AgentEntry table but
+            produces positive power, which causes issues for deployment and
+            retirement calculations.
         """
-        return self.sql_query(f"""
+
+        rows = self.sql_query(f"""
             WITH power_history AS (
                 {self._reactor_power_query()}
             )
@@ -1128,6 +1162,24 @@ class CyclusOutput:
             HAVING MAX(CASE WHEN power > 0 THEN 1 ELSE 0 END) = 1
             ORDER BY agentid
         """)
+
+        inifinite_in_entry = [reac for reac in rows \
+                              if reac["lifetime"] == -1 and reac["power"] > 0]
+        if inifinite_in_entry:
+            error = ", ".join(
+                f"agentid {reac['agentid']}, prototype {reac['prototype']},"
+                f"parentid {reac['parentid']}"
+                for reac in inifinite_in_entry
+            )
+            raise ValueError(
+                "Reactors that have lifetime of -1 in AgentEntry table " \
+                "produce unexpected behavior in deployment and retirement " \
+                "calculations. Please specify their lifetimes in the " \
+                "institution that is deplyoing them in your Cyclus input " \
+                "file. Affected reactors: " \
+                             f"{error}")
+        return rows
+
 
     def get_new_deployments(
         self,
