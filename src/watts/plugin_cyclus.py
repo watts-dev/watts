@@ -1131,6 +1131,13 @@ class CyclusOutput:
             - first_power_time
             - last_power_time
             - power_cap
+        
+        Raises
+        ------
+        ValueError
+            If any reactor has a lifetime of -1 in the AgentEntry table but
+            produces positive power, which causes issues for deployment and
+            retirement calculations.
         """
 
         rows = self.sql_query(f"""
