@@ -1345,7 +1345,7 @@ class DYMONDOutput:
         tails_assay: float = None,
         return_sum: bool = True,
         split_cat: bool = False,
-        cascade_splits: list[float] | None = None,
+        cascade_splits: list[float] | None = [0.1, 0.2],
     ):
         """
         Compute natural-uranium feed, enrichment tails, and SWU
@@ -1355,6 +1355,11 @@ class DYMONDOutput:
         process data, avoiding errors from averaging non-linear enrichment
         calculations. Each incoming transaction to a reactor's process stage
         is individually cascaded and the results binned into annual totals.
+
+        Structure (T = number of time steps, S = number of cascade stages):
+        - natu is always shape (T,)
+        - tails and swu are shape (T,) when split_cat=False
+        - tails and swu are shape (S, T) when split_cat=True
 
         Parameters
         ----------
@@ -1398,7 +1403,12 @@ class DYMONDOutput:
         times = self._get_times_array()
         n_steps = len(times)
 
+        # Cache cascade results by enrichment to avoid repeated calculations.
         cascade_cache = {}
+
+        # Number of cascade stages, inferred from the first valid cascade.
+        n_stages = None
+
         res = {"natu": {}, "tails": {}, "swu": {}}
 
         with h5py.File(self.hdf5_path, 'r') as f:
@@ -1413,28 +1423,25 @@ class DYMONDOutput:
 
             for reactor in reactors:
                 natu_arr = np.zeros(n_steps)
-                # tails_arr and swu_arr are allocated once n_stages is known
+
+                # For split_cat=True, arrays with shape (S, T)
                 tails_arr = None
                 swu_arr = None
 
                 reactor_group_path = f'Reactor/{reactor}'
-                if reactor_group_path not in f:
-                    res["natu"][reactor] = natu_arr
-                    res["tails"][reactor] = np.zeros(n_steps)
-                    res["swu"][reactor] = np.zeros(n_steps)
-                    continue
+                if reactor_group_path in f:
+                    for instance in f[reactor_group_path].values():
+                        proc = instance.get('process')
+                        if proc is None:
+                            continue
 
-                for instance in f[reactor_group_path].values():
-                    proc = instance.get('process')
-                    if proc is None:
-                        continue
-                    times_raw = proc['times'][()]
-                    masses = proc['masses'][()]
-                    compositions = proc['compositions'][()]
+                        times_raw = proc['times'][()]
+                        masses = proc['masses'][()]
+                        compositions = proc['compositions'][()]
 
-                    incoming = masses > 0
-                    if not np.any(incoming):
-                        continue
+                        incoming = masses > 0
+                        if not np.any(incoming):
+                            continue
 
                     times_in = times_raw[incoming]
                     masses_in = masses[incoming]
@@ -1442,29 +1449,32 @@ class DYMONDOutput:
                     times_in_years = times_in / SECONDS_PER_YEAR
                     idxs = np.searchsorted(times, times_in_years, side='left')
 
-                    for idx, mass, comp in zip(idxs, masses_in, comps_in):
-                        if idx < 0 or idx >= n_steps:
-                            continue
-                        if u235_idx is None:
-                            continue
+                        for idx, mass, comp in zip(idxs, masses_in, comps_in):
+                            if idx < 0 or idx >= n_steps:
+                                continue
+                            if u235_idx is None:
+                                continue
 
-                        u_mass = comp[u_idxs].sum()
-                        if u_mass <= 0:
-                            continue
+                            u_mass = comp[u_idxs].sum()
+                            if u_mass <= 0:
+                                continue
 
-                        enr = float(comp[u235_idx]) / float(u_mass)
-                        if enr <= 0:
-                            continue
+                            enr = float(comp[u235_idx]) / float(u_mass)
+                            if enr <= 0:
+                                continue
 
-                        key = round(enr, 8)
-                        if key not in cascade_cache:
-                            try:
-                                cascade = enrichment_cascade(
-                                    feed_enr=natu_assay,
-                                    prod_enr=enr,
-                                    tail_enr=tails_assay,
-                                    cascade_splits=cascade_splits,
-                                )
+                            key = round(enr, 8)
+                            if key not in cascade_cache:
+                                try:
+                                    cascade = enrichment_cascade(
+                                        feed_enr=natu_assay,
+                                        prod_enr=enr,
+                                        tail_enr=tails_assay,
+                                        cascade_splits=cascade_splits,
+                                    )
+                                except (ValueError, AssertionError):
+                                    continue
+
                                 cascade_cache[key] = {
                                     "natu": cascade["feed"][0],
                                     "tails": np.asarray(
@@ -1472,31 +1482,57 @@ class DYMONDOutput:
                                     "swu": np.asarray(
                                         cascade["swu"], dtype=float),
                                 }
-                            except (ValueError, AssertionError):
-                                continue
 
-                        c = cascade_cache[key]
-                        n_stages = len(c["tails"])
-                        if tails_arr is None:
-                            tails_arr = np.zeros((n_steps, n_stages))
-                            swu_arr = np.zeros((n_steps, n_stages))
+                            c = cascade_cache[key]
 
-                        natu_arr[idx] += c["natu"] * mass
-                        tails_arr[idx] += c["tails"] * mass
-                        swu_arr[idx] += c["swu"] * mass
+                            # Infer stage count from the first valid cascade
+                            # and ensure all later cascades are compatible.
+                            if n_stages is None:
+                                n_stages = len(c["tails"])
+                            else:
+                                assert len(c["tails"]) == n_stages, \
+                                    "All cascades must have the same number " \
+                                    "of stages."
 
-                if tails_arr is None:
-                    tails_arr = np.zeros((n_steps, 1))
-                    swu_arr = np.zeros((n_steps, 1))
+                            if tails_arr is None:
+                                tails_arr = np.zeros((n_stages, n_steps))
+                                swu_arr = np.zeros((n_stages, n_steps))
+
+                            natu_arr[idx] += c["natu"] * mass
+                            tails_arr[:, idx] += c["tails"] * mass
+                            swu_arr[:, idx] += c["swu"] * mass
 
                 res["natu"][reactor] = natu_arr
-                res["tails"][reactor] = (
-                    tails_arr if split_cat else tails_arr.sum(axis=1))
-                res["swu"][reactor] = (
-                    swu_arr if split_cat else swu_arr.sum(axis=1))
+                res["tails"][reactor] = tails_arr
+                res["swu"][reactor] = swu_arr
+
+        # If no valid cascade was ever computed anywhere, use a single-stage
+        # so split_cat=True still returns a 2D shape.
+        if n_stages is None:
+            n_stages = 1
+
+        # Finalize output shapes reactor by reactor.
+        for reactor in reactors:
+            tails_arr = res["tails"][reactor]
+            swu_arr = res["swu"][reactor]
+
+            if tails_arr is None:
+                if split_cat:
+                    res["tails"][reactor] = np.zeros((n_stages, n_steps))
+                    res["swu"][reactor] = np.zeros((n_stages, n_steps))
+                else:
+                    res["tails"][reactor] = np.zeros(n_steps)
+                    res["swu"][reactor] = np.zeros(n_steps)
+            else:
+                if not split_cat:
+                    res["tails"][reactor] = tails_arr.sum(axis=0)
+                    res["swu"][reactor] = swu_arr.sum(axis=0)
 
         if return_sum:
-            return {k: sum(v.values()) for k, v in res.items()}
+            return {
+                k: np.sum(list(v.values()), axis=0) for k, v in res.items()
+            }
+
         return res
 
     def stock_fuel_natu(
@@ -1505,7 +1541,7 @@ class DYMONDOutput:
         natu_assay: float = None,
         tails_assay: float = None,
         return_sum: bool = True,
-        cascade_splits: list[float] | None = None,
+        cascade_splits: list[float] | None = [0.1, 0.2],
     ):
         """
         Compute natural uranium requirements for one or more reactors.
@@ -1545,7 +1581,7 @@ class DYMONDOutput:
         tails_assay: float = None,
         return_sum: bool = True,
         split_cat: bool = False,
-        cascade_splits: list[float] | None = None,
+        cascade_splits: list[float] | None = [0.1, 0.2],
     ):
         """
         Compute enrichment tails for one or more reactors.
@@ -1588,7 +1624,7 @@ class DYMONDOutput:
         tails_assay: float = None,
         return_sum: bool = True,
         split_cat: bool = False,
-        cascade_splits: list[float] | None = None,
+        cascade_splits: list[float] | None = [0.1, 0.2],
     ):
         """
         Compute SWU requirements for one or more reactors.
