@@ -435,8 +435,6 @@ class DYMONDOutput:
 
     def get_deployed_capacity(
         self, facilities=None, facility_class="reactor", return_sum=True,
-        capacity_factors=None,
-        default_capacity_factor=0.9
     ) -> dict[str, np.ndarray] | np.ndarray:
         """
         Determines the deployed capacity for each time step for each
@@ -445,8 +443,7 @@ class DYMONDOutput:
         Active units at each time step are taken from
         ``get_facility_fleet_size``.
         Deployed capacity equals the number of active units multiplied by
-        rated capacity (from the Types block) multiplied by the capacity
-        factor.
+        rated capacity (from the Types block).
 
         Parameters
         ----------
@@ -459,13 +456,6 @@ class DYMONDOutput:
         return_sum : bool, optional
             If True, returns a single array summed over all facilities.
             If False, returns a dict of per-facility arrays. Default True.
-        capacity_factors : dict or None
-            Capacity factors per facility name. If None, read from input data
-            via ``get_capacity_factors``. Any facility not in this dict falls
-            back to ``default_capacity_factor``.
-        default_capacity_factor : float, optional
-            Capacity factor to use when not found in input data or
-            ``capacity_factors``. Default 0.9.
 
         Returns
         -------
@@ -478,25 +468,33 @@ class DYMONDOutput:
             facility_class=facility_class
         )
 
-        if capacity_factors is None:
-            capacity_factors = self.get_capacity_factors(
-                facilities.tolist(), facility_class)
-
         type_data = self._get_type_data(facility_class)
+        power_units = (
+            self.input_data
+            .get("Model", self.input_data.get("model", {}))
+            .get("units", {})
+            .get("power", "MW")
+            .upper()
+        )
+
+        power_to_gw = {
+            "W": 1e-9,
+            "MW": 1e-3,
+            "GW": 1.0,
+            "EJ/YR": 1e18 / (SECONDS_PER_YEAR * 1e9),
+            "TWH/YR": 1e12 / (8766 * 1e9),
+        }
+        to_gw = power_to_gw[power_units]
 
         capacity_dict = {}
         for fac in facilities:
-            cf = capacity_factors.get(fac, default_capacity_factor)
-            if np.isnan(cf):
-                cf = default_capacity_factor
-
             fac_info = type_data.get(fac, {})
-            rated_capacity_mw = fac_info.get(
+            rated_capacity = fac_info.get(
                 "capacity", fac_info.get("power", 0.0))
-            rated_capacity_gw = rated_capacity_mw / 1e3
+            rated_capacity_gw = rated_capacity * to_gw
 
             fleet = self.get_facility_fleet_size(fac, facility_class)
-            capacity_dict[fac] = fleet * rated_capacity_gw * cf
+            capacity_dict[fac] = fleet * rated_capacity_gw
 
         if return_sum:
             return np.sum(list(capacity_dict.values()), axis=0)
