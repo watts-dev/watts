@@ -1242,21 +1242,11 @@ class DYMONDOutput:
         Tries the ``"process"`` stage incoming flow first; falls back to
         the ``"facility"`` stage if not found.
 
-        Parameters
-        ----------
-        reactors : str or list of str or None
-            Reactor(s) to calculate fuel demand for. If None, uses all
-            reactors.
-        return_sum : bool, optional
-            If True, returns a single array summed over all reactors.
-            Default True.
-        config_name : str or None, optional
-            Flows config name. If None, uses the first available.
-
-        Returns
-        -------
-        fuel_mass : np.ndarray or dict[str, np.ndarray]
-            Yearly fuel mass per reactor, or total if ``return_sum=True``.
+        Behavior for missing flow data:
+        - If a reactor type is known in the model input but has no flow entry
+        in the output, it is treated as zero demand.
+        - If a requested reactor is not a known reactor type at all, a
+        ValueError is raised.
         """
         reactors = self._normalize_facilities(
             facilities=reactors,
@@ -1264,15 +1254,31 @@ class DYMONDOutput:
         )
 
         fuel_mass_dict = {}
+        known_reactors = set(self.reactor_types)
+
         for reactor in reactors:
+            # Check if the reactor is known in the model input.
+            # If not, raise an error
+            if reactor not in known_reactors:
+                raise ValueError(
+                    f"Reactor '{reactor}' not found "
+                    f"in reactor data."
+                )
+
+            # Try process-level incoming flow first
             incoming = self._get_flow(
                 reactor, "reactor", "process", "incoming", config_name)
+
+            # Some outputs might only be a facility-level flow
             if incoming is None:
                 incoming = self._get_flow(
                     reactor, "reactor", "facility", "incoming", config_name)
+
+            # If the reactor exists in the data but has no flow entry at all,
+            # treat that as zero demand
             if incoming is None:
-                raise ValueError(
-                    f"Reactor '{reactor}' not found in flows data.")
+                incoming = np.zeros_like(self._get_times_array())
+
             fuel_mass_dict[reactor] = incoming
 
         if return_sum:
@@ -1290,22 +1296,11 @@ class DYMONDOutput:
         Tries the ``"process"`` stage outgoing flow first; falls back to
         the ``"facility"`` stage if not found.
 
-        Parameters
-        ----------
-        reactors : str or list of str or None
-            Reactor(s) to calculate discharged fuel for. If None, uses all
-            reactors.
-        return_sum : bool, optional
-            If True, returns a single array summed over all reactors.
-            Default True.
-        config_name : str or None, optional
-            Flows config name. If None, uses the first available.
-
-        Returns
-        -------
-        discharged_mass : np.ndarray or dict[str, np.ndarray]
-            Discharged fuel mass per reactor, or total if
-            ``return_sum=True``.
+        Behavior for missing flow data:
+        - If a reactor type is known in the model input but has no flow entry
+        in the output, it is treated as zero discharged fuel.
+        - If a requested reactor is not a known reactor type at all, a
+        ValueError is raised.
         """
         reactors = self._normalize_facilities(
             facilities=reactors,
@@ -1313,15 +1308,30 @@ class DYMONDOutput:
         )
 
         fuel_mass_dict = {}
+        known_reactors = set(self.reactor_types)
+
         for reactor in reactors:
+            # Check if the reactor is known in the model input.
+            # If not, raise an error
+            if reactor not in known_reactors:
+                raise ValueError(
+                    f"Reactor '{reactor}' not found "
+                    f"in reactor data.")
+
+            # Try process-level outgoing flow first
             outgoing = self._get_flow(
                 reactor, "reactor", "process", "outgoing", config_name)
+
+            # Some outputs might only be a facility-level flow
             if outgoing is None:
                 outgoing = self._get_flow(
                     reactor, "reactor", "facility", "outgoing", config_name)
+
+            # If the reactor exists in the data but has no flow entry at all,
+            # treat that as zero discharged fuel
             if outgoing is None:
-                raise ValueError(
-                    f"Reactor '{reactor}' not found in flows data.")
+                outgoing = np.zeros_like(self._get_times_array())
+
             fuel_mass_dict[reactor] = outgoing
 
         if return_sum:
@@ -1837,6 +1847,7 @@ class DYMONDOutput:
                 arr = mat_data
             else:
                 continue
+
             total = arr if total is None else total + arr
         return total if total is not None else np.array([])
 
@@ -1847,7 +1858,7 @@ class DYMONDOutput:
         Parameters
         ----------
         facility : str
-            Facility type name (e.g. 'PWR', 'waste').
+            Facility type name (e.g. 'PWR', 'waste', or 'totals').
         facility_class : str
             Facility class (e.g. 'reactor', 'storage').
         location : str or None
@@ -1861,7 +1872,7 @@ class DYMONDOutput:
         Returns
         -------
         np.ndarray or None
-            Total flow array, or None if not found.
+            Total flow array, or None if the requested facility is not found.
         """
         flows_cfg = self._get_flows_config(
             config_name=config_name,
@@ -1869,14 +1880,21 @@ class DYMONDOutput:
         )
         class_data = flows_cfg.get(facility_class, {})
 
-        # Try per-type first, fall back to totals
-        source = class_data.get("totals", class_data.get(facility, {}))
-        if facility in class_data and facility != "totals":
-            source = class_data[facility]
+        # Use the aggregate class totals when the caller explicitly asks
+        # for "totals".
+        if facility == "totals":
+            source = class_data.get("totals")
+        else:
+            source = class_data.get(facility)
+
+        # Missing facility is represented as None so other methods can
+        # decide whether to treat it as zeros or as an error.
+        if source is None:
+            return None
 
         total = None
         if location is not None:
-            # Single category
+            # Sum all materials within the requested location/category.
             cat_data = source.get(location, {})
             if not isinstance(cat_data, dict):
                 return total
@@ -1884,7 +1902,7 @@ class DYMONDOutput:
             if cat_sum is not None and len(cat_sum) > 0:
                 total = cat_sum if total is None else total + cat_sum
         else:
-            # Sum across all categories
+            # Sum all materials across all locations/categories.
             for cat_name, cat_data in source.items():
                 if not isinstance(cat_data, dict):
                     continue
