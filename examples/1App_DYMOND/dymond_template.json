@@ -1,0 +1,273 @@
+{
+  "Model": {
+    "precision decimals": {{ precision_decimals | default(4) }},
+    "units": {
+      "time": "{{ time_units | default('YEARS') }}",
+      "mass": "{{ mass_units | default('kg') }}",
+      "power": "{{ power_units | default('MW') }}",
+      "burnup": "{{ burnup_units | default('GWd/MTHM') }}"
+    },
+    "depletion path": {{ depletion_path | tojson }},
+    "interpolation": "{{ interpolation | default('step-wise') }}",
+    "dates": "{{ dates | default('time-step') }}"
+  },
+
+  "Simulation": {
+    "start year": {{ start_year }},
+    "duration": {{ duration }},
+    {% if energy_demand is defined %}
+    "energy demand": {{ energy_demand | tojson }},
+    {% endif %}
+    {% if nuclides is defined %}
+    "nuclides": {{ nuclides | tojson }},
+    {% endif %}
+    "decay calc": "{{ decay_calc | default('fast') }}"
+  },
+
+  "Types": {
+    "reactor": [
+      {% for reactor in reactors %}
+      {
+        "name": "{{ reactor.name }}",
+        "power": {{ reactor.power }},
+        "efficiency": {{ reactor.efficiency }},
+        "lifetime": {{ reactor.lifetime }},
+        "deployment lead time": {{ reactor.deployment_lead_time | default(0) }},
+        "capacity factor": {{ reactor.capacity_factor }},
+        "continuous operation": {{ reactor.continuous_operation | default(true) | tojson }},
+        "cycle length": {{ reactor.cycle_length }},
+        "refuel mass": {{ reactor.refuel_mass }},
+        "core size": {{ reactor.core_size }},
+        "fuel fab": "{{ reactor.fuel_fab | default('recipe') }}",
+        "fuel lead time": {{ reactor.fuel_lead_time | default(0) }},
+        {% if reactor.fuel is defined %}
+        "fuel": {{ reactor.fuel | tojson }},
+        {% endif %}
+        {% if reactor.source is defined %}
+        "source": {{ reactor.source | tojson }},
+        {% endif %}
+        "first core": {{ reactor.first_core | tojson }},
+        "depletion": {{ reactor.depletion | tojson }},
+        "waste": "{{ reactor.waste }}",
+        "cooling time": {{ reactor.cooling_time | default(5) }}
+      }{{ "," if not loop.last }}
+      {% endfor %}
+    ],
+
+    {% if enrichments is defined %}
+    "enrichment": [
+      {% for enr in enrichments %}
+      {
+        "name": "{{ enr.name }}",
+        "lifetime": {{ enr.lifetime | default(100) }},
+        "capacity": {{ enr.capacity }},
+        "capacity factor": {{ enr.capacity_factor | default(1.0) }},
+        "deployment lead time": {{ enr.deployment_lead_time | default(0) }},
+        "continuous operation": {{ enr.continuous_operation | default(true) | tojson }},
+        "process time": {{ enr.process_time | default(1.0) }},
+        "separation factors": {{ enr.separation_factors | tojson }},
+        "minimum load": {{ enr.minimum_load | default(false) | tojson }},
+        "input lead time": {{ enr.input_lead_time | default(0) }},
+        "batches": {{ enr.batches | default(true) | tojson }},
+        "feed": "{{ enr.feed }}",
+        "product": "{{ enr.product }}",
+        "tails": "{{ enr.tails }}"
+      }{{ "," if not loop.last }}
+      {% endfor %}
+    ],
+    {% endif %}
+
+    {% if fabrications is defined %}
+    "fabrication": [
+      {% for fab in fabrications %}
+      {
+        "name": "{{ fab.name }}",
+        "lifetime": {{ fab.lifetime | default(100) }},
+        "capacity": {{ fab.capacity }},
+        "capacity factor": {{ fab.capacity_factor | default(1.0) }},
+        "deployment lead time": {{ fab.deployment_lead_time | default(0) }},
+        "continuous operation": {{ fab.continuous_operation | default(true) | tojson }},
+        "process time": {{ fab.process_time }},
+        "minimum load": {{ fab.minimum_load | default(false) | tojson }}
+      }{{ "," if not loop.last }}
+      {% endfor %}
+    ],
+    {% endif %}
+
+    {% if reprocessing_plants is defined %}
+    "reprocessing": [
+      {% for rp in reprocessing_plants %}
+      {
+        "name": "{{ rp.name }}",
+        "lifetime": {{ rp.lifetime | default(100) }},
+        "capacity": {{ rp.capacity }},
+        "capacity factor": {{ rp.capacity_factor | default(1.0) }},
+        "deployment lead time": {{ rp.deployment_lead_time | default(5) }},
+        "continuous operation": {{ rp.continuous_operation | default(true) | tojson }},
+        "process time": {{ rp.process_time }},
+        "minimum load": {{ rp.minimum_load | default(false) | tojson }},
+        "input lead time": {{ rp.input_lead_time | default(0) }},
+        "batches": {{ rp.batches | default(false) | tojson }},
+        "feed": {{ rp.feed | tojson }},
+        "products": {{ rp.products | tojson }},
+        "balance product": "{{ rp.balance_product }}"
+      }{{ "," if not loop.last }}
+      {% endfor %}
+    ],
+    {% endif %}
+
+    "storage": [
+      {% for st in storages %}
+      {
+        "name": "{{ st.name }}",
+        "lifetime": {{ st.lifetime | default(200) }},
+        "bulk": {{ st.bulk | default(true) | tojson }},
+        {% if st.capacity is defined %}
+        "capacity": {{ st.capacity }},
+        {% endif %}
+        "materials": {{ st.materials | tojson }}
+      }{{ "," if not loop.last }}
+      {% endfor %}
+    ]
+
+    {% if facilities is defined %}
+    ,
+    "facility": [
+      {% for fac in facilities %}
+      {
+        "name": "{{ fac.name }}",
+        "lifetime": {{ fac.lifetime | default(100) }},
+        "capacity": {{ fac.capacity }},
+        "capacity factor": {{ fac.capacity_factor | default(1.0) }},
+        "deployment lead time": {{ fac.deployment_lead_time | default(0) }},
+        "continuous operation": {{ fac.continuous_operation | default(true) | tojson }},
+        "process time": {{ fac.process_time }},
+        "minimum load": {{ fac.minimum_load | default(false) | tojson }},
+        "input lead time": {{ fac.input_lead_time | default(0) }},
+        "input": "{{ fac.input }}",
+        "product": "{{ fac.product }}",
+        "recipe": {{ fac.recipe | tojson }}
+      }{{ "," if not loop.last }}
+      {% endfor %}
+    ]
+    {% endif %}
+  },
+
+  "Deployments": {
+    {% for fleet_name, fleet in deployments.items() %}
+    "{{ fleet_name }}": {
+      "type name": "{{ fleet.type_name }}",
+      {% if fleet.deployment_dates is defined %}
+      "deployment dates": {{ fleet.deployment_dates | tojson }},
+      {% else %}
+      "deployment time": {{ fleet.deployment_time | tojson }},
+      {% endif %}
+      "deployment quantity": {{ fleet.deployment_quantity | tojson }}
+      {% if fleet.deployment_method is defined %}
+      , "deployment method": "{{ fleet.deployment_method }}"
+      {% endif %}
+      {% if fleet.input_connections is defined %}
+      , "input connections": {{ fleet.input_connections | tojson }}
+      {% endif %}
+      {% if fleet.output_connections is defined %}
+      , "output connections": {{ fleet.output_connections | tojson }}
+      {% endif %}
+    }{{ "," if not loop.last }}
+    {% endfor %}
+  },
+
+  {% if events is defined %}
+  "Events": [
+    {% for event in events %}
+    {
+      "type": "{{ event.type }}",
+      {% if event.time is defined %}
+      "time": {{ event.time | tojson }},
+      {% endif %}
+      {% if event.period is defined %}
+      "period": {{ event.period }},
+      {% endif %}
+      {% if event.condition is defined %}
+      "condition": {{ event.condition | tojson }},
+      {% endif %}
+      "target": "{{ event.target }}",
+      "action": "{{ event.action }}",
+      "parameters": {{ event.parameters | tojson }}
+    }{{ "," if not loop.last }}
+    {% endfor %}
+  ],
+  {% endif %}
+
+  "Output": {
+    "json files": {{ output_json_files | default(false) | tojson }},
+    "step size": {{ output_step_size | default(1) }}
+
+    {% if output_stocks is defined %}
+    , "stocks": [
+      {% for stock in output_stocks %}
+      {
+        "name": "{{ stock.name }}"
+        {% for class_name in ["reactor", "storage", "enrichment", "fabrication", "reprocessing", "facility"] %}
+        {% if stock[class_name] is defined %}
+        , "{{ class_name }}": {
+          "totals": {{ stock[class_name].totals | default(true) | tojson }}
+          {% if stock[class_name].types is defined %}
+          , "types": {{ stock[class_name].types | tojson }}
+          {% endif %}
+          {% if stock[class_name].categories is defined %}
+          , "categories": {{ stock[class_name].categories | tojson }}
+          {% endif %}
+        }
+        {% endif %}
+        {% endfor %}
+        {% if stock.filter is defined %}
+        , "filter": {{ stock.filter | tojson }}
+        {% endif %}
+      }{{ "," if not loop.last }}
+      {% endfor %}
+    ]
+    {% endif %}
+
+    {% if output_flows is defined %}
+    , "flows": [
+      {% for flow in output_flows %}
+      {
+        "name": "{{ flow.name }}"
+        {% for class_name in ["reactor", "storage", "enrichment", "fabrication", "reprocessing", "facility"] %}
+        {% if flow[class_name] is defined %}
+        , "{{ class_name }}": {
+          "totals": {{ flow[class_name].totals | default(true) | tojson }}
+          {% if flow[class_name].types is defined %}
+          , "types": {{ flow[class_name].types | tojson }}
+          {% endif %}
+          {% if flow[class_name].categories is defined %}
+          , "categories": {{ flow[class_name].categories | tojson }}
+          {% endif %}
+        }
+        {% endif %}
+        {% endfor %}
+        {% if flow.filter is defined %}
+        , "filter": {{ flow.filter | tojson }}
+        {% endif %}
+      }{{ "," if not loop.last }}
+      {% endfor %}
+    ]
+    {% endif %}
+
+    {% if output_operations is defined %}
+    , "operations": {
+      {% for class_name, ops_config in output_operations.items() %}
+      "{{ class_name }}": {
+        "totals": {{ ops_config.totals | default(true) | tojson }}
+        {% if ops_config.types is defined %}
+        , "types": {{ ops_config.types | tojson }}
+        {% endif %}
+        {% if ops_config.states is defined %}
+        , "states": {{ ops_config.states | tojson }}
+        {% endif %}
+      }{{ "," if not loop.last }}
+      {% endfor %}
+    }
+    {% endif %}
+  }
+}
