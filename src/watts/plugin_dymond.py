@@ -391,43 +391,97 @@ class DYMONDOutput:
         }
 
     def get_generated_power(
-        self, reactors=None, return_sum=True
+        self,
+        reactors=None,
+        return_sum=True,
+        capacity_factors: dict[str, float] | None = None,
+        default_capacity_factor: float = 0.9,
     ) -> dict[str, np.ndarray] | np.ndarray:
         """
-        Returns the generated power for each time step for each reactor type.
+        Returns the generated power for each time step for each
+        reactor type.
 
-        Extracts the ``"Operating"`` state output summary directly from
-        operations data.
+        By default, extracts the ``"Operating"`` state from operations
+        data. If a reactor has no operations entry, falls back to
+        ``get_deployed_capacity * capacity_factor``.
+
+        If ``capacity_factors`` is provided, all reactors use the
+        deployed-capacity approach, overriding any operations data.
 
         Parameters
         ----------
         reactors : list of str or None
-            Names of reactors in the simulation. If None, uses all reactors.
+            Names of reactors in the simulation. If None, uses all
+            reactors.
         return_sum : bool, optional
             If True, returns a single array summed over all reactors.
-            If False, returns a dict of per-reactor arrays. Default True.
+            If False, returns a dict of per-reactor arrays.
+            Default True.
+        capacity_factors : dict[str, float] or None
+            If provided, compute generated power as deployed capacity
+            multiplied by these capacity factors instead of using
+            operations data. Reactors not in this dict use
+            ``default_capacity_factor``.
+        default_capacity_factor : float, optional
+            Capacity factor used when ``capacity_factors`` is provided
+            but missing an entry for a reactor, or when falling back
+            from missing operations data. If not provided by the user,
+            the capacity factor from the DYMOND input data is used,
+            or 0.9 if not specified there either.
 
         Returns
         -------
         power_dict : dict[str, np.ndarray] or np.ndarray
-            Generated power per reactor (dict) or summed across all reactors
-            (ndarray) depending on ``return_sum``.
+            Generated power per reactor (dict) or summed across all
+            reactors (ndarray) depending on ``return_sum``.
         """
         reactors = self._normalize_facilities(
             facilities=reactors,
             facility_class="reactor"
         )
 
+        # If capacity_factors is explicitly provided, use deployed
+        # capacity * capacity factor for all reactors.
+        if capacity_factors is not None:
+            deployed = self.get_deployed_capacity(
+                facilities=reactors.tolist(),
+                facility_class="reactor",
+                return_sum=False,
+            )
+            power_dict = {}
+            for reactor in reactors:
+                cf = capacity_factors.get(
+                    reactor, default_capacity_factor)
+                power_dict[reactor] = deployed[reactor] * cf
+
+            if return_sum:
+                return np.sum(
+                    list(power_dict.values()), axis=0)
+            return power_dict
+
+        # Default path: use operations data, falling back to
+        # deployed capacity * capacity factor per reactor.
         ops_reactor = self.operations.get("reactor", {})
         times = self._get_times_array()
+        input_cfs = self.get_capacity_factors(
+            reactors.tolist(), "reactor")
 
         power_dict = {}
         for reactor in reactors:
-            if reactor not in ops_reactor:
-                raise ValueError(
-                    f"Reactor '{reactor}' not found in operations data.")
-            power_dict[reactor] = np.asarray(ops_reactor[reactor].get(
-                "Operating", np.zeros_like(times)))
+            if reactor in ops_reactor:
+                power_dict[reactor] = np.asarray(
+                    ops_reactor[reactor].get(
+                        "Operating", np.zeros_like(times)))
+            else:
+                deployed = self.get_deployed_capacity(
+                    facilities=[reactor],
+                    facility_class="reactor",
+                    return_sum=True,
+                )
+                cf = input_cfs.get(reactor, np.nan)
+                if np.isnan(cf):
+                    cf = default_capacity_factor
+                power_dict[reactor] = deployed * cf
 
         if return_sum:
             return np.sum(list(power_dict.values()), axis=0)
@@ -435,8 +489,6 @@ class DYMONDOutput:
 
     def get_deployed_capacity(
         self, facilities=None, facility_class="reactor", return_sum=True,
-        capacity_factors=None,
-        default_capacity_factor=0.9
     ) -> dict[str, np.ndarray] | np.ndarray:
         """
         Determines the deployed capacity for each time step for each
@@ -445,8 +497,7 @@ class DYMONDOutput:
         Active units at each time step are taken from
         ``get_facility_fleet_size``.
         Deployed capacity equals the number of active units multiplied by
-        rated capacity (from the Types block) multiplied by the capacity
-        factor.
+        rated capacity (from the Types block).
 
         Parameters
         ----------
@@ -459,13 +510,6 @@ class DYMONDOutput:
         return_sum : bool, optional
             If True, returns a single array summed over all facilities.
             If False, returns a dict of per-facility arrays. Default True.
-        capacity_factors : dict or None
-            Capacity factors per facility name. If None, read from input data
-            via ``get_capacity_factors``. Any facility not in this dict falls
-            back to ``default_capacity_factor``.
-        default_capacity_factor : float, optional
-            Capacity factor to use when not found in input data or
-            ``capacity_factors``. Default 0.9.
 
         Returns
         -------
@@ -478,25 +522,33 @@ class DYMONDOutput:
             facility_class=facility_class
         )
 
-        if capacity_factors is None:
-            capacity_factors = self.get_capacity_factors(
-                facilities.tolist(), facility_class)
-
         type_data = self._get_type_data(facility_class)
+        power_units = (
+            self.input_data
+            .get("Model", self.input_data.get("model", {}))
+            .get("units", {})
+            .get("power", "MW")
+            .upper()
+        )
+
+        power_to_gw = {
+            "W": 1e-9,
+            "MW": 1e-3,
+            "GW": 1.0,
+            "EJ/YR": 1e18 / (SECONDS_PER_YEAR * 1e9),
+            "TWH/YR": 1e12 / (8766 * 1e9),
+        }
+        to_gw = power_to_gw[power_units]
 
         capacity_dict = {}
         for fac in facilities:
-            cf = capacity_factors.get(fac, default_capacity_factor)
-            if np.isnan(cf):
-                cf = default_capacity_factor
-
             fac_info = type_data.get(fac, {})
-            rated_capacity_mw = fac_info.get(
+            rated_capacity = fac_info.get(
                 "capacity", fac_info.get("power", 0.0))
-            rated_capacity_gw = rated_capacity_mw / 1e3
+            rated_capacity_gw = rated_capacity * to_gw
 
             fleet = self.get_facility_fleet_size(fac, facility_class)
-            capacity_dict[fac] = fleet * rated_capacity_gw * cf
+            capacity_dict[fac] = fleet * rated_capacity_gw
 
         if return_sum:
             return np.sum(list(capacity_dict.values()), axis=0)
@@ -540,7 +592,8 @@ class DYMONDOutput:
             facility_class="reactor"
         )
 
-        n_steps = len(self._get_times_array())
+        times = self._get_times_array()
+        n_steps = len(times)
 
         enrichments = {}
         with h5py.File(self.hdf5_path, 'r') as f:
@@ -583,7 +636,8 @@ class DYMONDOutput:
                     masses_in = masses[incoming]
                     comps_in = compositions[incoming]
 
-                    idxs = (times_in / SECONDS_PER_YEAR).astype(int)
+                    times_in_years = times_in / SECONDS_PER_YEAR
+                    idxs = np.searchsorted(times, times_in_years, side='left')
 
                     for i, (idx, mass, comp) in enumerate(
                             zip(idxs, masses_in, comps_in)):
@@ -1240,7 +1294,10 @@ class DYMONDOutput:
         Annual fuel mass demand from one or more reactors.
 
         Tries the ``"process"`` stage incoming flow first; falls back to
-        the ``"facility"`` stage if not found.
+        the ``"facility"`` stage if not found. If a reactor type is known
+        in the model input but has no flow entry in the output, it is
+        treated as zero demand. If a requested reactor is not a known
+        reactor type at all, a ``ValueError`` is raised.
 
         Parameters
         ----------
@@ -1264,15 +1321,31 @@ class DYMONDOutput:
         )
 
         fuel_mass_dict = {}
+        known_reactors = set(self.reactor_types)
+
         for reactor in reactors:
+            # Check if the reactor is known in the model input.
+            # If not, raise an error
+            if reactor not in known_reactors:
+                raise ValueError(
+                    f"Reactor '{reactor}' not found "
+                    f"in reactor data."
+                )
+
+            # Try process-level incoming flow first
             incoming = self._get_flow(
                 reactor, "reactor", "process", "incoming", config_name)
+
+            # Some outputs might only be a facility-level flow
             if incoming is None:
                 incoming = self._get_flow(
                     reactor, "reactor", "facility", "incoming", config_name)
+
+            # If the reactor exists in the data but has no flow entry at all,
+            # treat that as zero demand
             if incoming is None:
-                raise ValueError(
-                    f"Reactor '{reactor}' not found in flows data.")
+                incoming = np.zeros_like(self._get_times_array())
+
             fuel_mass_dict[reactor] = incoming
 
         if return_sum:
@@ -1288,7 +1361,10 @@ class DYMONDOutput:
         Annual discharged fuel mass from one or more reactors.
 
         Tries the ``"process"`` stage outgoing flow first; falls back to
-        the ``"facility"`` stage if not found.
+        the ``"facility"`` stage if not found. If a reactor type is known
+        in the model input but has no flow entry in the output, it is
+        treated as zero discharged fuel. If a requested reactor is not a
+        known reactor type at all, a ``ValueError`` is raised.
 
         Parameters
         ----------
@@ -1313,15 +1389,30 @@ class DYMONDOutput:
         )
 
         fuel_mass_dict = {}
+        known_reactors = set(self.reactor_types)
+
         for reactor in reactors:
+            # Check if the reactor is known in the model input.
+            # If not, raise an error
+            if reactor not in known_reactors:
+                raise ValueError(
+                    f"Reactor '{reactor}' not found "
+                    f"in reactor data.")
+
+            # Try process-level outgoing flow first
             outgoing = self._get_flow(
                 reactor, "reactor", "process", "outgoing", config_name)
+
+            # Some outputs might only be a facility-level flow
             if outgoing is None:
                 outgoing = self._get_flow(
                     reactor, "reactor", "facility", "outgoing", config_name)
+
+            # If the reactor exists in the data but has no flow entry at all,
+            # treat that as zero discharged fuel
             if outgoing is None:
-                raise ValueError(
-                    f"Reactor '{reactor}' not found in flows data.")
+                outgoing = np.zeros_like(self._get_times_array())
+
             fuel_mass_dict[reactor] = outgoing
 
         if return_sum:
@@ -1345,6 +1436,11 @@ class DYMONDOutput:
         process data, avoiding errors from averaging non-linear enrichment
         calculations. Each incoming transaction to a reactor's process stage
         is individually cascaded and the results binned into annual totals.
+
+        Structure (T = number of time steps, S = number of cascade stages):
+        - natu is always shape (T,)
+        - tails and swu are shape (T,) when split_cat=False
+        - tails and swu are shape (S, T) when split_cat=True
 
         Parameters
         ----------
@@ -1375,6 +1471,8 @@ class DYMONDOutput:
             f"tails_assay must be a number between 0 and 1, got " \
             f"{tails_assay!r}"
 
+        if cascade_splits is None:
+            cascade_splits = [0.1, 0.2]
         if not cascade_splits:
             cascade_splits = [np.inf]
         else:
@@ -1385,9 +1483,15 @@ class DYMONDOutput:
             facility_class="reactor"
         )
 
-        n_steps = len(self._get_times_array())
+        times = self._get_times_array()
+        n_steps = len(times)
 
+        # Cache cascade results by enrichment to avoid repeated calculations.
         cascade_cache = {}
+
+        # Number of cascade stages, inferred from the first valid cascade.
+        n_stages = None
+
         res = {"natu": {}, "tails": {}, "swu": {}}
 
         with h5py.File(self.hdf5_path, 'r') as f:
@@ -1402,57 +1506,59 @@ class DYMONDOutput:
 
             for reactor in reactors:
                 natu_arr = np.zeros(n_steps)
-                # tails_arr and swu_arr are allocated once n_stages is known
+
+                # For split_cat=True, arrays with shape (S, T)
                 tails_arr = None
                 swu_arr = None
 
                 reactor_group_path = f'Reactor/{reactor}'
-                if reactor_group_path not in f:
-                    res["natu"][reactor] = natu_arr
-                    res["tails"][reactor] = np.zeros(n_steps)
-                    res["swu"][reactor] = np.zeros(n_steps)
-                    continue
-
-                for instance in f[reactor_group_path].values():
-                    proc = instance.get('process')
-                    if proc is None:
-                        continue
-                    times_raw = proc['times'][()]
-                    masses = proc['masses'][()]
-                    compositions = proc['compositions'][()]
-
-                    incoming = masses > 0
-                    if not np.any(incoming):
-                        continue
-
-                    times_in = times_raw[incoming]
-                    masses_in = masses[incoming]
-                    comps_in = compositions[incoming]
-                    idxs = (times_in / SECONDS_PER_YEAR).astype(int)
-
-                    for idx, mass, comp in zip(idxs, masses_in, comps_in):
-                        if idx < 0 or idx >= n_steps:
-                            continue
-                        if u235_idx is None:
+                if reactor_group_path in f:
+                    for instance in f[reactor_group_path].values():
+                        proc = instance.get('process')
+                        if proc is None:
                             continue
 
-                        u_mass = comp[u_idxs].sum()
-                        if u_mass <= 0:
+                        times_raw = proc['times'][()]
+                        masses = proc['masses'][()]
+                        compositions = proc['compositions'][()]
+
+                        incoming = masses > 0
+                        if not np.any(incoming):
                             continue
 
-                        enr = float(comp[u235_idx]) / float(u_mass)
-                        if enr <= 0:
-                            continue
+                        times_in = times_raw[incoming]
+                        masses_in = masses[incoming]
+                        comps_in = compositions[incoming]
+                        times_in_years = times_in / SECONDS_PER_YEAR
+                        idxs = np.searchsorted(
+                            times, times_in_years, side='left')
 
-                        key = round(enr, 8)
-                        if key not in cascade_cache:
-                            try:
-                                cascade = enrichment_cascade(
-                                    feed_enr=natu_assay,
-                                    prod_enr=enr,
-                                    tail_enr=tails_assay,
-                                    cascade_splits=cascade_splits,
-                                )
+                        for idx, mass, comp in zip(idxs, masses_in, comps_in):
+                            if idx < 0 or idx >= n_steps:
+                                continue
+                            if u235_idx is None:
+                                continue
+
+                            u_mass = comp[u_idxs].sum()
+                            if u_mass <= 0:
+                                continue
+
+                            enr = float(comp[u235_idx]) / float(u_mass)
+                            if enr <= 0:
+                                continue
+
+                            key = round(enr, 8)
+                            if key not in cascade_cache:
+                                try:
+                                    cascade = enrichment_cascade(
+                                        feed_enr=natu_assay,
+                                        prod_enr=enr,
+                                        tail_enr=tails_assay,
+                                        cascade_splits=cascade_splits,
+                                    )
+                                except (ValueError, AssertionError):
+                                    continue
+
                                 cascade_cache[key] = {
                                     "natu": cascade["feed"][0],
                                     "tails": np.asarray(
@@ -1460,31 +1566,57 @@ class DYMONDOutput:
                                     "swu": np.asarray(
                                         cascade["swu"], dtype=float),
                                 }
-                            except (ValueError, AssertionError):
-                                continue
 
-                        c = cascade_cache[key]
-                        n_stages = len(c["tails"])
-                        if tails_arr is None:
-                            tails_arr = np.zeros((n_steps, n_stages))
-                            swu_arr = np.zeros((n_steps, n_stages))
+                            c = cascade_cache[key]
 
-                        natu_arr[idx] += c["natu"] * mass
-                        tails_arr[idx] += c["tails"] * mass
-                        swu_arr[idx] += c["swu"] * mass
+                            # Infer stage count from the first valid cascade
+                            # and ensure all later cascades are compatible.
+                            if n_stages is None:
+                                n_stages = len(c["tails"])
+                            else:
+                                assert len(c["tails"]) == n_stages, \
+                                    "All cascades must have the same number " \
+                                    "of stages."
 
-                if tails_arr is None:
-                    tails_arr = np.zeros((n_steps, 1))
-                    swu_arr = np.zeros((n_steps, 1))
+                            if tails_arr is None:
+                                tails_arr = np.zeros((n_stages, n_steps))
+                                swu_arr = np.zeros((n_stages, n_steps))
+
+                            natu_arr[idx] += c["natu"] * mass
+                            tails_arr[:, idx] += c["tails"] * mass
+                            swu_arr[:, idx] += c["swu"] * mass
 
                 res["natu"][reactor] = natu_arr
-                res["tails"][reactor] = (
-                    tails_arr if split_cat else tails_arr.sum(axis=1))
-                res["swu"][reactor] = (
-                    swu_arr if split_cat else swu_arr.sum(axis=1))
+                res["tails"][reactor] = tails_arr
+                res["swu"][reactor] = swu_arr
+
+        # If no valid cascade was ever computed anywhere, use a single-stage
+        # so split_cat=True still returns a 2D shape.
+        if n_stages is None:
+            n_stages = 1
+
+        # Finalize output shapes reactor by reactor.
+        for reactor in reactors:
+            tails_arr = res["tails"][reactor]
+            swu_arr = res["swu"][reactor]
+
+            if tails_arr is None:
+                if split_cat:
+                    res["tails"][reactor] = np.zeros((n_stages, n_steps))
+                    res["swu"][reactor] = np.zeros((n_stages, n_steps))
+                else:
+                    res["tails"][reactor] = np.zeros(n_steps)
+                    res["swu"][reactor] = np.zeros(n_steps)
+            else:
+                if not split_cat:
+                    res["tails"][reactor] = tails_arr.sum(axis=0)
+                    res["swu"][reactor] = swu_arr.sum(axis=0)
 
         if return_sum:
-            return {k: sum(v.values()) for k, v in res.items()}
+            return {
+                k: np.sum(list(v.values()), axis=0) for k, v in res.items()
+            }
+
         return res
 
     def stock_fuel_natu(
@@ -1835,6 +1967,7 @@ class DYMONDOutput:
                 arr = mat_data
             else:
                 continue
+
             total = arr if total is None else total + arr
         return total if total is not None else np.array([])
 
@@ -1845,7 +1978,7 @@ class DYMONDOutput:
         Parameters
         ----------
         facility : str
-            Facility type name (e.g. 'PWR', 'waste').
+            Facility type name (e.g. 'PWR', 'waste', or 'totals').
         facility_class : str
             Facility class (e.g. 'reactor', 'storage').
         location : str or None
@@ -1859,7 +1992,7 @@ class DYMONDOutput:
         Returns
         -------
         np.ndarray or None
-            Total flow array, or None if not found.
+            Total flow array, or None if the requested facility is not found.
         """
         flows_cfg = self._get_flows_config(
             config_name=config_name,
@@ -1867,14 +2000,21 @@ class DYMONDOutput:
         )
         class_data = flows_cfg.get(facility_class, {})
 
-        # Try per-type first, fall back to totals
-        source = class_data.get("totals", class_data.get(facility, {}))
-        if facility in class_data and facility != "totals":
-            source = class_data[facility]
+        # Use the aggregate class totals when the caller explicitly asks
+        # for "totals".
+        if facility == "totals":
+            source = class_data.get("totals")
+        else:
+            source = class_data.get(facility)
+
+        # Missing facility is represented as None so other methods can
+        # decide whether to treat it as zeros or as an error.
+        if source is None:
+            return None
 
         total = None
         if location is not None:
-            # Single category
+            # Sum all materials within the requested location/category.
             cat_data = source.get(location, {})
             if not isinstance(cat_data, dict):
                 return total
@@ -1882,7 +2022,7 @@ class DYMONDOutput:
             if cat_sum is not None and len(cat_sum) > 0:
                 total = cat_sum if total is None else total + cat_sum
         else:
-            # Sum across all categories
+            # Sum all materials across all locations/categories.
             for cat_name, cat_data in source.items():
                 if not isinstance(cat_data, dict):
                     continue
