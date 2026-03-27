@@ -391,43 +391,97 @@ class DYMONDOutput:
         }
 
     def get_generated_power(
-        self, reactors=None, return_sum=True
+        self,
+        reactors=None,
+        return_sum=True,
+        capacity_factors: dict[str, float] | None = None,
+        default_capacity_factor: float = 0.9,
     ) -> dict[str, np.ndarray] | np.ndarray:
         """
-        Returns the generated power for each time step for each reactor type.
+        Returns the generated power for each time step for each
+        reactor type.
 
-        Extracts the ``"Operating"`` state output summary directly from
-        operations data.
+        By default, extracts the ``"Operating"`` state from operations
+        data. If a reactor has no operations entry, falls back to
+        ``get_deployed_capacity * capacity_factor``.
+
+        If ``capacity_factors`` is provided, all reactors use the
+        deployed-capacity approach, overriding any operations data.
 
         Parameters
         ----------
         reactors : list of str or None
-            Names of reactors in the simulation. If None, uses all reactors.
+            Names of reactors in the simulation. If None, uses all
+            reactors.
         return_sum : bool, optional
             If True, returns a single array summed over all reactors.
-            If False, returns a dict of per-reactor arrays. Default True.
+            If False, returns a dict of per-reactor arrays.
+            Default True.
+        capacity_factors : dict[str, float] or None
+            If provided, compute generated power as deployed capacity
+            multiplied by these capacity factors instead of using
+            operations data. Reactors not in this dict use
+            ``default_capacity_factor``.
+        default_capacity_factor : float, optional
+            Capacity factor used when ``capacity_factors`` is provided
+            but missing an entry for a reactor, or when falling back
+            from missing operations data. If not provided by the user,
+            the capacity factor from the DYMOND input data is used,
+            or 0.9 if not specified there either.
 
         Returns
         -------
         power_dict : dict[str, np.ndarray] or np.ndarray
-            Generated power per reactor (dict) or summed across all reactors
-            (ndarray) depending on ``return_sum``.
+            Generated power per reactor (dict) or summed across all
+            reactors (ndarray) depending on ``return_sum``.
         """
         reactors = self._normalize_facilities(
             facilities=reactors,
             facility_class="reactor"
         )
 
+        # If capacity_factors is explicitly provided, use deployed
+        # capacity * capacity factor for all reactors.
+        if capacity_factors is not None:
+            deployed = self.get_deployed_capacity(
+                facilities=reactors.tolist(),
+                facility_class="reactor",
+                return_sum=False,
+            )
+            power_dict = {}
+            for reactor in reactors:
+                cf = capacity_factors.get(
+                    reactor, default_capacity_factor)
+                power_dict[reactor] = deployed[reactor] * cf
+
+            if return_sum:
+                return np.sum(
+                    list(power_dict.values()), axis=0)
+            return power_dict
+
+        # Default path: use operations data, falling back to
+        # deployed capacity * capacity factor per reactor.
         ops_reactor = self.operations.get("reactor", {})
         times = self._get_times_array()
+        input_cfs = self.get_capacity_factors(
+            reactors.tolist(), "reactor")
 
         power_dict = {}
         for reactor in reactors:
-            if reactor not in ops_reactor:
-                raise ValueError(
-                    f"Reactor '{reactor}' not found in operations data.")
-            power_dict[reactor] = np.asarray(ops_reactor[reactor].get(
-                "Operating", np.zeros_like(times)))
+            if reactor in ops_reactor:
+                power_dict[reactor] = np.asarray(
+                    ops_reactor[reactor].get(
+                        "Operating", np.zeros_like(times)))
+            else:
+                deployed = self.get_deployed_capacity(
+                    facilities=[reactor],
+                    facility_class="reactor",
+                    return_sum=True,
+                )
+                cf = input_cfs.get(reactor, np.nan)
+                if np.isnan(cf):
+                    cf = default_capacity_factor
+                power_dict[reactor] = deployed * cf
 
         if return_sum:
             return np.sum(list(power_dict.values()), axis=0)
