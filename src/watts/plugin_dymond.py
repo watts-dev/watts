@@ -538,7 +538,8 @@ class DYMONDOutput:
             facility_class="reactor"
         )
 
-        n_steps = len(self._get_times_array())
+        times = self._get_times_array()
+        n_steps = len(times)
 
         enrichments = {}
         with h5py.File(self.hdf5_path, 'r') as f:
@@ -581,7 +582,8 @@ class DYMONDOutput:
                     masses_in = masses[incoming]
                     comps_in = compositions[incoming]
 
-                    idxs = (times_in / SECONDS_PER_YEAR).astype(int)
+                    times_in_years = times_in / SECONDS_PER_YEAR
+                    idxs = np.searchsorted(times, times_in_years, side='left')
 
                     for i, (idx, mass, comp) in enumerate(
                             zip(idxs, masses_in, comps_in)):
@@ -1383,7 +1385,8 @@ class DYMONDOutput:
             facility_class="reactor"
         )
 
-        n_steps = len(self._get_times_array())
+        times = self._get_times_array()
+        n_steps = len(times)
 
         cascade_cache = {}
         res = {"natu": {}, "tails": {}, "swu": {}}
@@ -1426,7 +1429,8 @@ class DYMONDOutput:
                     times_in = times_raw[incoming]
                     masses_in = masses[incoming]
                     comps_in = compositions[incoming]
-                    idxs = (times_in / SECONDS_PER_YEAR).astype(int)
+                    times_in_years = times_in / SECONDS_PER_YEAR
+                    idxs = np.searchsorted(times, times_in_years, side='left')
 
                     for idx, mass, comp in zip(idxs, masses_in, comps_in):
                         if idx < 0 or idx >= n_steps:
