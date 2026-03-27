@@ -1240,13 +1240,26 @@ class DYMONDOutput:
         Annual fuel mass demand from one or more reactors.
 
         Tries the ``"process"`` stage incoming flow first; falls back to
-        the ``"facility"`` stage if not found.
+        the ``"facility"`` stage if not found. If a reactor type is known
+        in the model input but has no flow entry in the output, it is
+        treated as zero demand. If a requested reactor is not a known
+        reactor type at all, a ``ValueError`` is raised.
 
-        Behavior for missing flow data:
-        - If a reactor type is known in the model input but has no flow entry
-        in the output, it is treated as zero demand.
-        - If a requested reactor is not a known reactor type at all, a
-        ValueError is raised.
+        Parameters
+        ----------
+        reactors : str or list of str or None
+            Reactor(s) to calculate fuel demand for. If None, uses all
+            reactors.
+        return_sum : bool, optional
+            If True, returns a single array summed over all reactors.
+            Default True.
+        config_name : str or None, optional
+            Flows config name. If None, uses the first available.
+
+        Returns
+        -------
+        fuel_mass : np.ndarray or dict[str, np.ndarray]
+            Yearly fuel mass per reactor, or total if ``return_sum=True``.
         """
         reactors = self._normalize_facilities(
             facilities=reactors,
@@ -1294,13 +1307,27 @@ class DYMONDOutput:
         Annual discharged fuel mass from one or more reactors.
 
         Tries the ``"process"`` stage outgoing flow first; falls back to
-        the ``"facility"`` stage if not found.
+        the ``"facility"`` stage if not found. If a reactor type is known
+        in the model input but has no flow entry in the output, it is
+        treated as zero discharged fuel. If a requested reactor is not a
+        known reactor type at all, a ``ValueError`` is raised.
 
-        Behavior for missing flow data:
-        - If a reactor type is known in the model input but has no flow entry
-        in the output, it is treated as zero discharged fuel.
-        - If a requested reactor is not a known reactor type at all, a
-        ValueError is raised.
+        Parameters
+        ----------
+        reactors : str or list of str or None
+            Reactor(s) to calculate discharged fuel for. If None, uses all
+            reactors.
+        return_sum : bool, optional
+            If True, returns a single array summed over all reactors.
+            Default True.
+        config_name : str or None, optional
+            Flows config name. If None, uses the first available.
+
+        Returns
+        -------
+        discharged_mass : np.ndarray or dict[str, np.ndarray]
+            Discharged fuel mass per reactor, or total if
+            ``return_sum=True``.
         """
         reactors = self._normalize_facilities(
             facilities=reactors,
@@ -1345,7 +1372,7 @@ class DYMONDOutput:
         tails_assay: float = None,
         return_sum: bool = True,
         split_cat: bool = False,
-        cascade_splits: list[float] | None = [0.1, 0.2],
+        cascade_splits: list[float] | None = None,
     ):
         """
         Compute natural-uranium feed, enrichment tails, and SWU
@@ -1390,6 +1417,8 @@ class DYMONDOutput:
             f"tails_assay must be a number between 0 and 1, got " \
             f"{tails_assay!r}"
 
+        if cascade_splits is None:
+            cascade_splits = [0.1, 0.2]
         if not cascade_splits:
             cascade_splits = [np.inf]
         else:
@@ -1443,11 +1472,12 @@ class DYMONDOutput:
                         if not np.any(incoming):
                             continue
 
-                    times_in = times_raw[incoming]
-                    masses_in = masses[incoming]
-                    comps_in = compositions[incoming]
-                    times_in_years = times_in / SECONDS_PER_YEAR
-                    idxs = np.searchsorted(times, times_in_years, side='left')
+                        times_in = times_raw[incoming]
+                        masses_in = masses[incoming]
+                        comps_in = compositions[incoming]
+                        times_in_years = times_in / SECONDS_PER_YEAR
+                        idxs = np.searchsorted(
+                            times, times_in_years, side='left')
 
                         for idx, mass, comp in zip(idxs, masses_in, comps_in):
                             if idx < 0 or idx >= n_steps:
@@ -1541,7 +1571,7 @@ class DYMONDOutput:
         natu_assay: float = None,
         tails_assay: float = None,
         return_sum: bool = True,
-        cascade_splits: list[float] | None = [0.1, 0.2],
+        cascade_splits: list[float] | None = None,
     ):
         """
         Compute natural uranium requirements for one or more reactors.
@@ -1581,7 +1611,7 @@ class DYMONDOutput:
         tails_assay: float = None,
         return_sum: bool = True,
         split_cat: bool = False,
-        cascade_splits: list[float] | None = [0.1, 0.2],
+        cascade_splits: list[float] | None = None,
     ):
         """
         Compute enrichment tails for one or more reactors.
@@ -1624,7 +1654,7 @@ class DYMONDOutput:
         tails_assay: float = None,
         return_sum: bool = True,
         split_cat: bool = False,
-        cascade_splits: list[float] | None = [0.1, 0.2],
+        cascade_splits: list[float] | None = None,
     ):
         """
         Compute SWU requirements for one or more reactors.
