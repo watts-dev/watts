@@ -12,7 +12,7 @@ from copy import deepcopy
 
 from .fileutils import PathLike
 from .parameters import Parameters
-from .plugin import PluginGeneric, _find_executable
+from .plugin import PluginGeneric
 from .results import Results, ExecInfo
 from .enrichment_utils import enrichment_cascade
 
@@ -33,10 +33,24 @@ class ResultsCyclus(Results):
 
     Attributes
     ----------
-    keff
-        K-effective value from the final statepoint
-    statepoints
-        List of statepoint files
+    obj
+        CyclusOutput object linked to the output SQLite file.
+    sqlite_file
+        Path to the Cyclus SQLite output file.
+    prototypes
+        Unique prototype names from the simulation.
+    reactors
+        Reactor agent IDs mapped to prototype names.
+    commodities
+        Unique commodity names used in transactions.
+    time_dict
+        Simulation time metadata.
+    mass_flow_dict
+        Yearly mass flows by commodity.
+    input_text
+        Cyclus input text stored in the output database.
+    input_dict
+        Cyclus input parsed from XML into a dictionary.
     """
 
     def __init__(
@@ -109,12 +123,6 @@ class ResultsCyclus(Results):
 class PluginCyclus(PluginGeneric):
     """Plugin for running Cyclus
 
-    #! In addition to the basic capability to use placeholders in
-    MCNP input files, this class also provides a custom Jinja
-    filter called `expand_element that allows you to specify natural
-    elements in MCNP material definitions and have them automatically
-    expanded based on what isotopes appear in the xsdir file.
-
     Parameters:
     ----------
     template_file
@@ -129,7 +137,7 @@ class PluginCyclus(PluginGeneric):
     Attributes
     ----------
     executable
-        Path to Cyclu executable
+        Path to Cyclus executable
     execute_command
         List of command-line arguments used to call the executable
 
@@ -142,8 +150,7 @@ class PluginCyclus(PluginGeneric):
         show_stdout: bool = False,
         show_stderr: bool = False,
     ):
-        executable = _find_executable(executable, "PATH")
-        output_name = template_file.replace(".xml", ".sqlite")
+        output_name = Path(template_file).with_suffix(".sqlite").name
         super().__init__(
             executable,
             ["{self.executable}", "{self.input_name}", "-o", output_name],
@@ -813,7 +820,7 @@ class CyclusOutput:
         """
         if self._nucids is None:
             self._nucids = self.get_nucids()
-        return self._nucids
+        return np.array(self._nucids, copy=True)
 
     @nucids.setter
     def nucids(self, value):
@@ -823,23 +830,16 @@ class CyclusOutput:
         This setter preserves compatibility with code that assigns
         ``self.nucids`` directly.
         """
-        self._nucids = value
+        self._nucids = np.array(value, copy=True)
 
     def get_nucids(self):
         """
-        Returns the set of all nuclide IDs present in the flow dictionary.
-
-        Parameters:
-        ----------
-        flow_dict : dict
-            Dictionary of flow data, typically from
-            `get_agent_flow_and_stock_dict`.
+        Return all nuclide IDs present in the compositions table.
 
         Returns:
         -------
-        set
-            Set of integer nuclide IDs appearing in any time step
-            of the flow data.
+        numpy.ndarray
+            Sorted array of distinct integer nuclide IDs.
         """
         query = self.sql_query(
             """SELECT distinct(nucid)
@@ -1147,14 +1147,15 @@ class CyclusOutput:
             Names of reactor prototypes in the simulation. If None and reactors
             is None, uses all reactor types in the simulation.
         return_sum: bool
-            If True, returns a single array summed over all prototypes.
+            If True, returns a single array summed over requested prototypes.
         yearly: bool
             If True, returns yearly counts instead of monthly counts.
         reactors: str | list[str] | None
             Alias for prototypes, used for compatibility with DYMOND plugin.
             reactors and prototypes cannot both be specified.
         rest_key: str
-            Key used to accumulate any prototypes not in the `prototypes` list.
+            When return_sum is False, key used to group power-producing
+            prototypes not in the requested `prototypes` list.
 
         Returns:
         --------
@@ -1163,7 +1164,8 @@ class CyclusOutput:
             values are arrays giving the count of new deployments at each
             time step (monthly) or each year (yearly=True).
 
-            If return_sum=True, returns a single array summed across keys.
+            If return_sum=True, returns a single array summed over requested
+            prototypes only.
         """
         prototypes = self._normalize_prototypes(prototypes, reactors)
         self._validate_new_deployment_rows(self._get_power_agents())
@@ -1197,14 +1199,15 @@ class CyclusOutput:
             Names of reactor prototypes in the simulation. If None and reactors
             is None, uses all reactor types in the simulation.
         return_sum: bool
-            If True, returns a single array summed over all prototypes.
+            If True, returns a single array summed over requested prototypes.
         yearly: bool
             If True, returns yearly counts instead of monthly counts.
         reactors: str | list[str] | None
             Alias for prototypes, used for compatibility with DYMOND plugin.
             reactors and prototypes cannot both be specified.
         rest_key: str
-            Key used to accumulate any prototypes not in the `prototypes` list.
+            When return_sum is False, key used to group power-producing
+            prototypes not in the requested `prototypes` list.
 
         Returns:
         --------
@@ -1213,7 +1216,8 @@ class CyclusOutput:
             values are arrays giving the count of retirements at each
             time step (monthly) or each year (yearly=True).
 
-            If return_sum=True, returns a single array summed across keys.
+            If return_sum=True, returns a single array summed over requested
+            prototypes only.
         """
         prototypes = self._normalize_prototypes(prototypes, reactors)
         self._validate_retirement_rows(self._get_power_agents())
@@ -1252,7 +1256,7 @@ class CyclusOutput:
             Names of reactor prototypes in the simulation. If None and reactors
             is None, uses all reactor types in the simulation.
         return_sum: bool
-            If True, returns a single array summed over all prototypes.
+            If True, returns a single array summed over requested prototypes.
         yearly: bool
             If True, returns yearly fleet size instead of monthly.
             The yearly fleet size is the end-of-year fleet count, aligned to
@@ -1262,7 +1266,8 @@ class CyclusOutput:
             Alias for prototypes, used for compatibility with DYMOND plugin.
             reactors and prototypes cannot both be specified.
         rest_key: str
-            Key used to accumulate any prototypes not in the `prototypes` list.
+            When return_sum is False, key used to group power-producing
+            prototypes not in the requested `prototypes` list.
 
         Returns:
         --------
@@ -1271,7 +1276,8 @@ class CyclusOutput:
             values are arrays giving fleet size at each time step (monthly)
             or each year-end (yearly=True).
 
-            If return_sum=True, returns a single array summed across keys.
+            If return_sum=True, returns a single array summed over requested
+            prototypes only.
         """
         prototypes = self._normalize_prototypes(prototypes, reactors)
 
@@ -1358,7 +1364,7 @@ class CyclusOutput:
             Names of reactor prototypes in the simulation. If None and reactors
             is None, uses all reactor types in the simulation.
         return_sum: bool
-            If True, returns a single array summed over all prototypes.
+            If True, returns a single array summed over requested prototypes.
         yearly: bool
             If True, returns end-of-year deployed capacity instead
             of monthly deployed capacity.
@@ -1366,7 +1372,8 @@ class CyclusOutput:
             Alias for prototypes, used for compatibility with DYMOND plugin.
             Reactors and prototypes cannot both be specified.
         rest_key: str
-            Key used to accumulate any prototypes not in the `prototypes` list.
+            When return_sum is False, key used to group power-producing
+            prototypes not in the requested `prototypes` list.
 
         Returns:
         --------
@@ -1375,7 +1382,8 @@ class CyclusOutput:
             values are numpy arrays giving deployed capacity in GW at each
             time step (monthly) or year-end capacity (yearly=True).
 
-            If return_sum=True, returns a single array summed across keys.
+            If return_sum=True, returns a single array summed over requested
+            prototypes only.
         """
         prototypes = self._normalize_prototypes(prototypes, reactors)
         self._validate_deployed_capacity_rows(self._get_power_agents())
@@ -1394,8 +1402,25 @@ class CyclusOutput:
         reactors: str | list[str] | None = None,
     ) -> dict[str, float]:
         """
-        Capacity factor per reactor prototype from cycle time c
-        and refueling time r steps: CF = c/(r+c)
+        Return design capacity factors by reactor prototype.
+
+        Capacity factors are computed from reactor cycle time c and refueling
+        time r: CF = c / (r + c). Prototypes without reactor-info rows are
+        omitted from the returned dictionary.
+
+        Parameters:
+        -----------
+        prototypes: str | list[str] | None
+            Names of reactor prototypes in the simulation. If None and reactors
+            is None, uses all reactor types in the simulation.
+        reactors: str | list[str] | None
+            Alias for prototypes, used for compatibility with DYMOND plugin.
+            reactors and prototypes cannot both be specified.
+
+        Returns:
+        --------
+        dict[str, float]
+            Design capacity factor keyed by prototype.
         """
         prototypes = self._normalize_prototypes(prototypes, reactors)
 
@@ -1417,8 +1442,8 @@ class CyclusOutput:
         return_avg: bool = False,
     ) -> dict[str, float] | float:
         """
-        Realized capacity factor per reactor prototype computed
-        from time series:
+        Realized capacity factor per reactor prototype computed over the full
+        simulation timeline from time series:
             CF = sum_over_agents( sum_over_time P(agent,time) )
                  / sum_over_agents( power_cap(agent) * n_steps_agent )
 
@@ -1429,26 +1454,21 @@ class CyclusOutput:
         reactors: str | list[str] | None
             alias for prototypes, used for compatibility with DYMOND plugin.
             reactors and prototypes cannot both be specified.
-        time: None | True | float | list/tuple/array of floats
-            If None or True, compute over the whole timeline.
-            If float/int, compute over the single year closest to this value.
-            If list/tuple/array, compute over the union of all years between
-            min(time) and max(time), inclusive.
         return_avg: bool
             If True, return a single fleet-averaged capacity factor (float)
-            over the selected timeline.
+            over the full timeline.
             If False, return a dict of floats keyed by prototype.
 
         Returns:
         --------
         dict[str, float] | float
             Either a dict of floats (one per prototype) or a single float
-            (fleet average over the selected timeline).
+            (fleet average over the full timeline).
 
         Notes:
         ------
-        Prototypes with no agents present during the selected time window
-        are not returned (they do not participate in the CF).
+        Prototypes with no power-producing agents are not returned; they do not
+        participate in the capacity factor.
         """
         prototypes = self._normalize_prototypes(prototypes, reactors)
 
@@ -1568,12 +1588,13 @@ class CyclusOutput:
         else:
             gen_dict = self._generated_power_arrays(prototypes)
 
-        if yearly:
-            for proto in list(gen_dict.keys()):
-                gen_dict[proto] = self.get_yearly_avg(gen_dict[proto])
-
-        result = self._sum_selected_series(gen_dict, prototypes) \
-            if return_sum else gen_dict
+        result = self._finalize_prototype_series(
+            gen_dict,
+            prototypes=prototypes,
+            return_sum=return_sum,
+            yearly=yearly,
+            yearly_method="avg",
+        )
 
         return self._cache_set(
             result,
@@ -1672,8 +1693,7 @@ class CyclusOutput:
         prototypes: str | list[str] | None = None,
         return_sum: bool = True,
         reactors: str | list[str] | None = None,
-    ) -> tuple[np.ndarray | dict[str, np.ndarray], dict[str, np.ndarray] |
-               np.ndarray]:
+    ) -> tuple[np.ndarray | dict[str, np.ndarray], dict[str, np.ndarray]]:
         """
         Get fuel mass and enrichment over time for one or more prototypes.
 
@@ -1691,11 +1711,10 @@ class CyclusOutput:
 
         Returns:
         -------
-        tuple or dict
-            If return_sum=True, returns
-                (fuel_mass_array), {proto: enrichment_array}.
-            If return_sum=False, returns
-                {proto: (fuel_mass_array, enrichment_array)}.
+        tuple
+            ``(fuel_mass, enrichment)``. ``fuel_mass`` is either a summed array
+            or a dictionary keyed by prototype, depending on ``return_sum``.
+            ``enrichment`` is always a dictionary keyed by prototype.
         """
         prototypes = self._normalize_prototypes(prototypes, reactors)
 
@@ -1896,9 +1915,11 @@ class CyclusOutput:
         prototypes : str or list[str]
             Prototype name(s).
         natu_assay : float
-            Enrichment of the feed (typically natural uranium) as a decimal.
+            Enrichment of the feed (typically natural uranium) as a decimal
+            between 0 and 1. Required.
         tails_assay : float
-            Enrichment of the tails material as a decimal.
+            Enrichment of the tails material as a decimal between 0 and 1.
+            Required.
         return_sum : bool, optional
             If True, returns the sum across reactors (default True).
         split_cat : bool, optional
@@ -1914,15 +1935,24 @@ class CyclusOutput:
 
         Returns:
         -------
-        results: dict[str, dict[str, np.ndarray] | np.ndarray]
+        dict[str, dict[str, np.ndarray] | np.ndarray]
             Dictionary with keys 'natu', 'tails', and 'swu'.
-            For each entry the structure matches the corresponding
-            stock_fuel_* helper that it replaces.
+            Natural uranium is always a one-dimensional array. Tails and SWU
+            are one-dimensional arrays when split_cat is False and arrays with
+            shape (stages, years) when split_cat is True.
         """
+        assert natu_assay is not None and 0 <= natu_assay <= 1, \
+            f"natu_assay must be a number between 0 and 1, got {natu_assay!r}"
+        assert tails_assay is not None and 0 <= tails_assay <= 1, \
+            f"tails_assay must be a number between 0 and 1, got " \
+            f"{tails_assay!r}"
+
         if cascade_splits is None:
             cascade_splits = [0.1, 0.2]
         elif not cascade_splits:
             cascade_splits = [np.inf]
+        else:
+            cascade_splits = list(cascade_splits)
 
         prototypes = self._normalize_prototypes(prototypes, reactors)
 
@@ -2060,9 +2090,11 @@ class CyclusOutput:
         prototypes : str or list[str]
             Prototype name(s).
         natu_assay : float
-            Enrichment of the feed (typically natural uranium) as a decimal.
+            Enrichment of the feed (typically natural uranium) as a decimal
+            between 0 and 1. Required.
         tails_assay : float
-            Enrichment of the tails material as a decimal.
+            Enrichment of the tails material as a decimal between 0 and 1.
+            Required.
         return_sum : bool, optional
             If True, returns the sum across reactors (default True).
         cascade_splits : list of float
@@ -2103,9 +2135,11 @@ class CyclusOutput:
         prototypes : str or list[str]
             Prototype name(s).
         natu_assay : float
-            Enrichment of the feed (typically natural uranium) as a decimal.
+            Enrichment of the feed (typically natural uranium) as a decimal
+            between 0 and 1. Required.
         tails_assay : float
-            Enrichment of the tails material as a decimal.
+            Enrichment of the tails material as a decimal between 0 and 1.
+            Required.
         return_sum : bool, optional
             If True, returns the sum across reactors (default True).
         split_cat : bool, optional
@@ -2120,7 +2154,8 @@ class CyclusOutput:
         Returns:
         -------
         dict[str, np.ndarray] or np.ndarray
-            Tails per reactor (or summed), split or total.
+            Tails per reactor (or summed), either total arrays or arrays with
+            shape (stages, years) when split_cat is True.
         """
         return self.stock_fuel_resources(
             prototypes=prototypes,
@@ -2150,9 +2185,11 @@ class CyclusOutput:
         prototypes : str or list[str]
             Prototype name(s).
         natu_assay : float
-            Enrichment of the feed (typically natural uranium) as a decimal.
+            Enrichment of the feed (typically natural uranium) as a decimal
+            between 0 and 1. Required.
         tails_assay : float
-            Enrichment of the tails material as a decimal.
+            Enrichment of the tails material as a decimal between 0 and 1.
+            Required.
         return_sum : bool, optional
             If True, returns the sum across reactors (default True).
         split_cat : bool, optional
@@ -2167,7 +2204,8 @@ class CyclusOutput:
         Returns:
         -------
         dict[str, np.ndarray] or np.ndarray
-            SWU per reactor (or summed), split or total.
+            SWU per reactor (or summed), either total arrays or arrays with
+            shape (stages, years) when split_cat is True.
         """
         return self.stock_fuel_resources(
             prototypes=prototypes,
@@ -2302,106 +2340,6 @@ class CyclusOutput:
         return self._cache_set_shared(
             result,
             "_sent_fuel_yearly_arrays",
-            prototypes=prototypes,
-        )
-
-    def _received_fuel_arrays(self, prototypes):
-        """
-        Return cached monthly received-fuel, uranium, and U-235 arrays.
-
-        This compatibility helper is kept for private callers that may still
-        expect the v3 monthly intermediate. The main public fuel-demand and
-        enrichment paths now use ``_received_fuel_yearly_arrays`` to avoid
-        constructing large monthly stores when only annual values are needed.
-
-        Parameters
-        ----------
-        prototypes : array-like of str
-            Reactor prototype names.
-
-        Returns
-        -------
-        dict
-            Dictionary with keys ``fuel_mass``, ``u_mass``, and ``u235``. Each
-            value is a dictionary from prototype name to monthly array.
-        """
-        cached = self._cache_get_shared(
-            "_received_fuel_arrays",
-            prototypes=prototypes,
-        )
-        if cached is not self._CACHE_MISS:
-            return cached
-
-        ids_by_proto = self.get_proto_ids(prototypes)
-        all_ids = self._flatten_id_dict(ids_by_proto)
-        result = {
-            "fuel_mass": self._zero_monthly_dict(prototypes),
-            "u_mass": self._zero_monthly_dict(prototypes),
-            "u235": self._zero_monthly_dict(prototypes),
-        }
-
-        if all_ids:
-            rows = self._query_received_fuel_by_agent_time(all_ids)
-            agent_to_proto = self._agent_to_prototype(ids_by_proto)
-            for row in rows:
-                prototype = agent_to_proto.get(row["receiverid"])
-                time_index = int(row["time"])
-                if prototype is None or time_index >= self.duration:
-                    continue
-                result["fuel_mass"][prototype][time_index] += row["q"] or 0.0
-                result["u_mass"][prototype][time_index] += row["u_mass"] or 0.0
-                result["u235"][prototype][time_index] += row["u235"] or 0.0
-
-        return self._cache_set_shared(
-            result,
-            "_received_fuel_arrays",
-            prototypes=prototypes,
-        )
-
-    def _sent_fuel_arrays(self, prototypes):
-        """
-        Return cached monthly discharged-fuel arrays.
-
-        This compatibility helper is kept for private callers that may still
-        expect the v3 monthly intermediate. The main public discharged-fuel path
-        now uses ``_sent_fuel_yearly_arrays`` to avoid constructing large
-        monthly stores when only annual values are needed.
-
-        Parameters
-        ----------
-        prototypes : array-like of str
-            Reactor prototype names.
-
-        Returns
-        -------
-        dict
-            Dictionary with key ``fuel_mass`` containing a dictionary from
-            prototype name to monthly array.
-        """
-        cached = self._cache_get_shared(
-            "_sent_fuel_arrays",
-            prototypes=prototypes,
-        )
-        if cached is not self._CACHE_MISS:
-            return cached
-
-        ids_by_proto = self.get_proto_ids(prototypes)
-        all_ids = self._flatten_id_dict(ids_by_proto)
-        result = {"fuel_mass": self._zero_monthly_dict(prototypes)}
-
-        if all_ids:
-            rows = self._query_fuel_sent_by_agent_time(all_ids)
-            agent_to_proto = self._agent_to_prototype(ids_by_proto)
-            for row in rows:
-                prototype = agent_to_proto.get(row["senderid"])
-                time_index = int(row["time"])
-                if prototype is None or time_index >= self.duration:
-                    continue
-                result["fuel_mass"][prototype][time_index] += row["q"] or 0.0
-
-        return self._cache_set_shared(
-            result,
-            "_sent_fuel_arrays",
             prototypes=prototypes,
         )
 
@@ -2618,44 +2556,6 @@ class CyclusOutput:
         return {
             prototype: np.zeros(self.n_yearly_points)
             for prototype in prototypes
-        }
-
-    @staticmethod
-    def _flatten_id_dict(ids_by_proto):
-        """
-        Flatten a prototype-to-agent-ID dictionary.
-
-        Parameters
-        ----------
-        ids_by_proto : dict[str, list[int]]
-            Agent IDs by prototype.
-
-        Returns
-        -------
-        list[int]
-            Flat list of agent IDs.
-        """
-        return [agent_id for ids in ids_by_proto.values() for agent_id in ids]
-
-    @staticmethod
-    def _agent_to_prototype(ids_by_proto):
-        """
-        Invert a prototype-to-agent-ID dictionary.
-
-        Parameters
-        ----------
-        ids_by_proto : dict[str, list[int]]
-            Agent IDs by prototype.
-
-        Returns
-        -------
-        dict[int, str]
-            Agent ID to prototype.
-        """
-        return {
-            agent_id: prototype
-            for prototype, ids in ids_by_proto.items()
-            for agent_id in ids
         }
 
     def _yearly_method(self, values, method):
@@ -2895,9 +2795,9 @@ class CyclusOutput:
         """
         Clear cached CyclusOutput results.
 
-        Cyclus output databases are normally immutable after a run. This method is
-        useful during debugging or if the same object is reused after replacing the
-        SQLite file on disk.
+        Cyclus output databases are normally immutable after a run. This method
+        is mainly useful during debugging, or after manually resetting derived
+        attributes on the same object. It does not reopen the SQLite connection.
         """
         self._cache.clear()
         if hasattr(self, "_nucids"):
@@ -3235,11 +3135,10 @@ class CyclusOutput:
         """
         Query received fuel mass, uranium mass, and U-235 mass by prototype/year.
 
-        This query is the annual, prototype-aggregated version of
-        ``_query_received_fuel_by_agent_time``. It exists because the public
-        fuel-demand and enrichment helpers return yearly arrays, so fetching
-        one row per agent and month creates unnecessary SQLite output and
-        Python-side aggregation work for large simulations.
+        The public fuel-demand and enrichment helpers return yearly arrays, so
+        this query groups directly by prototype and aligned calendar year.
+        Fetching one row per agent and month would create unnecessary SQLite
+        output and Python-side aggregation work for large simulations.
 
         Calendar-year alignment is performed in SQL using the same convention
         as ``get_yearly_sum``: yearly index 0 is a zero placeholder; index ``i``
@@ -3329,100 +3228,14 @@ class CyclusOutput:
             prototypes=tuple(prototypes),
         )
 
-    def _query_received_fuel_by_agent_time(self, agentids):
-        """
-        Query received fuel mass, uranium mass, and U-235 mass by agent/time.
-
-        This query replaces two overlapping legacy queries:
-        ``stock_fuel_demand`` needed total received resource quantity, while
-        ``get_enrichments`` needed uranium and U-235 mass from compositions.
-
-        The composition table is first collapsed to one uranium/U-235 fraction
-        row per ``qualid``. This preserves the same enrichment calculation as
-        summing ``quantity * massfrac`` over all composition rows, but avoids
-        expanding every received fuel transaction by every nuclide in its
-        composition.
-
-        The legacy WATTS-facing fuel path first queried all commodities received
-        by these same agent IDs, then filtered this query to that exact set of
-        commodities. For non-null commodities, that filter cannot remove any
-        additional rows, so it is intentionally omitted here. The explicit
-        ``commodity IS NOT NULL`` predicate preserves the legacy behavior for
-        unusual rows with a NULL commodity, because ``commodity IN (...)`` would
-        not have matched NULL values.
-
-        Parameters
-        ----------
-        agentids : sequence[int]
-            Receiver agent IDs.
-
-        Returns
-        -------
-        list
-            SQLite rows with ``receiverid``, ``time``, ``q``, ``u_mass``, and
-            ``u235`` columns.
-        """
-        if not agentids:
-            return []
-
-        id_csv = ",".join(map(str, agentids))
-        query = f"""
-            WITH uranium_fractions AS (
-                SELECT
-                    qualid,
-                    SUM(
-                        CASE
-                            WHEN nucid BETWEEN 922000000 AND 922999999
-                            THEN massfrac
-                            ELSE 0
-                        END
-                    ) AS u_frac,
-                    SUM(
-                        CASE
-                            WHEN nucid = 922350000
-                            THEN massfrac
-                            ELSE 0
-                        END
-                    ) AS u235_frac
-                FROM compositions
-                GROUP BY qualid
-            )
-            SELECT
-                transactions.receiverid AS receiverid,
-                transactions.time AS time,
-                SUM(resources.quantity) AS q,
-                SUM(
-                    resources.quantity
-                    * COALESCE(uranium_fractions.u_frac, 0)
-                ) AS u_mass,
-                SUM(
-                    resources.quantity
-                    * COALESCE(uranium_fractions.u235_frac, 0)
-                ) AS u235
-            FROM transactions
-            JOIN resources
-                ON transactions.resourceid = resources.resourceid
-            LEFT JOIN uranium_fractions
-                ON resources.qualid = uranium_fractions.qualid
-            WHERE transactions.receiverid IN ({id_csv})
-            AND transactions.commodity IS NOT NULL
-            GROUP BY transactions.receiverid, transactions.time
-        """
-        return self._cached_query(
-            "_query_received_fuel_by_agent_time",
-            query,
-            agentids=tuple(agentids),
-        )
-
     def _query_sent_fuel_by_prototype_year(self, prototypes):
         """
         Query discharged fuel mass by prototype/year.
 
-        This query is the annual, prototype-aggregated version of
-        ``_query_fuel_sent_by_agent_time``. It exists because the public
-        discharged-fuel helper returns yearly arrays, so fetching one row per
-        agent and month creates unnecessary SQLite output and Python-side
-        aggregation work for large simulations.
+        The public discharged-fuel helper returns yearly arrays, so this query
+        groups directly by prototype and aligned calendar year. Fetching one row
+        per agent and month would create unnecessary SQLite output and
+        Python-side aggregation work for large simulations.
 
         Calendar-year alignment is performed in SQL using the same convention
         as ``get_yearly_sum``: yearly index 0 is a zero placeholder; index ``i``
@@ -3483,50 +3296,6 @@ class CyclusOutput:
             "_query_sent_fuel_by_prototype_year",
             query,
             prototypes=tuple(prototypes),
-        )
-
-    def _query_fuel_sent_by_agent_time(self, agentids):
-        """
-        Query total discharged fuel mass by sender and time.
-
-        The legacy WATTS-facing discharged-fuel path first queried all
-        commodities sent by these same agent IDs, then filtered this query to
-        that exact set of commodities. For non-null commodities, that filter
-        cannot remove any additional rows, so it is intentionally omitted here.
-        The explicit ``commodity IS NOT NULL`` predicate preserves the legacy
-        behavior for unusual rows with a NULL commodity, because
-        ``commodity IN (...)`` would not have matched NULL values.
-
-        Parameters
-        ----------
-        agentids : sequence[int]
-            Sender agent IDs.
-
-        Returns
-        -------
-        list
-            SQLite rows with ``senderid``, ``time``, and ``q`` columns.
-        """
-        if not agentids:
-            return []
-
-        id_csv = ",".join(map(str, agentids))
-        query = f"""
-            SELECT
-                transactions.senderid AS senderid,
-                transactions.time AS time,
-                SUM(resources.quantity) AS q
-            FROM transactions
-            JOIN resources
-                ON transactions.resourceid = resources.resourceid
-            WHERE transactions.senderid IN ({id_csv})
-            AND transactions.commodity IS NOT NULL
-            GROUP BY transactions.senderid, transactions.time
-        """
-        return self._cached_query(
-            "_query_fuel_sent_by_agent_time",
-            query,
-            agentids=tuple(agentids),
         )
 
     def _query_power_history(self, prototypes=None, positive_only=False):
