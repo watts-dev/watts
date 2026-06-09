@@ -15,6 +15,13 @@ from .parameters import Parameters
 from .enrichment_utils import enrichment_cascade
 
 SECONDS_PER_YEAR = 365.25 * 24 * 3600
+POWER_TO_GW = {
+    "W": 1e-9,
+    "MW": 1e-3,
+    "GW": 1.0,
+    "EJ/YR": 1e18 / (SECONDS_PER_YEAR * 1e9),
+    "TWH/YR": 1e12 / (8766 * 1e9),
+}
 
 
 def _default_dymond_executable():
@@ -466,12 +473,25 @@ class DYMONDOutput:
         input_cfs = self.get_capacity_factors(
             reactors.tolist(), "reactor")
 
+        power_units = (
+            self.input_data
+            .get("Model", self.input_data.get("model", {}))
+            .get("units", {})
+            .get("power", "MW")
+            .upper()
+        )
+
+        to_gw = POWER_TO_GW[power_units]
+
         power_dict = {}
         for reactor in reactors:
             if reactor in ops_reactor:
+                # Convert to GW
                 power_dict[reactor] = np.asarray(
                     ops_reactor[reactor].get(
-                        "Operating", np.zeros_like(times)))
+                        "Operating",  np.zeros_like(times)
+                    ) * to_gw
+                )
             else:
                 deployed = self.get_deployed_capacity(
                     facilities=[reactor],
@@ -531,14 +551,7 @@ class DYMONDOutput:
             .upper()
         )
 
-        power_to_gw = {
-            "W": 1e-9,
-            "MW": 1e-3,
-            "GW": 1.0,
-            "EJ/YR": 1e18 / (SECONDS_PER_YEAR * 1e9),
-            "TWH/YR": 1e12 / (8766 * 1e9),
-        }
-        to_gw = power_to_gw[power_units]
+        to_gw = POWER_TO_GW[power_units]
 
         capacity_dict = {}
         for fac in facilities:
@@ -1791,7 +1804,11 @@ class DYMONDOutput:
         return mass_flow_dict
 
     def get_generated_electricity(
-        self, reactors=None, return_sum=True
+        self,
+        reactors=None,
+        return_sum=True,
+        capacity_factors: dict[str, float] | None = None,
+        default_capacity_factor: float = 0.9
     ) -> dict[str, np.ndarray] | np.ndarray:
         """
         Determines the amount of generated electricity (GW-yr) for
@@ -1808,13 +1825,22 @@ class DYMONDOutput:
             Names of reactors in the simulation.
         return_sum : bool
             If True, returns a summed array.
+        capacity_factors : dict[str, float] | None
+            Mapping of reactor names to their respective capacity factors.
+        default_capacity_factor : float
+            Default capacity factor to use if a reactor is not in `capacity_factors`.
 
         Returns
         --------
         electricity_dict : dict or np.ndarray
             Electricity in GW-yr per reactor (or summed).
         """
-        return self.get_generated_power(reactors, return_sum=return_sum)
+        return self.get_generated_power(
+            reactors=reactors,
+            return_sum=return_sum,
+            capacity_factors=capacity_factors,
+            default_capacity_factor=default_capacity_factor
+        )
 
     # ===========================HELPER FUNCTIONS=============================
 
