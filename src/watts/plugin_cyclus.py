@@ -1056,43 +1056,6 @@ class CyclusOutput:
             WHERE a.spec LIKE "%Reactor"{proto_filter}
         """
 
-    def _get_power_history(self, prototypes=None, positive_only: bool = False):
-        """
-        Return reactor power history rows from timeseriespower.
-
-        Parameters
-        ----------
-        prototypes : str or array-like of str, optional
-            Reactor prototype names to include. If None, include all reactor
-            facilities with entries in timeseriespower.
-        positive_only : bool, optional
-            If True, only return rows with positive power.
-
-        Returns
-        -------
-        list
-            SQLite rows with columns:
-            - agentid
-            - prototype
-            - entertime
-            - lifetime
-            - time
-            - power
-
-        Raises
-        ------
-        ValueError
-            If any reactor has a lifetime of -1 in the AgentEntry table but
-            produces positive power, which causes issues for deployment and
-            retirement calculations.
-        """
-        rows = self._query_power_history(
-            prototypes=prototypes,
-            positive_only=positive_only,
-        )
-        self._validate_no_infinite_lifetime_rows(rows, power_column="power")
-        return rows
-
     def _get_power_agents(self):
         """
         Return one summary row per power-producing reactor agent.
@@ -3296,41 +3259,6 @@ class CyclusOutput:
             "_query_sent_fuel_by_prototype_year",
             query,
             prototypes=tuple(prototypes),
-        )
-
-    def _query_power_history(self, prototypes=None, positive_only=False):
-        """
-        Query reactor power history rows.
-
-        Parameters
-        ----------
-        prototypes : sequence[str] or None
-            Reactor prototype names to include. If None, include all reactor
-            facilities with entries in ``timeseriespower``.
-        positive_only : bool
-            If True, only return rows with positive power.
-
-        Returns
-        -------
-        list
-            SQLite rows from the power-history CTE.
-        """
-        prototypes_key = None if prototypes is None else tuple(np.atleast_1d(prototypes))
-        where_statement = "WHERE power > 0" if positive_only else ""
-        query = f"""
-            WITH power_history AS (
-                {self._reactor_power_query(prototypes=prototypes)}
-            )
-            SELECT *
-            FROM power_history
-            {where_statement}
-            ORDER BY agentid, time
-        """
-        return self._cached_query(
-            "_query_power_history",
-            query,
-            prototypes=prototypes_key,
-            positive_only=positive_only,
         )
 
     def _query_power_agents(self):
