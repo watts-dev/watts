@@ -8,6 +8,7 @@ import os
 import sqlite3 as lite
 import xml.etree.ElementTree as ET
 import numpy as np
+from copy import deepcopy
 
 from .fileutils import PathLike
 from .parameters import Parameters
@@ -17,7 +18,7 @@ from .enrichment_utils import enrichment_cascade
 
 
 class ResultsCyclus(Results):
-    """Cyclus simulation restuls
+    """Cyclus simulation results
 
     Parameters:
     ----------
@@ -156,6 +157,24 @@ class PluginCyclus(PluginGeneric):
 
 
 class CyclusOutput:
+    """Access and cache data from a Cyclus SQLite output file.
+
+    Cyclus output databases are immutable for normal analysis. This class
+    therefore caches SQL rows and shared monthly intermediate arrays. Public
+    return values are copied from the cache before they are returned, so caller
+    mutation does not corrupt cached state.
+
+    Parameters
+    ----------
+    path : str or pathlib.Path
+        Path to a Cyclus SQLite database output file. The extension must be
+        ``.sqlite``.
+    """
+
+    _CACHE_MISS = object()
+
+    # --------------- Initialization and input metadata ---------------
+
     def __init__(self, path):
         """
         Class to access and browse an output file from Cyclus.
@@ -166,12 +185,21 @@ class CyclusOutput:
         path: str
             path to output file, including file name
         """
+        self._cache = {}
         assert os.path.exists(path), "File does not exist."
         ext = os.path.splitext(path)
         assert ext[-1] == ".sqlite", "File extension has to be .sqlite"
-        con = lite.connect(path)
+        self.path = path
+        con = lite.connect(self.path)
         con.row_factory = lite.Row
         self.cur = con.cursor()
+
+        # The analysis routines are read-only and often run several large
+        # grouped queries. These pragmas keep temporary grouping structures in
+        # memory when SQLite can do so and give the page cache more room. They
+        # do not change query results.
+        self.cur.execute("PRAGMA temp_store = MEMORY")
+        self.cur.execute("PRAGMA cache_size = -200000")
 
         # Store input text and input dict
         self.input_text = self.get_input_text()
@@ -179,11 +207,19 @@ class CyclusOutput:
 
         # Store times
         td = self.get_times()
+        self.duration = None
+        self.init_year = None
+        self.init_month = None
+        self.years = None
+        self.years_int = None
+        self.n_yearly_points = None
         for k, v in td.items():
             setattr(self, k, v)
 
-        # Store nuclides, agents, reactors
-        self.nucids = self.get_nucids()
+        # Store agents and reactors. Nuclides are loaded lazily because the
+        # distinct-composition query is expensive and only needed by the
+        # isotopic process_* helpers, not by the WATTS fuel-cycle path.
+        self._nucids = None
         self.agent_dict = self.get_facility_agents()
         self.reactor_types = np.unique(
             list(self.get_facility_agents("reactor").values()))
@@ -197,16 +233,10 @@ class CyclusOutput:
         str
             Cyclus input file content as a string.
         """
-
-        # Get table content
         rows = self.sql_query("SELECT * FROM InputFiles")
-
-        # Ensure there is a single row
-        assert len(
-            rows) == 1, f"Expected 1 row in InputFiles, found {len(rows)}"
+        assert len(rows) == 1, \
+            f"Expected 1 row in InputFiles, found {len(rows)}"
         row = rows[0]
-
-        # Ensure the key "Data" exists
         keys = list(row.keys())
         assert "Data" in keys, \
             f"'Data' key not found in InputFiles. Keys: {keys}"
@@ -246,20 +276,15 @@ class CyclusOutput:
                 for child in children:
                     child_result = xml_to_dict(child)
                     tag, value = next(iter(child_result.items()))
-
                     grouped.setdefault(tag, []).append(value)
 
                 # Post-process groups
                 for tag, values in grouped.items():
                     # If every entry has a 'name', key by name
-                    if all(
-                        isinstance(v, dict) and "name" in v
-                        for v in values
-                    ):
+                    if all(isinstance(v, dict) and "name" in v for v in values):
                         result[tag] = {
                             v["name"]: {
-                                k: val for k, val in v.items()
-                                if k != "name"
+                                k: val for k, val in v.items() if k != "name"
                             }
                             for v in values
                         }
@@ -295,21 +320,10 @@ class CyclusOutput:
         dict
             Dictionary mapping agent ID (int) to prototype name (str).
         """
-        if not spec_keywords:
-            query = self.sql_query(
-                '''SELECT distinct(agentid), prototype
-                   FROM agententry
-                   WHERE kind=="Facility"'''
-            )
-        else:
-            query = self.sql_query(
-                f"""SELECT distinct(agentid), prototype
-                    FROM agententry
-                    WHERE kind=="Facility" and spec
-                    LIKE "%{spec_keywords}%" --case-insensitive"""
-            )
-        agents = {q["agentid"]: q["prototype"] for q in query}
-        return agents
+        rows = self._query_facility_agents(spec_keywords=spec_keywords)
+        return {row["agentid"]: row["prototype"] for row in rows}
+
+    # --------------- Legacy agent/prototype flow helpers ---------------
 
     def process_prototype(self, protos, get_isotopics):
         """
@@ -426,7 +440,6 @@ class CyclusOutput:
         tuple
             (agent ID, flow dictionary, cumulative stock array)
         """
-
         flow_dict = {}
         for facility_type in ["receiverid", "senderid"]:
             key = facility_type.replace("erid", "ing")
@@ -506,7 +519,6 @@ class CyclusOutput:
         tuple
             (flow_dict, stock_dict) indexed by prototype or agent ID.
         """
-
         agent_flow_dict = {}
         agent_stock_dict = {}
 
@@ -548,6 +560,10 @@ class CyclusOutput:
         query_str: str
             SQL query to be executed
         """
+        if not hasattr(self, "cur"):
+            con = lite.connect(self.path)
+            con.row_factory = lite.Row
+            self.cur = con.cursor()
         query = self.cur.execute(query_str).fetchall()
         return query
 
@@ -778,6 +794,37 @@ class CyclusOutput:
             "timestep_years": dt / (365.25 * 24 * 3600)
         }
 
+    @property
+    def nucids(self):
+        """
+        Return the cached set of nuclide IDs, loading it on first use.
+
+        The full ``SELECT DISTINCT nucid FROM compositions`` query can be one
+        of the most expensive parts of initialization for large Cyclus outputs.
+        Most WATTS-facing extraction paths do not need ``self.nucids`` because
+        their uranium and U-235 masses are computed directly in SQL. The query
+        is therefore delayed until isotopic flow processing actually requests
+        it.
+
+        Returns
+        -------
+        numpy.ndarray
+            Sorted array of nuclide IDs present in the compositions table.
+        """
+        if self._nucids is None:
+            self._nucids = self.get_nucids()
+        return self._nucids
+
+    @nucids.setter
+    def nucids(self, value):
+        """
+        Set the cached nuclide IDs.
+
+        This setter preserves compatibility with code that assigns
+        ``self.nucids`` directly.
+        """
+        self._nucids = value
+
     def get_nucids(self):
         """
         Returns the set of all nuclide IDs present in the flow dictionary.
@@ -822,15 +869,7 @@ class CyclusOutput:
         n_yearly_points = self.n_yearly_points
         fuel_flow_array = np.zeros((len(fuel_forms), n_yearly_points))
         for indx, ff in enumerate(fuel_forms):
-            query = self.sql_query(
-                """SELECT sum(quantity), time
-                FROM transactions
-                INNER JOIN resources
-                ON transactions.resourceid = resources.resourceid
-                WHERE Commodity="%s"
-                GROUP BY time"""
-                % ff
-            )
+            query = self._query_mass_flow_by_commodity(ff)
             fuel_flow_array[indx, :] = np.array(
                 self.get_yearly_sum(
                     self.query_to_array(
@@ -866,17 +905,10 @@ class CyclusOutput:
             # get the agentids
             agentids = self.get_proto_ids(proto_name)
         else:
-            if not isinstance(agentids, list):
-                agentids = [agentids]
+            agentids = self._normalize_agent_ids(agentids)
         assert len(agentids) > 0, "No agentid found"
-        csv = ",".join([str(agentid) for agentid in agentids])
-        query = self.sql_query(
-            f"""SELECT distinct(commodity)
-            FROM transactions
-            WHERE receiverid
-            IN ({csv})"""
-        )
-        return [q["commodity"] for q in query]
+        rows = self._query_commodities_received_by_agent_ids(agentids)
+        return [row["commodity"] for row in rows]
 
     def get_commodity_out_of(self, proto_name=None, agentids=None):
         """
@@ -901,16 +933,10 @@ class CyclusOutput:
             # get the agentids
             agentids = self.get_proto_ids(proto_name)
         else:
-            if not isinstance(agentids, list):
-                agentids = [agentids]
+            agentids = self._normalize_agent_ids(agentids)
         assert len(agentids) > 0, "No agentid found"
-        csv = ",".join([str(agentid) for agentid in agentids])
-        query = self.sql_query(
-            f"""SELECT distinct(commodity)
-            FROM transactions
-            WHERE senderid IN ({csv})"""
-        )
-        return [q["commodity"] for q in query]
+        rows = self._query_commodities_sent_by_agent_ids(agentids)
+        return [row["commodity"] for row in rows]
 
     def get_proto_ids(self, proto_name):
         """
@@ -928,28 +954,17 @@ class CyclusOutput:
             If input is a list, returns a dictionary mapping prototype names
             to lists of agent IDs.
         """
-
         want_flat = isinstance(proto_name, str)
         prototypes = [proto_name] if want_flat else list(proto_name)
 
         if not prototypes:  # handles None, "", empty list
             return [] if want_flat else {}
 
-        # Build a CSV of quoted prototype names:  "rx1", "rx2", …
-        proto_csv = ", ".join(f'"{prototype}"' for prototype in prototypes)
-
-        # Query the database for agent IDs associated with the prototypes
-        rows = self.sql_query(
-            f"""
-            SELECT prototype, agentid
-            FROM agententry
-            WHERE prototype IN ({proto_csv})
-        """
-        )
+        rows = self._query_proto_ids(prototypes)
 
         # If we want a flat list, return it directly
         if want_flat:
-            return [r["agentid"] for r in rows]
+            return [row["agentid"] for row in rows]
 
         # Otherwise, return a dict mapping prototypes to lists of agent IDs
         out = {prototype: [] for prototype in prototypes}
@@ -966,10 +981,7 @@ class CyclusOutput:
         list of str
             List of distinct commodity names from the transactions table.
         """
-        query = self.sql_query(
-            """SELECT distinct(commodity)
-            FROM transactions"""
-        )
+        query = self._query_commodities()
         return [q["commodity"] for q in query]
 
     def get_mass_flow(self, commodity_name):
@@ -988,14 +1000,7 @@ class CyclusOutput:
             with the data from arr summed up for each
             year
         """
-        query = self.sql_query(
-            f"""SELECT sum(quantity), time
-                FROM transactions
-                INNER JOIN resources
-                ON transactions.resourceid = resources.resourceid
-                WHERE Commodity="{commodity_name}"
-                GROUP BY time"""
-        )
+        query = self._query_mass_flow_by_commodity(commodity_name)
         return np.array(
             self.get_yearly_sum(
                 self.query_to_array(query, self.duration,
@@ -2548,6 +2553,25 @@ class CyclusOutput:
             reactors=reactors,
         )["swu"]
 
+    @staticmethod
+    def _normalize_agent_ids(agentids):
+        """
+        Normalize scalar or sequence agent IDs to a flat list.
+
+        Parameters
+        ----------
+        agentids : int or sequence[int]
+            Agent IDs.
+
+        Returns
+        -------
+        list
+            Agent IDs as a list.
+        """
+        if isinstance(agentids, (list, tuple, np.ndarray)):
+            return list(agentids)
+        return [agentids]
+
     def _normalize_prototypes(self, prototypes, reactors):
         """
         Ensure that exactly one of prototypes or reactors is specified,
@@ -2581,3 +2605,343 @@ class CyclusOutput:
             prototypes = reactors
         prototypes = np.atleast_1d(prototypes)
         return prototypes
+    def clear_cache(self):
+        """
+        Clear cached CyclusOutput results.
+
+        Cyclus output databases are normally immutable after a run. This method is
+        useful during debugging or if the same object is reused after replacing the
+        SQLite file on disk.
+        """
+        self._cache.clear()
+        if hasattr(self, "_nucids"):
+            self._nucids = None
+
+    @staticmethod
+    def _cache_value(value):
+        """
+        Convert common Python and NumPy containers into hashable cache-key values.
+        """
+        if isinstance(value, np.generic):
+            return value.item()
+        if isinstance(value, np.ndarray):
+            return tuple(CyclusOutput._cache_value(item) for item in value.tolist())
+        if isinstance(value, dict):
+            return tuple(
+                sorted(
+                    (CyclusOutput._cache_value(key), CyclusOutput._cache_value(subvalue))
+                    for key, subvalue in value.items()
+                )
+            )
+        if isinstance(value, (list, tuple)):
+            return tuple(CyclusOutput._cache_value(item) for item in value)
+        if isinstance(value, set):
+            return tuple(sorted(CyclusOutput._cache_value(item) for item in value))
+        if isinstance(value, Path):
+            return str(value)
+        return value
+
+    def _cache_key(self, name, *args, **kwargs):
+        """
+        Build one stable cache key from a logical name and arguments.
+
+        Parameters
+        ----------
+        name : str
+            Logical cache namespace.
+        *args
+            Positional cache-key values.
+        **kwargs
+            Keyword cache-key values.
+
+        Returns
+        -------
+        tuple
+            Hashable key suitable for ``self._cache``.
+        """
+        return (
+            name,
+            tuple(self._cache_value(arg) for arg in args),
+            tuple(sorted((key, self._cache_value(value)) for key, value in kwargs.items())),
+        )
+
+    @staticmethod
+    def _copy_cache_result(value, copy_result="deep"):
+        """
+        Copy a cached result before returning it.
+
+        Parameters
+        ----------
+        value : object
+            Cached value.
+        copy_result : {"deep", "list", "none"}, default "deep"
+            Copy mode used when returning cached values.
+
+        Returns
+        -------
+        object
+            Copied or original cached value.
+        """
+        if copy_result == "deep":
+            return deepcopy(value)
+        if copy_result == "list":
+            return list(value)
+        if copy_result == "none":
+            return value
+        raise ValueError("copy_result must be one of 'deep', 'list', or 'none'")
+
+    def _cache_get(self, name, *args, copy_result="deep", **kwargs):
+        """
+        Return a cached value or ``self._CACHE_MISS``.
+
+        Parameters
+        ----------
+        name : str
+            Logical cache namespace.
+        *args
+            Positional cache-key values.
+        copy_result : {"deep", "list", "none"}, default "deep"
+            Copy mode used when returning cached values.
+        **kwargs
+            Keyword cache-key values.
+
+        Returns
+        -------
+        object
+            Cached value, or ``self._CACHE_MISS`` when not cached.
+        """
+        key = self._cache_key(name, *args, **kwargs)
+        if key not in self._cache:
+            return self._CACHE_MISS
+        return self._copy_cache_result(self._cache[key], copy_result=copy_result)
+
+    def _cache_set(self, value, name, *args, copy_result="deep", **kwargs):
+        """
+        Store and return a cached value.
+
+        Parameters
+        ----------
+        value : object
+            Value to cache.
+        name : str
+            Logical cache namespace.
+        *args
+            Positional cache-key values.
+        copy_result : {"deep", "list", "none"}, default "deep"
+            Copy mode used when returning cached values.
+        **kwargs
+            Keyword cache-key values.
+
+        Returns
+        -------
+        object
+            Cached value copied according to ``copy_result``.
+        """
+        key = self._cache_key(name, *args, **kwargs)
+        if copy_result == "list":
+            self._cache[key] = tuple(value)
+        elif copy_result == "none":
+            self._cache[key] = value
+        elif copy_result == "deep":
+            self._cache[key] = deepcopy(value)
+        else:
+            raise ValueError("copy_result must be one of 'deep', 'list', or 'none'")
+        return self._copy_cache_result(self._cache[key], copy_result=copy_result)
+
+    def _cache_get_shared(self, name, *args, **kwargs):
+        """
+        Return a private shared cache value without copying it.
+
+        This is used only for internal intermediate stores and SQL row lists
+        that the public methods treat as read-only. Public methods should use
+        ``_cache_get`` so callers cannot mutate cached state.
+        """
+        return self._cache_get(name, *args, copy_result="none", **kwargs)
+
+    def _cache_set_shared(self, value, name, *args, **kwargs):
+        """
+        Store and return a private shared cache value without copying it.
+
+        Keeping this as a named helper makes call sites explicit about why a
+        large intermediate result is not deep-copied.
+        """
+        return self._cache_set(
+            value,
+            name,
+            *args,
+            copy_result="none",
+            **kwargs,
+        )
+
+    def _cached_query(self, name, query, **kwargs):
+        """
+        Execute and cache a SQL query.
+
+        Parameters
+        ----------
+        name : str
+            Logical cache namespace for the query.
+        query : str
+            SQL query string.
+        **kwargs
+            Semantic query parameters that form the cache key.
+
+        Returns
+        -------
+        list
+            Shared cached SQLite rows. Private query callers must treat these
+            rows as read-only.
+        """
+        cached = self._cache_get_shared(name, **kwargs)
+        if cached is not self._CACHE_MISS:
+            return cached
+        rows = self.sql_query(query)
+        return self._cache_set_shared(rows, name, **kwargs)
+
+    # --------------- Private SQL query functions ---------------
+
+    def _query_facility_agents(self, spec_keywords=None):
+        """
+        Query facility agents, optionally filtering by specification keyword.
+
+        Parameters
+        ----------
+        spec_keywords : str, optional
+            Specification keyword used to filter facility agents.
+
+        Returns
+        -------
+        list
+            SQLite rows with ``agentid`` and ``prototype`` columns.
+        """
+        if not spec_keywords:
+            query = """SELECT distinct(agentid), prototype
+                   FROM agententry
+                   WHERE kind='Facility'"""
+        else:
+            query = f"""SELECT distinct(agentid), prototype
+                    FROM agententry
+                    WHERE kind='Facility' and spec
+                    LIKE '%{spec_keywords}%' --case-insensitive"""
+        return self._cached_query(
+            "_query_facility_agents",
+            query,
+            spec_keywords=spec_keywords,
+        )
+
+    def _query_proto_ids(self, prototypes):
+        """
+        Query agent IDs for one or more prototypes.
+
+        Parameters
+        ----------
+        prototypes : sequence[str]
+            Prototype names.
+
+        Returns
+        -------
+        list
+            SQLite rows with ``prototype`` and ``agentid`` columns.
+        """
+        if not prototypes:
+            return []
+        proto_csv = ", ".join(f'"{prototype}"' for prototype in prototypes)
+        query = f"""
+            SELECT prototype, agentid
+            FROM agententry
+            WHERE prototype IN ({proto_csv})
+        """
+        return self._cached_query("_query_proto_ids", query, prototypes=tuple(prototypes))
+
+    def _query_commodities(self):
+        """
+        Query all unique commodities in the simulation.
+
+        Returns
+        -------
+        list
+            SQLite rows with a ``commodity`` column.
+        """
+        query = """SELECT distinct(commodity)
+            FROM transactions"""
+        return self._cached_query("_query_commodities", query)
+
+    def _query_commodities_received_by_agent_ids(self, agentids):
+        """
+        Query commodities received by one or more agent IDs.
+
+        Parameters
+        ----------
+        agentids : sequence[int]
+            Receiver agent IDs.
+
+        Returns
+        -------
+        list
+            SQLite rows with a ``commodity`` column.
+        """
+        if not agentids:
+            return []
+        csv = ",".join(str(agentid) for agentid in agentids)
+        query = f"""SELECT distinct(commodity)
+            FROM transactions
+            WHERE receiverid
+            IN ({csv})"""
+        return self._cached_query(
+            "_query_commodities_received_by_agent_ids",
+            query,
+            agentids=tuple(agentids),
+        )
+
+    def _query_commodities_sent_by_agent_ids(self, agentids):
+        """
+        Query commodities sent by one or more agent IDs.
+
+        Parameters
+        ----------
+        agentids : sequence[int]
+            Sender agent IDs.
+
+        Returns
+        -------
+        list
+            SQLite rows with a ``commodity`` column.
+        """
+        if not agentids:
+            return []
+        csv = ",".join(str(agentid) for agentid in agentids)
+        query = f"""SELECT distinct(commodity)
+            FROM transactions
+            WHERE senderid IN ({csv})"""
+        return self._cached_query(
+            "_query_commodities_sent_by_agent_ids",
+            query,
+            agentids=tuple(agentids),
+        )
+
+    def _query_mass_flow_by_commodity(self, commodity_name):
+        """
+        Query total mass flow for one commodity by time step.
+
+        Parameters
+        ----------
+        commodity_name : str
+            Commodity name.
+
+        Returns
+        -------
+        list
+            SQLite rows with ``sum(quantity)`` and ``time`` columns.
+        """
+        query = f"""SELECT sum(quantity), time
+                FROM transactions
+                INNER JOIN resources
+                ON transactions.resourceid = resources.resourceid
+                WHERE Commodity="{commodity_name}"
+                GROUP BY time"""
+        return self._cached_query(
+            "_query_mass_flow_by_commodity",
+            query,
+            commodity_name=commodity_name,
+        )
+
