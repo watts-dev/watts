@@ -1697,11 +1697,32 @@ class CyclusOutput:
             If return_sum=False, returns
                 {proto: (fuel_mass_array, enrichment_array)}.
         """
-        fuel_mass = self.stock_fuel_demand(
-            prototypes, return_sum=return_sum, reactors=reactors
+        prototypes = self._normalize_prototypes(prototypes, reactors)
+
+        cached = self._cache_get(
+            "get_fuel_mass_and_enrichment",
+            prototypes=prototypes,
+            return_sum=return_sum,
         )
-        enrichment = self.get_enrichments(prototypes, reactors=reactors)
-        return fuel_mass, enrichment
+        if cached is not self._CACHE_MISS:
+            return cached
+
+        fuel_mass = self.stock_fuel_demand(
+            prototypes,
+            return_sum=return_sum,
+            reactors=None,
+        )
+        enrichment = self.get_enrichments(
+            prototypes,
+            reactors=None,
+        )
+        result = fuel_mass, enrichment
+        return self._cache_set(
+            result,
+            "get_fuel_mass_and_enrichment",
+            prototypes=prototypes,
+            return_sum=return_sum,
+        )
 
     def stock_fuel_demand(
         self,
@@ -1727,59 +1748,30 @@ class CyclusOutput:
         fuel_mass : np.ndarray or dict[str, np.ndarray]
             Yearly fuel mass per prototype, or total if return_sum=True.
         """
-        # Check prototypes/reactors and ensure prototypes are a numpy array
         prototypes = self._normalize_prototypes(prototypes, reactors)
 
-        # Get agent IDs for the specified prototypes (flat list)
-        ids_by_proto = self.get_proto_ids(prototypes)
-        all_ids = [aid for ids in ids_by_proto.values()
-                   for aid in ids]  # flatten
-        id_csv = ",".join(map(str, all_ids))
-
-        # If no IDs found, return empty arrays of the appropriate size
-        if not all_ids:
-            return (
-                np.zeros(self.n_yearly_points)
-                if return_sum
-                else {p: np.zeros(self.n_yearly_points) for p in prototypes}
-            )
-
-        # Get relevant commodities (fuel=into) for each prototype
-        commods = self.get_commodity_into(agentids=all_ids)
-        commod_csv = ",".join(f'"{c}"' for c in commods)
-
-        # Get total received fuel mass per agent per time step
-        # Filters transactions by receiver IDs and fuel-related commodities,
-        # and groups results by receiver ID and time to get the total quantity
-        rows = self.sql_query(
-            f"""
-            SELECT receiverid, time, SUM(quantity) AS q
-            FROM transactions
-            JOIN resources USING (resourceid)
-            WHERE receiverid IN ({id_csv})
-            AND commodity IN ({commod_csv})
-            GROUP BY receiverid, time
-        """
+        cached = self._cache_get(
+            "stock_fuel_demand",
+            prototypes=prototypes,
+            return_sum=return_sum,
         )
+        if cached is not self._CACHE_MISS:
+            return cached
 
-        # Accumulate monthly quantities
-        out = {p: np.zeros(self.duration) for p in prototypes}
-        for row in rows:
-            rec_id, time, quantity = row["receiverid"], row["time"], row["q"]
-            if time >= self.duration:
-                continue
-            for proto, ids in ids_by_proto.items():
-                if rec_id in ids:
-                    out[proto][time] += quantity
-                    break
+        # Fuel demand is already aggregated by calendar year in the shared
+        # received-fuel store. This avoids building large per-agent monthly
+        # intermediate arrays when the public result is annual.
+        received = self._received_fuel_yearly_arrays(prototypes)
+        fuel_mass = received["fuel_mass"]
+        result = self._sum_selected_series(fuel_mass, prototypes) \
+            if return_sum else fuel_mass
 
-        # Convert to yearly totals
-        fuel_mass = {p: self.get_yearly_sum(arr) for p, arr in out.items()}
-
-        # Sum over all prototypes if requested
-        if return_sum:
-            fuel_mass = np.sum(list(fuel_mass.values()), axis=0)
-        return fuel_mass
+        return self._cache_set(
+            result,
+            "stock_fuel_demand",
+            prototypes=prototypes,
+            return_sum=return_sum,
+        )
 
     def stock_fuel_discharged(
         self,
@@ -1806,59 +1798,30 @@ class CyclusOutput:
             Yearly discharged fuel mass per prototype,
             or total if return_sum=True.
         """
-        # Check prototypes/reactors and ensure prototypes are a numpy array
         prototypes = self._normalize_prototypes(prototypes, reactors)
 
-        # Get agent IDs for the specified prototypes (flat list)
-        ids_by_proto = self.get_proto_ids(prototypes)
-        all_ids = [aid for ids in ids_by_proto.values()
-                   for aid in ids]  # flatten
-        id_csv = ",".join(map(str, all_ids))
-
-        # If no IDs found, return empty arrays of the appropriate size
-        if not all_ids:
-            return (
-                np.zeros(self.n_yearly_points)
-                if return_sum
-                else {p: np.zeros(self.n_yearly_points) for p in prototypes}
-            )
-
-        # Get relevant commodities (discharged=out of) for each prototype
-        commods = self.get_commodity_out_of(agentids=all_ids)
-        commod_csv = ",".join(f'"{c}"' for c in commods)
-
-        # Get total discharged fuel mass per agent per time step
-        # Filters transactions by sender IDs and fuel-related commodities,
-        # and groups results by sender ID and time to get the total quantity
-        rows = self.sql_query(
-            f"""
-            SELECT senderid, time, SUM(quantity) AS q
-            FROM transactions
-            JOIN resources USING (resourceid)
-            WHERE senderid IN ({id_csv})
-            AND commodity IN ({commod_csv})
-            GROUP BY senderid, time
-        """
+        cached = self._cache_get(
+            "stock_fuel_discharged",
+            prototypes=prototypes,
+            return_sum=return_sum,
         )
+        if cached is not self._CACHE_MISS:
+            return cached
 
-        # Accumulate monthly quantities
-        out = {p: np.zeros(self.duration) for p in prototypes}
-        for row in rows:
-            rid, time, quantity = row["senderid"], row["time"], row["q"]
-            if time >= self.duration:
-                continue
-            for p, ids in ids_by_proto.items():
-                if rid in ids:
-                    out[p][time] += quantity
-                    break
+        # Discharged fuel is already aggregated by calendar year in the shared
+        # sent-fuel store. This avoids building large per-agent monthly
+        # intermediate arrays when the public result is annual.
+        sent = self._sent_fuel_yearly_arrays(prototypes)
+        discharged = sent["fuel_mass"]
+        result = self._sum_selected_series(discharged, prototypes) \
+            if return_sum else discharged
 
-        # Convert to yearly totals
-        discharged = {p: self.get_yearly_sum(arr) for p, arr in out.items()}
-
-        # Sum over all prototypes if requested
-        if return_sum:
-            discharged = np.sum(list(discharged.values()), axis=0)
-        return discharged
+        return self._cache_set(
+            result,
+            "stock_fuel_discharged",
+            prototypes=prototypes,
+            return_sum=return_sum,
+        )
 
     def get_enrichments(
         self,
@@ -1884,66 +1847,18 @@ class CyclusOutput:
             Annual enrichment time series for each prototype, or a total array.
             Enrichments are expressed as decimals.
         """
-        # Check prototypes/reactors and ensure prototypes are a numpy array
         prototypes = self._normalize_prototypes(prototypes, reactors)
 
-        # Get agent IDs for the specified prototypes (flat list)
-        ids_by_proto = self.get_proto_ids(prototypes)
-        all_ids = [aid for ids in ids_by_proto.values()
-                   for aid in ids]  # flatten
-        id_csv = ",".join(map(str, all_ids))
+        cached = self._cache_get("get_enrichments", prototypes=prototypes)
+        if cached is not self._CACHE_MISS:
+            return cached
 
-        # If no IDs found, return empty arrays of the appropriate size
-        if not all_ids:
-            return {p: np.zeros(self.n_yearly_points) for p in prototypes}
-
-        # Get relevant commodities (fuel=into) for each prototype
-        commods = self.get_commodity_into(agentids=all_ids)
-        commod_csv = ",".join(f'"{c}"' for c in commods)
-
-        # SQL: sum total quantity and U-235 mass per receiver and time
-        rows = self.sql_query(
-            f"""
-            SELECT receiverid,
-                time,
-                SUM(CASE WHEN nucid BETWEEN 922000000 AND 922999999
-                            THEN quantity * massfrac ELSE 0 END) AS u_mass,
-                SUM(CASE WHEN nucid = 922350000
-                            THEN quantity * massfrac ELSE 0 END) AS u235
-            FROM transactions
-            JOIN resources    USING (resourceid)
-            JOIN compositions ON
-            resources.qualid = compositions.qualid
-            WHERE receiverid IN ({id_csv})
-            AND commodity  IN ({commod_csv})
-            GROUP BY receiverid, time
-        """
-        )
-
-        # Accumulate monthly quantities
-        u235_by_proto = {p: np.zeros(self.duration) for p in prototypes}
-        mass_by_proto = {p: np.zeros(self.duration) for p in prototypes}
-        for row in rows:
-            rid, time, u_mass, u235 = (
-                row["receiverid"],
-                row["time"],
-                row["u_mass"],
-                row["u235"],
-            )
-            if time >= self.duration:
-                continue
-            for proto, ids in ids_by_proto.items():
-                if rid in ids:
-                    mass_by_proto[proto][time] += u_mass
-                    u235_by_proto[proto][time] += u235
-                    break
-
-        # Convert to yearly total
-        for prototype in prototypes:
-            mass_by_proto[prototype] = self.get_yearly_sum(
-                mass_by_proto[prototype])
-            u235_by_proto[prototype] = self.get_yearly_sum(
-                u235_by_proto[prototype])
+        # Uranium and U-235 masses are already aggregated by calendar year in
+        # the shared received-fuel store. This keeps enrichment consistent with
+        # annual fuel demand while avoiding large monthly intermediate arrays.
+        received = self._received_fuel_yearly_arrays(prototypes)
+        u_mass_by_proto = received["u_mass"]
+        u235_by_proto = received["u235"]
 
         enrich = {}
         # Calculate enrichment (U-235 mass fraction)
@@ -1951,12 +1866,14 @@ class CyclusOutput:
             # to remove warnings when dividing by zero
             with np.errstate(divide="ignore", invalid="ignore"):
                 ratio = np.zeros_like(u235_by_proto[prototype])
-                nonzero = mass_by_proto[prototype] > 0
-                ratio[nonzero] = u235_by_proto[prototype][nonzero] / \
-                    mass_by_proto[prototype][nonzero]
+                nonzero = u_mass_by_proto[prototype] > 0
+                ratio[nonzero] = (
+                    u235_by_proto[prototype][nonzero]
+                    / u_mass_by_proto[prototype][nonzero]
+                )
                 enrich[prototype] = ratio
 
-        return enrich
+        return self._cache_set(enrich, "get_enrichments", prototypes=prototypes)
 
     # --------------- Advanced data extraction functions ---------------
 
@@ -1967,7 +1884,7 @@ class CyclusOutput:
         tails_assay: float = None,
         return_sum: bool = True,
         split_cat: bool = False,
-        cascade_splits=[0.1, 0.2],
+        cascade_splits: list[float] | None = None,
         reactors: str | list[str] | None = None,
     ):
         """
@@ -1990,7 +1907,8 @@ class CyclusOutput:
         cascade_splits : list of float
             Intermediate enrichments that define cascade stages, expressed as
             decimals.
-            Defaults to [0.1, 0.2].
+            Defaults to [0.1, 0.2]. An empty list requests a single
+            unconstrained cascade stage.
         reactors : str or list[str], optional
             Alias for prototypes, used for compatibility with DYMOND plugin.
 
@@ -2001,25 +1919,41 @@ class CyclusOutput:
             For each entry the structure matches the corresponding
             stock_fuel_* helper that it replaces.
         """
-
-        if not cascade_splits:
+        if cascade_splits is None:
+            cascade_splits = [0.1, 0.2]
+        elif not cascade_splits:
             cascade_splits = [np.inf]
 
-        # Check prototypes/reactors and ensure prototypes are a numpy array
         prototypes = self._normalize_prototypes(prototypes, reactors)
 
-        # Mass and enrichment arrays
+        cached = self._cache_get(
+            "stock_fuel_resources",
+            prototypes=prototypes,
+            natu_assay=natu_assay,
+            tails_assay=tails_assay,
+            return_sum=return_sum,
+            split_cat=split_cat,
+            cascade_splits=cascade_splits,
+        )
+        if cached is not self._CACHE_MISS:
+            return cached
+
+        # Mass and enrichment arrays. This call is itself cached, so repeated
+        # calls to stock_fuel_natu(), stock_fuel_tails(), and stock_fuel_swu()
+        # do not repeat the expensive fuel-demand and enrichment SQL queries.
         fuel_mass, enr = self.get_fuel_mass_and_enrichment(
-            prototypes, return_sum=False
+            prototypes,
+            return_sum=False,
+            reactors=None,
         )
 
-        # Cache cascade splits by unique enrichment
-        cache = {}
+        # Reuse cascade calculations for repeated enrichment values.
+        cascade_cache = {}
         for prototype in prototypes:
             for enrichment in enr[prototype]:
                 if enrichment > 0:
                     key = round(float(enrichment), 8)
-                    if key not in cache:
+                    if key not in cascade_cache:
                         cascade = enrichment_cascade(
                             feed_enr=natu_assay,
                             prod_enr=enrichment,
@@ -2028,27 +1962,29 @@ class CyclusOutput:
                         )
                         # For natural uranium, use only the first stage,
                         # because the rest is reused by the next stage
-                        cache[key] = {
+                        cascade_cache[key] = {
                             "natu": cascade["feed"][0],
                             "tails": np.asarray(cascade["tails"], dtype=float),
                             "swu": np.asarray(cascade["swu"], dtype=float),
                         }
 
-        # Ensure a consistent number of stages
-        lengths = [len(v["tails"]) for v in cache.values()]
-        assert (
-            len(set(lengths)) == 1
-        ), "All cascades must have the same number of stages."
-        n_stages = lengths[0]
+        # Ensure a consistent number of stages. If no positive enrichment is
+        # present, return zeros with the stage count implied by cascade_splits.
+        if cascade_cache:
+            lengths = [len(v["tails"]) for v in cascade_cache.values()]
+            assert len(set(lengths)) == 1, \
+                "All cascades must have the same number of stages."
+            n_stages = lengths[0]
+        else:
+            n_stages = len(cascade_splits)
         zeros = np.zeros(n_stages)
 
         results = {"natu": {}, "tails": {}, "swu": {}}
-
         for prototype in prototypes:
             # Natural-uranium feed
             res_natu = np.array(
                 [
-                    cache.get(round(float(e), 8), {"natu": 0})[
+                    cascade_cache.get(round(float(e), 8), {"natu": 0})[
                         "natu"] if e > 0 else 0
                     for e in enr[prototype]
                 ],
@@ -2060,10 +1996,9 @@ class CyclusOutput:
             res_tails = np.array(
                 [
                     (
-                        cache.get(round(float(e), 8), {
-                                  "tails": zeros})["tails"]
-                        if e > 0
-                        else zeros
+                        cascade_cache.get(
+                            round(float(e), 8), {"tails": zeros})["tails"]
+                        if e > 0 else zeros
                     )
                     for e in enr[prototype]
                 ],
@@ -2078,9 +2013,9 @@ class CyclusOutput:
             res_swu = np.array(
                 [
                     (
-                        cache.get(round(float(e), 8), {"swu": zeros})["swu"]
-                        if e > 0
-                        else zeros
+                        cascade_cache.get(
+                            round(float(e), 8), {"swu": zeros})["swu"]
+                        if e > 0 else zeros
                     )
                     for e in enr[prototype]
                 ],
@@ -2092,8 +2027,21 @@ class CyclusOutput:
             results["swu"][prototype] = swu_val
 
         if return_sum:
-            return {k: sum(v.values()) for k, v in results.items()}
-        return results
+            results = {
+                key: self._sum_selected_series(values, prototypes)
+                for key, values in results.items()
+            }
+
+        return self._cache_set(
+            results,
+            "stock_fuel_resources",
+            prototypes=prototypes,
+            natu_assay=natu_assay,
+            tails_assay=tails_assay,
+            return_sum=return_sum,
+            split_cat=split_cat,
+            cascade_splits=cascade_splits,
+        )
 
     def stock_fuel_natu(
         self,
@@ -2101,7 +2049,7 @@ class CyclusOutput:
         natu_assay: float = None,
         tails_assay: float = None,
         return_sum: bool = True,
-        cascade_splits=[0.1, 0.2],
+        cascade_splits: list[float] | None = None,
         reactors: str | list[str] | None = None,
     ):
         """
@@ -2144,7 +2092,7 @@ class CyclusOutput:
         tails_assay: float = None,
         return_sum: bool = True,
         split_cat: bool = False,
-        cascade_splits=[0.1, 0.2],
+        cascade_splits: list[float] | None = None,
         reactors: str | list[str] | None = None,
     ):
         """
@@ -2191,7 +2139,7 @@ class CyclusOutput:
         tails_assay: float = None,
         return_sum: bool = True,
         split_cat: bool = False,
-        cascade_splits=[0.1, 0.2],
+        cascade_splits: list[float] | None = None,
         reactors: str | list[str] | None = None,
     ):
         """
@@ -2230,6 +2178,232 @@ class CyclusOutput:
             cascade_splits=cascade_splits,
             reactors=reactors,
         )["swu"]
+
+    # --------------- Shared cached intermediate stores ---------------
+
+    def _received_fuel_yearly_arrays(self, prototypes):
+        """
+        Return cached yearly received-fuel, uranium, and U-235 arrays.
+
+        This shared intermediate store feeds both ``stock_fuel_demand`` and
+        ``get_enrichments``. It preserves the previous public behavior by using
+        the same prototype-to-agent relationship, commodity handling, and
+        calendar-year alignment as the legacy monthly path.
+
+        The legacy implementation first queried the set of commodities received
+        by exactly these agent IDs and then filtered the received-fuel query to
+        that same set. That commodity filter is tautological for non-null
+        commodities, so this helper intentionally bypasses the extra
+        ``get_commodity_into`` query on the WATTS-facing path while keeping the
+        public ``get_commodity_into`` method unchanged.
+
+        The public fuel-demand and enrichment helpers return annual data. To
+        avoid fetching and caching very large per-agent monthly row sets, the
+        SQL query groups directly by prototype and aligned calendar-year index.
+        This is equivalent to filling monthly arrays and then applying
+        ``get_yearly_sum`` to each prototype.
+
+        Parameters
+        ----------
+        prototypes : array-like of str
+            Reactor prototype names.
+
+        Returns
+        -------
+        dict
+            Dictionary with keys ``fuel_mass``, ``u_mass``, and ``u235``. Each
+            value is a dictionary from prototype name to yearly array.
+        """
+        cached = self._cache_get_shared(
+            "_received_fuel_yearly_arrays",
+            prototypes=prototypes,
+        )
+        if cached is not self._CACHE_MISS:
+            return cached
+
+        result = {
+            "fuel_mass": self._zero_yearly_dict(prototypes),
+            "u_mass": self._zero_yearly_dict(prototypes),
+            "u235": self._zero_yearly_dict(prototypes),
+        }
+
+        if len(prototypes) > 0:
+            rows = self._query_received_fuel_by_prototype_year(prototypes)
+            for row in rows:
+                prototype = row["prototype"]
+                year_index = int(row["year_index"])
+                if prototype not in result["fuel_mass"]:
+                    continue
+                if year_index < 0 or year_index >= self.n_yearly_points:
+                    continue
+                result["fuel_mass"][prototype][year_index] += row["q"] or 0.0
+                result["u_mass"][prototype][year_index] += row["u_mass"] or 0.0
+                result["u235"][prototype][year_index] += row["u235"] or 0.0
+
+        return self._cache_set_shared(
+            result,
+            "_received_fuel_yearly_arrays",
+            prototypes=prototypes,
+        )
+
+    def _sent_fuel_yearly_arrays(self, prototypes):
+        """
+        Return cached yearly discharged-fuel arrays.
+
+        This shared intermediate store feeds ``stock_fuel_discharged`` and
+        keeps the previous public behavior by using the same prototype-to-agent
+        relationship, commodity handling, and calendar-year alignment as the
+        legacy monthly path.
+
+        The legacy implementation first queried the set of commodities sent by
+        exactly these agent IDs and then filtered the discharged-fuel query to
+        that same set. That commodity filter is tautological for non-null
+        commodities, so this helper intentionally bypasses the extra
+        ``get_commodity_out_of`` query on the WATTS-facing path while keeping
+        the public ``get_commodity_out_of`` method unchanged.
+
+        The public discharged-fuel helper returns annual data. To avoid fetching
+        and caching very large per-agent monthly row sets, the SQL query groups
+        directly by prototype and aligned calendar-year index. This is
+        equivalent to filling monthly arrays and then applying ``get_yearly_sum``
+        to each prototype.
+
+        Parameters
+        ----------
+        prototypes : array-like of str
+            Reactor prototype names.
+
+        Returns
+        -------
+        dict
+            Dictionary with key ``fuel_mass`` containing a dictionary from
+            prototype name to yearly array.
+        """
+        cached = self._cache_get_shared(
+            "_sent_fuel_yearly_arrays",
+            prototypes=prototypes,
+        )
+        if cached is not self._CACHE_MISS:
+            return cached
+
+        result = {"fuel_mass": self._zero_yearly_dict(prototypes)}
+
+        if len(prototypes) > 0:
+            rows = self._query_sent_fuel_by_prototype_year(prototypes)
+            for row in rows:
+                prototype = row["prototype"]
+                year_index = int(row["year_index"])
+                if prototype not in result["fuel_mass"]:
+                    continue
+                if year_index < 0 or year_index >= self.n_yearly_points:
+                    continue
+                result["fuel_mass"][prototype][year_index] += row["q"] or 0.0
+
+        return self._cache_set_shared(
+            result,
+            "_sent_fuel_yearly_arrays",
+            prototypes=prototypes,
+        )
+
+    def _received_fuel_arrays(self, prototypes):
+        """
+        Return cached monthly received-fuel, uranium, and U-235 arrays.
+
+        This compatibility helper is kept for private callers that may still
+        expect the v3 monthly intermediate. The main public fuel-demand and
+        enrichment paths now use ``_received_fuel_yearly_arrays`` to avoid
+        constructing large monthly stores when only annual values are needed.
+
+        Parameters
+        ----------
+        prototypes : array-like of str
+            Reactor prototype names.
+
+        Returns
+        -------
+        dict
+            Dictionary with keys ``fuel_mass``, ``u_mass``, and ``u235``. Each
+            value is a dictionary from prototype name to monthly array.
+        """
+        cached = self._cache_get_shared(
+            "_received_fuel_arrays",
+            prototypes=prototypes,
+        )
+        if cached is not self._CACHE_MISS:
+            return cached
+
+        ids_by_proto = self.get_proto_ids(prototypes)
+        all_ids = self._flatten_id_dict(ids_by_proto)
+        result = {
+            "fuel_mass": self._zero_monthly_dict(prototypes),
+            "u_mass": self._zero_monthly_dict(prototypes),
+            "u235": self._zero_monthly_dict(prototypes),
+        }
+
+        if all_ids:
+            rows = self._query_received_fuel_by_agent_time(all_ids)
+            agent_to_proto = self._agent_to_prototype(ids_by_proto)
+            for row in rows:
+                prototype = agent_to_proto.get(row["receiverid"])
+                time_index = int(row["time"])
+                if prototype is None or time_index >= self.duration:
+                    continue
+                result["fuel_mass"][prototype][time_index] += row["q"] or 0.0
+                result["u_mass"][prototype][time_index] += row["u_mass"] or 0.0
+                result["u235"][prototype][time_index] += row["u235"] or 0.0
+
+        return self._cache_set_shared(
+            result,
+            "_received_fuel_arrays",
+            prototypes=prototypes,
+        )
+
+    def _sent_fuel_arrays(self, prototypes):
+        """
+        Return cached monthly discharged-fuel arrays.
+
+        This compatibility helper is kept for private callers that may still
+        expect the v3 monthly intermediate. The main public discharged-fuel path
+        now uses ``_sent_fuel_yearly_arrays`` to avoid constructing large
+        monthly stores when only annual values are needed.
+
+        Parameters
+        ----------
+        prototypes : array-like of str
+            Reactor prototype names.
+
+        Returns
+        -------
+        dict
+            Dictionary with key ``fuel_mass`` containing a dictionary from
+            prototype name to monthly array.
+        """
+        cached = self._cache_get_shared(
+            "_sent_fuel_arrays",
+            prototypes=prototypes,
+        )
+        if cached is not self._CACHE_MISS:
+            return cached
+
+        ids_by_proto = self.get_proto_ids(prototypes)
+        all_ids = self._flatten_id_dict(ids_by_proto)
+        result = {"fuel_mass": self._zero_monthly_dict(prototypes)}
+
+        if all_ids:
+            rows = self._query_fuel_sent_by_agent_time(all_ids)
+            agent_to_proto = self._agent_to_prototype(ids_by_proto)
+            for row in rows:
+                prototype = agent_to_proto.get(row["senderid"])
+                time_index = int(row["time"])
+                if prototype is None or time_index >= self.duration:
+                    continue
+                result["fuel_mass"][prototype][time_index] += row["q"] or 0.0
+
+        return self._cache_set_shared(
+            result,
+            "_sent_fuel_arrays",
+            prototypes=prototypes,
+        )
 
     def _power_lifecycle_arrays(self, prototypes, rest_key="legacy"):
         """
@@ -2444,6 +2618,44 @@ class CyclusOutput:
         return {
             prototype: np.zeros(self.n_yearly_points)
             for prototype in prototypes
+        }
+
+    @staticmethod
+    def _flatten_id_dict(ids_by_proto):
+        """
+        Flatten a prototype-to-agent-ID dictionary.
+
+        Parameters
+        ----------
+        ids_by_proto : dict[str, list[int]]
+            Agent IDs by prototype.
+
+        Returns
+        -------
+        list[int]
+            Flat list of agent IDs.
+        """
+        return [agent_id for ids in ids_by_proto.values() for agent_id in ids]
+
+    @staticmethod
+    def _agent_to_prototype(ids_by_proto):
+        """
+        Invert a prototype-to-agent-ID dictionary.
+
+        Parameters
+        ----------
+        ids_by_proto : dict[str, list[int]]
+            Agent IDs by prototype.
+
+        Returns
+        -------
+        dict[int, str]
+            Agent ID to prototype.
+        """
+        return {
+            agent_id: prototype
+            for prototype, ids in ids_by_proto.items()
+            for agent_id in ids
         }
 
     def _yearly_method(self, values, method):
@@ -3017,6 +3229,304 @@ class CyclusOutput:
             "_query_mass_flow_by_commodity",
             query,
             commodity_name=commodity_name,
+        )
+
+    def _query_received_fuel_by_prototype_year(self, prototypes):
+        """
+        Query received fuel mass, uranium mass, and U-235 mass by prototype/year.
+
+        This query is the annual, prototype-aggregated version of
+        ``_query_received_fuel_by_agent_time``. It exists because the public
+        fuel-demand and enrichment helpers return yearly arrays, so fetching
+        one row per agent and month creates unnecessary SQLite output and
+        Python-side aggregation work for large simulations.
+
+        Calendar-year alignment is performed in SQL using the same convention
+        as ``get_yearly_sum``: yearly index 0 is a zero placeholder; index ``i``
+        for ``i > 0`` stores the aggregate for ``self.years_int[i - 1]``; the
+        final represented calendar year is dropped.
+
+        Parameters
+        ----------
+        prototypes : sequence[str]
+            Reactor prototype names.
+
+        Returns
+        -------
+        list
+            SQLite rows with ``prototype``, ``year_index``, ``q``, ``u_mass``,
+            and ``u235`` columns.
+        """
+        if len(prototypes) == 0:
+            return []
+
+        proto_csv = ", ".join(f'"{prototype}"' for prototype in prototypes)
+        month_offset = self.init_month - 1
+        max_year_index = self.n_yearly_points
+
+        query = f"""
+            WITH requested_agents AS (
+                SELECT DISTINCT
+                    agentid,
+                    prototype
+                FROM agententry
+                WHERE prototype IN ({proto_csv})
+            ),
+            uranium_fractions AS (
+                SELECT
+                    qualid,
+                    SUM(
+                        CASE
+                            WHEN nucid BETWEEN 922000000 AND 922999999
+                            THEN massfrac
+                            ELSE 0
+                        END
+                    ) AS u_frac,
+                    SUM(
+                        CASE
+                            WHEN nucid = 922350000
+                            THEN massfrac
+                            ELSE 0
+                        END
+                    ) AS u235_frac
+                FROM compositions
+                GROUP BY qualid
+            ),
+            received AS (
+                SELECT
+                    requested_agents.prototype AS prototype,
+                    CAST(
+                        ({month_offset} + transactions.time) / 12
+                        AS INTEGER
+                    ) + 1 AS year_index,
+                    resources.quantity AS quantity,
+                    COALESCE(uranium_fractions.u_frac, 0) AS u_frac,
+                    COALESCE(uranium_fractions.u235_frac, 0) AS u235_frac
+                FROM transactions
+                JOIN requested_agents
+                    ON transactions.receiverid = requested_agents.agentid
+                JOIN resources
+                    ON transactions.resourceid = resources.resourceid
+                LEFT JOIN uranium_fractions
+                    ON resources.qualid = uranium_fractions.qualid
+                WHERE transactions.commodity IS NOT NULL
+                AND transactions.time < {self.duration}
+            )
+            SELECT
+                prototype,
+                year_index,
+                SUM(quantity) AS q,
+                SUM(quantity * u_frac) AS u_mass,
+                SUM(quantity * u235_frac) AS u235
+            FROM received
+            WHERE year_index > 0
+            AND year_index < {max_year_index}
+            GROUP BY prototype, year_index
+        """
+        return self._cached_query(
+            "_query_received_fuel_by_prototype_year",
+            query,
+            prototypes=tuple(prototypes),
+        )
+
+    def _query_received_fuel_by_agent_time(self, agentids):
+        """
+        Query received fuel mass, uranium mass, and U-235 mass by agent/time.
+
+        This query replaces two overlapping legacy queries:
+        ``stock_fuel_demand`` needed total received resource quantity, while
+        ``get_enrichments`` needed uranium and U-235 mass from compositions.
+
+        The composition table is first collapsed to one uranium/U-235 fraction
+        row per ``qualid``. This preserves the same enrichment calculation as
+        summing ``quantity * massfrac`` over all composition rows, but avoids
+        expanding every received fuel transaction by every nuclide in its
+        composition.
+
+        The legacy WATTS-facing fuel path first queried all commodities received
+        by these same agent IDs, then filtered this query to that exact set of
+        commodities. For non-null commodities, that filter cannot remove any
+        additional rows, so it is intentionally omitted here. The explicit
+        ``commodity IS NOT NULL`` predicate preserves the legacy behavior for
+        unusual rows with a NULL commodity, because ``commodity IN (...)`` would
+        not have matched NULL values.
+
+        Parameters
+        ----------
+        agentids : sequence[int]
+            Receiver agent IDs.
+
+        Returns
+        -------
+        list
+            SQLite rows with ``receiverid``, ``time``, ``q``, ``u_mass``, and
+            ``u235`` columns.
+        """
+        if not agentids:
+            return []
+
+        id_csv = ",".join(map(str, agentids))
+        query = f"""
+            WITH uranium_fractions AS (
+                SELECT
+                    qualid,
+                    SUM(
+                        CASE
+                            WHEN nucid BETWEEN 922000000 AND 922999999
+                            THEN massfrac
+                            ELSE 0
+                        END
+                    ) AS u_frac,
+                    SUM(
+                        CASE
+                            WHEN nucid = 922350000
+                            THEN massfrac
+                            ELSE 0
+                        END
+                    ) AS u235_frac
+                FROM compositions
+                GROUP BY qualid
+            )
+            SELECT
+                transactions.receiverid AS receiverid,
+                transactions.time AS time,
+                SUM(resources.quantity) AS q,
+                SUM(
+                    resources.quantity
+                    * COALESCE(uranium_fractions.u_frac, 0)
+                ) AS u_mass,
+                SUM(
+                    resources.quantity
+                    * COALESCE(uranium_fractions.u235_frac, 0)
+                ) AS u235
+            FROM transactions
+            JOIN resources
+                ON transactions.resourceid = resources.resourceid
+            LEFT JOIN uranium_fractions
+                ON resources.qualid = uranium_fractions.qualid
+            WHERE transactions.receiverid IN ({id_csv})
+            AND transactions.commodity IS NOT NULL
+            GROUP BY transactions.receiverid, transactions.time
+        """
+        return self._cached_query(
+            "_query_received_fuel_by_agent_time",
+            query,
+            agentids=tuple(agentids),
+        )
+
+    def _query_sent_fuel_by_prototype_year(self, prototypes):
+        """
+        Query discharged fuel mass by prototype/year.
+
+        This query is the annual, prototype-aggregated version of
+        ``_query_fuel_sent_by_agent_time``. It exists because the public
+        discharged-fuel helper returns yearly arrays, so fetching one row per
+        agent and month creates unnecessary SQLite output and Python-side
+        aggregation work for large simulations.
+
+        Calendar-year alignment is performed in SQL using the same convention
+        as ``get_yearly_sum``: yearly index 0 is a zero placeholder; index ``i``
+        for ``i > 0`` stores the aggregate for ``self.years_int[i - 1]``; the
+        final represented calendar year is dropped.
+
+        Parameters
+        ----------
+        prototypes : sequence[str]
+            Reactor prototype names.
+
+        Returns
+        -------
+        list
+            SQLite rows with ``prototype``, ``year_index``, and ``q`` columns.
+        """
+        if len(prototypes) == 0:
+            return []
+
+        proto_csv = ", ".join(f'"{prototype}"' for prototype in prototypes)
+        month_offset = self.init_month - 1
+        max_year_index = self.n_yearly_points
+
+        query = f"""
+            WITH requested_agents AS (
+                SELECT DISTINCT
+                    agentid,
+                    prototype
+                FROM agententry
+                WHERE prototype IN ({proto_csv})
+            ),
+            sent AS (
+                SELECT
+                    requested_agents.prototype AS prototype,
+                    CAST(
+                        ({month_offset} + transactions.time) / 12
+                        AS INTEGER
+                    ) + 1 AS year_index,
+                    resources.quantity AS quantity
+                FROM transactions
+                JOIN requested_agents
+                    ON transactions.senderid = requested_agents.agentid
+                JOIN resources
+                    ON transactions.resourceid = resources.resourceid
+                WHERE transactions.commodity IS NOT NULL
+                AND transactions.time < {self.duration}
+            )
+            SELECT
+                prototype,
+                year_index,
+                SUM(quantity) AS q
+            FROM sent
+            WHERE year_index > 0
+            AND year_index < {max_year_index}
+            GROUP BY prototype, year_index
+        """
+        return self._cached_query(
+            "_query_sent_fuel_by_prototype_year",
+            query,
+            prototypes=tuple(prototypes),
+        )
+
+    def _query_fuel_sent_by_agent_time(self, agentids):
+        """
+        Query total discharged fuel mass by sender and time.
+
+        The legacy WATTS-facing discharged-fuel path first queried all
+        commodities sent by these same agent IDs, then filtered this query to
+        that exact set of commodities. For non-null commodities, that filter
+        cannot remove any additional rows, so it is intentionally omitted here.
+        The explicit ``commodity IS NOT NULL`` predicate preserves the legacy
+        behavior for unusual rows with a NULL commodity, because
+        ``commodity IN (...)`` would not have matched NULL values.
+
+        Parameters
+        ----------
+        agentids : sequence[int]
+            Sender agent IDs.
+
+        Returns
+        -------
+        list
+            SQLite rows with ``senderid``, ``time``, and ``q`` columns.
+        """
+        if not agentids:
+            return []
+
+        id_csv = ",".join(map(str, agentids))
+        query = f"""
+            SELECT
+                transactions.senderid AS senderid,
+                transactions.time AS time,
+                SUM(resources.quantity) AS q
+            FROM transactions
+            JOIN resources
+                ON transactions.resourceid = resources.resourceid
+            WHERE transactions.senderid IN ({id_csv})
+            AND transactions.commodity IS NOT NULL
+            GROUP BY transactions.senderid, transactions.time
+        """
+        return self._cached_query(
+            "_query_fuel_sent_by_agent_time",
+            query,
+            agentids=tuple(agentids),
         )
 
     def _query_power_history(self, prototypes=None, positive_only=False):
