@@ -17,6 +17,17 @@ from .results import Results, ExecInfo
 from .enrichment_utils import enrichment_cascade
 
 
+POWER_TO_GW = {
+    "W": 1e-9,
+    "KW": 1e-6,
+    "KWE": 1e-6,
+    "MW": 1e-3,
+    "MWE": 1e-3,
+    "GW": 1.0,
+    "GWE": 1.0,
+}
+
+
 class ResultsCyclus(Results):
     """Cyclus simulation results
 
@@ -182,7 +193,7 @@ class CyclusOutput:
 
     # --------------- Initialization and input metadata ---------------
 
-    def __init__(self, path):
+    def __init__(self, path, power_units="MWe"):
         """
         Class to access and browse an output file from Cyclus.
         Output file MUST be an SQLite database (.sqlite)
@@ -191,8 +202,13 @@ class CyclusOutput:
         -----------
         path: str
             path to output file, including file name
+        power_units: str
+            Units used by the Cyclus ``timeseriespower.value`` column.
+            Defaults to ``"MWe"``, the unit assumed by existing WATTS
+            Cyclus post-processing.
         """
         self._cache = {}
+        self.power_units = power_units
         assert os.path.exists(path), "File does not exist."
         ext = os.path.splitext(path)
         assert ext[-1] == ".sqlite", "File extension has to be .sqlite"
@@ -230,6 +246,24 @@ class CyclusOutput:
         self.agent_dict = self.get_facility_agents()
         self.reactor_types = np.unique(
             list(self.get_facility_agents("reactor").values()))
+
+    @property
+    def power_units(self):
+        """Units used by the Cyclus ``timeseriespower.value`` column."""
+        return self._power_units
+
+    @power_units.setter
+    def power_units(self, units):
+        units = str(units).upper()
+        if units not in POWER_TO_GW:
+            raise ValueError(
+                f"Unsupported Cyclus power units '{units}'. Supported "
+                f"values are: {', '.join(sorted(POWER_TO_GW))}."
+            )
+        self._power_units = units
+        self._power_to_gw = POWER_TO_GW[units]
+        if hasattr(self, "_cache"):
+            self.clear_cache()
 
     def get_input_text(self) -> str:
         """
@@ -1089,6 +1123,16 @@ class CyclusOutput:
         self._validate_no_infinite_lifetime_rows(rows, power_column="power_cap")
         return rows
 
+    def _convert_power_to_gw(self, power):
+        """
+        Convert Cyclus ``timeseriespower`` values to GW.
+
+        Cyclus outputs are commonly interpreted as MWe, but the database can
+        in principle represent other power units. The ``power_units`` attribute
+        keeps that assumption explicit while preserving MWe as the default.
+        """
+        return np.asarray(power, dtype=float) * self._power_to_gw
+
     def get_new_deployments(
         self,
         prototypes: str | list[str] | None = None,
@@ -1319,7 +1363,7 @@ class CyclusOutput:
         - the active interval begins at first_power_time
         - the active interval ends at last_power_time
         - the deployed capacity is taken as the maximum positive power
-        observed for that agent
+        observed for that agent, converted from ``self.power_units`` to GW
 
         Parameters:
         -----------
@@ -1481,6 +1525,9 @@ class CyclusOutput:
     ) -> np.ndarray | dict[str, np.ndarray]:
         """
         Get generated power (GW) over time for one or more prototypes.
+
+        Values in the Cyclus ``timeseriespower`` table are interpreted using
+        ``self.power_units`` and converted to GW.
 
         Parameters:
         ----------
@@ -2383,7 +2430,8 @@ class CyclusOutput:
                 if not (i1 < 0 or i0 >= self.duration):
                     i0 = max(i0, 0)
                     i1 = min(i1, self.duration - 1)
-                    deployed_capacity[key][i0:i1 + 1] += float(power_cap) * 1e-3
+                    deployed_capacity[key][i0:i1 + 1] += \
+                        self._convert_power_to_gw(power_cap).item()
 
         # Drop rest_key if unused, preserving the old public return structure.
         for store in [new_deployments, retirements, deployed_capacity]:
@@ -2405,6 +2453,9 @@ class CyclusOutput:
     def _generated_power_arrays(self, prototypes):
         """
         Return cached monthly generated-power arrays by prototype.
+
+        Cyclus power values are read from ``timeseriespower.value`` using
+        ``self.power_units`` and converted to GW.
 
         Parameters
         ----------
@@ -2429,7 +2480,8 @@ class CyclusOutput:
             proto = row["prototype"]
             time_index = int(row["time"])
             if 0 <= time_index < self.duration and proto in gen_dict:
-                gen_dict[proto][time_index] += float(row["sum_mwe"]) * 1e-3
+                gen_dict[proto][time_index] += \
+                    self._convert_power_to_gw(row["sum_power"]).item()
         return self._cache_set_shared(
             gen_dict,
             "_generated_power_arrays",
@@ -3364,7 +3416,7 @@ class CyclusOutput:
                             THEN ts.value
                             ELSE NULL
                         END
-                    ) AS power_cap_mwe
+                    ) AS power_cap
                 FROM timeseriespower ts
                 JOIN agententry a
                     ON a.agentid = ts.agentid
@@ -3375,7 +3427,7 @@ class CyclusOutput:
             win AS (
                 SELECT
                     a.agentid AS agentid,
-                    SUM(ts.value) * 1.0 AS sum_power_mwe,
+                    SUM(ts.value) * 1.0 AS sum_power,
                     COUNT(ts.time) AS n_steps
                 FROM timeseriespower ts
                 JOIN agententry a
@@ -3387,18 +3439,18 @@ class CyclusOutput:
             per_agent AS (
                 SELECT
                     cap.agentid AS agentid,
-                    win.sum_power_mwe AS sum_power_mwe,
+                    win.sum_power AS sum_power,
                     win.n_steps AS n_steps,
-                    cap.power_cap_mwe AS power_cap_mwe
+                    cap.power_cap AS power_cap
                 FROM cap
                 JOIN win
                     ON win.agentid = cap.agentid
-                WHERE cap.power_cap_mwe IS NOT NULL
+                WHERE cap.power_cap IS NOT NULL
             )
             SELECT
-                SUM(sum_power_mwe)
+                SUM(sum_power)
                     / NULLIF(
-                        SUM(power_cap_mwe * n_steps),
+                        SUM(power_cap * n_steps),
                         0
                     ) AS capacity_factor
             FROM per_agent;
@@ -3437,7 +3489,7 @@ class CyclusOutput:
                             THEN ts.value
                             ELSE NULL
                         END
-                    ) AS power_cap_mwe
+                    ) AS power_cap
                 FROM timeseriespower ts
                 JOIN agententry a
                     ON a.agentid = ts.agentid
@@ -3449,7 +3501,7 @@ class CyclusOutput:
                 SELECT
                     a.agentid AS agentid,
                     a.prototype AS prototype,
-                    SUM(ts.value) * 1.0 AS sum_power_mwe,
+                    SUM(ts.value) * 1.0 AS sum_power,
                     COUNT(ts.time) AS n_steps
                 FROM timeseriespower ts
                 JOIN agententry a
@@ -3462,19 +3514,19 @@ class CyclusOutput:
                 SELECT
                     win.agentid AS agentid,
                     win.prototype AS prototype,
-                    win.sum_power_mwe AS sum_power_mwe,
+                    win.sum_power AS sum_power,
                     win.n_steps AS n_steps,
-                    cap.power_cap_mwe AS power_cap_mwe
+                    cap.power_cap AS power_cap
                 FROM win
                 JOIN cap
                     ON cap.agentid = win.agentid
-                WHERE cap.power_cap_mwe IS NOT NULL
+                WHERE cap.power_cap IS NOT NULL
             )
             SELECT
                 prototype,
-                SUM(sum_power_mwe)
+                SUM(sum_power)
                     / NULLIF(
-                        SUM(power_cap_mwe * n_steps),
+                        SUM(power_cap * n_steps),
                         0
                     ) AS capacity_factor
             FROM per_agent
@@ -3498,7 +3550,7 @@ class CyclusOutput:
         Returns
         -------
         list
-            SQLite rows with ``prototype``, ``time``, and ``sum_mwe`` columns.
+            SQLite rows with ``prototype``, ``time``, and ``sum_power`` columns.
         """
         if len(prototypes) == 0:
             return []
@@ -3509,7 +3561,7 @@ class CyclusOutput:
             SELECT
                 prototype,
                 time,
-                SUM(power) * 1.0 AS sum_mwe
+                SUM(power) * 1.0 AS sum_power
             FROM power_history
             GROUP BY prototype, time
             ORDER BY prototype, time
