@@ -1413,7 +1413,8 @@ class CyclusOutput:
 
         Capacity factors are computed from reactor cycle time c and refueling
         time r: CF = c / (r + c). Prototypes without reactor-info rows are
-        omitted from the returned dictionary.
+        omitted from the returned dictionary. For realized capacity factors
+        that can vary over time, use ``get_capacity_factor_timeseries``.
 
         Parameters:
         -----------
@@ -1475,7 +1476,9 @@ class CyclusOutput:
         Notes:
         ------
         Prototypes with no power-producing agents are not returned; they do not
-        participate in the capacity factor.
+        participate in the capacity factor. For before/after comparisons around
+        uprates or other operations changes, use
+        ``get_capacity_factor_timeseries`` and select the relevant time slices.
         """
         prototypes = self._normalize_prototypes(prototypes, reactors)
 
@@ -1512,6 +1515,97 @@ class CyclusOutput:
             "get_avg_capacity_factors",
             prototypes=prototypes,
             return_avg=return_avg,
+        )
+
+    def get_capacity_factor_timeseries(
+        self,
+        prototypes: str | list[str] | None = None,
+        return_sum: bool = False,
+        yearly: bool = True,
+        reactors: str | list[str] | None = None,
+    ) -> np.ndarray | dict[str, np.ndarray]:
+        """
+        Return realized capacity factors over time.
+
+        Capacity factor is computed from generated power divided by deployed
+        capacity. Monthly values are calculated directly from the monthly
+        power and capacity arrays. Yearly values are capacity-weighted averages:
+        yearly generated-power sums divided by yearly deployed-capacity sums.
+        This makes uprates and other within-simulation capacity changes easier
+        to inspect than a single full-simulation average.
+
+        Parameters:
+        -----------
+        prototypes: str | list[str] | None
+            Reactor prototype(s) to analyze. If None, use all reactor types in
+            the simulation.
+        return_sum: bool
+            If True, return one fleet-level capacity-factor series computed
+            from summed generated power and summed deployed capacity.
+        yearly: bool
+            If True, return yearly capacity-weighted averages. If False,
+            return monthly capacity factors.
+        reactors: str | list[str] | None
+            Alias for prototypes, used for compatibility with DYMOND plugin.
+            Reactors and prototypes cannot both be specified.
+
+        Returns:
+        --------
+        numpy.ndarray or dict[str, numpy.ndarray]
+            Realized capacity-factor series as decimal fractions.
+        """
+        prototypes = self._normalize_prototypes(prototypes, reactors)
+
+        cached = self._cache_get(
+            "get_capacity_factor_timeseries",
+            prototypes=prototypes,
+            return_sum=return_sum,
+            yearly=yearly,
+        )
+        if cached is not self._CACHE_MISS:
+            return cached
+
+        if len(prototypes) == 0:
+            result = np.zeros(0) if return_sum else {}
+            return self._cache_set(
+                result,
+                "get_capacity_factor_timeseries",
+                prototypes=prototypes,
+                return_sum=return_sum,
+                yearly=yearly,
+            )
+
+        self._validate_deployed_capacity_rows(self._get_power_agents())
+        generated = self._generated_power_arrays(prototypes)
+        capacity = self._power_lifecycle_arrays(prototypes)["deployed_capacity"]
+
+        if return_sum:
+            generated = {"total": self._sum_selected_series(generated, prototypes)}
+            capacity = {"total": self._sum_selected_series(capacity, prototypes)}
+            keys = ["total"]
+        else:
+            keys = [prototype for prototype in prototypes if prototype in capacity]
+
+        result = {}
+        for key in keys:
+            generated_series = np.array(generated.get(key, np.zeros(self.duration)))
+            capacity_series = np.array(capacity.get(key, np.zeros(self.duration)))
+            if yearly:
+                generated_series = self.get_yearly_sum(generated_series)
+                capacity_series = self.get_yearly_sum(capacity_series)
+            with np.errstate(divide="ignore", invalid="ignore"):
+                cf = np.zeros_like(generated_series, dtype=float)
+                active = capacity_series > 0
+                cf[active] = generated_series[active] / capacity_series[active]
+            result[key] = cf
+
+        result = result["total"] if return_sum else result
+        return self._cache_set(
+            result,
+            "get_capacity_factor_timeseries",
+            prototypes=prototypes,
+            return_sum=return_sum,
+            yearly=yearly,
         )
 
     def get_generated_power(
