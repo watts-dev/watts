@@ -140,3 +140,15 @@ def run(args):
 
         if p.poll() is not None:
             break
+
+    # Drain any data remaining in the pipe buffers after the process exits.
+    # With O_NONBLOCK, a single read() per iteration may not consume all buffered
+    # bytes (the kernel returns what fits in one syscall). Once the write end of
+    # the pipe is closed (process exited) read_async returns b'' on EOF rather
+    # than raising EAGAIN, so this loop terminates cleanly.
+    for fd, stream in ((p.stdout, sys.stdout), (p.stderr, sys.stderr)):
+        while True:
+            chunk = read_async(fd)
+            if not chunk:
+                break
+            stream.write(chunk.decode())
