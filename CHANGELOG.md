@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 * Update ACCERT output name
   ([#120](https://github.com/watts-dev/watts/pull/120))
 
+### Fixed
+
+* Capture output remaining in subprocess pipe buffers after the process exits
+  ([#124](https://github.com/watts-dev/watts/pull/124))
+
 ## [0.5.2]
 
 ### Added
