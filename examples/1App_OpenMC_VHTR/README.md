@@ -18,4 +18,4 @@ This example provides a demonstration on how to use WATTS to perform a single SA
 
 - [__watts_exec.py__](watts_exec.py): WATTS workflow for this example. This is the file to execute to run the problem described above.
 - [__openmc_template__](openmc_template.py): OpenMC templated model.
-
+- [__watts_wb.son__](watts_wb.son): Workbench input file for this example.

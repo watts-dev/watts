@@ -1,0 +1,36 @@
+watts{
+    plugins{
+        plugin(ID1){
+            code = moose
+            template = "sam_template_0"
+            exec_dir = "SAM_DIR"
+            exec_name = "sam-opt"
+            show_stderr = False
+            show_stdout = False
+            transfer_params = ["T_out_sam_template_0"]
+        }
+        plugin(ID2){
+            code = moose
+            template = "sam_template_1"
+            exec_dir = "SAM_DIR"
+            exec_name = "sam-opt"
+            show_stderr = False
+            show_stdout = False
+        }
+    }
+
+    workflow_level1{
+        plugin = ID1
+        plugin = ID2
+        variables{
+            param(temperature_inlet) {value = 628.0}
+            param(friction_factor) {value = 0.1}
+            param(flow_area) {value = 3.14e-4}
+            param(Dh) {value = 1 unit = m}
+            param(velocity_inlet) {value = 1}
+            param(wall_bc) {bool = "True"}
+            param(heat_source) {value = 3e5}
+        }
+    }
+
+}
