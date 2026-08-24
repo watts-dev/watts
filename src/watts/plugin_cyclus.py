@@ -14,39 +14,38 @@ from .fileutils import PathLike
 from .parameters import Parameters
 from .plugin import PluginGeneric
 from .results import Results, ExecInfo
-from .enrichment_utils import enrichment_cascade
+from .fuel_cycle_utils import (
+    FuelReceipt,
+    ResultFileReader,
+    aggregate_calendar_years,
+    calculate_fuel_resources,
+    format_fuel_resource_results,
+    format_reactor_results,
+    find_single_output,
+    power_to_gw,
+)
 
 
-POWER_TO_GW = {
-    "W": 1e-9,
-    "KW": 1e-6,
-    "KWE": 1e-6,
-    "MW": 1e-3,
-    "MWE": 1e-3,
-    "GW": 1.0,
-    "GWE": 1.0,
-}
+class ResultsCyclus(ResultFileReader, Results):
+    """Cyclus simulation results.
 
-
-class ResultsCyclus(Results):
-    """Cyclus simulation results
-
-    Parameters:
+    Parameters
     ----------
-    params
-        Parameters used to generate inputs
-    exec_info
-        Execution information (job ID, plugin name, timestamp, etc.)
-    inputs
-        List of input files
-    outputs
-        List of output files
+    params : Parameters
+        Parameters used to render the simulation input.
+    exec_info : ExecInfo
+        Job identifier, plugin name, run time, and other execution details.
+    inputs : list of pathlib.Path
+        Input files stored for the simulation run.
+    outputs : list of pathlib.Path
+        Output files stored for the simulation run.
 
     Attributes
     ----------
-    obj
-        CyclusOutput object linked to the output SQLite file.
-    sqlite_file
+    obj : CyclusOutput
+        Reader for the Cyclus SQLite file.  The file is opened when this
+        attribute is first requested.
+    sqlite_file : pathlib.Path
         Path to the Cyclus SQLite output file.
     prototypes
         Unique prototype names from the simulation.
@@ -71,20 +70,73 @@ class ResultsCyclus(Results):
         inputs: List[Path],
         outputs: List[Path],
     ):
-        super().__init__(params, exec_info, inputs, outputs)
-        self.obj = self.get_object()
+        """Store Cyclus result metadata without opening the SQLite file.
 
-    def get_object(self):
-        """Returns a CyclusOutput object linked to the output SQLite file."""
-        return CyclusOutput(self.sqlite_file)
+        Parameters
+        ----------
+        params : Parameters
+            Parameters used to render the simulation input.
+        exec_info : ExecInfo
+            Information recorded for the simulation run.
+        inputs : list of pathlib.Path
+            Input files stored for the run.
+        outputs : list of pathlib.Path
+            Output files stored for the run.
+
+        Returns
+        -------
+        None
+            The result metadata and closed-reader state are stored in place.
+        """
+
+        super().__init__(params, exec_info, inputs, outputs)
+        # WATTS moves the SQLite file after this object is created.  Open the
+        # file only when a caller first requests ``obj`` so the reader uses the
+        # final path and WATTS never tries to save an open SQLite connection.
+        self._initialize_result_reader()
+
+    def _result_file_path(self) -> Path:
+        """Return the current path to the Cyclus output file.
+
+        Returns
+        -------
+        pathlib.Path
+            Path to the only SQLite output in this result.
+        """
+
+        return self.sqlite_file
+
+    def _open_result_file(self, path: Path):
+        """Open a Cyclus output reader for one SQLite file.
+
+        Parameters
+        ----------
+        path : pathlib.Path
+            Cyclus SQLite output file.
+
+        Returns
+        -------
+        CyclusOutput
+            Reader connected to ``path``.
+        """
+
+        return CyclusOutput(path)
 
     @property
     def sqlite_file(self) -> Path:
-        """Returns the path to the output SQLite file from the simulation."""
-        path_list = [
-            path for path in self.outputs if path.name.endswith("sqlite")]
-        assert len(path_list) == 1
-        return path_list[0]
+        """Return the Cyclus SQLite output path.
+
+        Returns
+        -------
+        pathlib.Path
+            The only file in ``outputs`` with a ``.sqlite`` suffix.
+        """
+
+        return find_single_output(
+            self.outputs,
+            suffixes=(".sqlite",),
+            description="Cyclus SQLite",
+        )
 
     @property
     def prototypes(self):
@@ -194,18 +246,29 @@ class CyclusOutput:
     # --------------- Initialization and input metadata ---------------
 
     def __init__(self, path, power_units="MWe"):
-        """
-        Class to access and browse an output file from Cyclus.
-        Output file MUST be an SQLite database (.sqlite)
+        """Open a Cyclus SQLite output file and read its basic metadata.
 
-        Parameters:
-        -----------
-        path: str
-            path to output file, including file name
-        power_units: str
+        Parameters
+        ----------
+        path : str or pathlib.Path
+            Cyclus SQLite output file.
+        power_units : str, optional
             Units used by the Cyclus ``timeseriespower.value`` column.
             Defaults to ``"MWe"``, the unit assumed by existing WATTS
             Cyclus post-processing.
+
+        Returns
+        -------
+        None
+            The database connection, metadata, and result caches are stored on
+            this reader.
+
+        Raises
+        ------
+        AssertionError
+            If ``path`` does not exist or does not have a ``.sqlite`` suffix.
+        ValueError
+            If ``power_units`` is not supported.
         """
         self._cache = {}
         self.power_units = power_units
@@ -213,9 +276,11 @@ class CyclusOutput:
         ext = os.path.splitext(path)
         assert ext[-1] == ".sqlite", "File extension has to be .sqlite"
         self.path = path
-        con = lite.connect(self.path)
-        con.row_factory = lite.Row
-        self.cur = con.cursor()
+        # Keep both the connection and cursor so ``close`` can release the file
+        # before WATTS moves it or before a long analysis opens another file.
+        self.con = lite.connect(self.path)
+        self.con.row_factory = lite.Row
+        self.cur = self.con.cursor()
 
         # The analysis routines are read-only and often run several large
         # grouped queries. These pragmas keep temporary grouping structures in
@@ -224,11 +289,11 @@ class CyclusOutput:
         self.cur.execute("PRAGMA temp_store = MEMORY")
         self.cur.execute("PRAGMA cache_size = -200000")
 
-        # Store input text and input dict
+        # Read the stored input once because several result methods use it.
         self.input_text = self.get_input_text()
         self.input_dict = self.get_input_dict()
 
-        # Store times
+        # Store the common time fields as direct attributes for later queries.
         td = self.get_times()
         self.duration = None
         self.init_year = None
@@ -239,9 +304,9 @@ class CyclusOutput:
         for k, v in td.items():
             setattr(self, k, v)
 
-        # Store agents and reactors. Nuclides are loaded lazily because the
-        # distinct-composition query is expensive and only needed by the
-        # isotopic process_* helpers, not by the WATTS fuel-cycle path.
+        # The distinct-nuclide query is expensive and only supports detailed
+        # isotopic methods.  Wait to run it until one of those methods asks for
+        # ``nucids``.
         self._nucids = None
         self.agent_dict = self.get_facility_agents()
         self.reactor_types = np.unique(
@@ -254,14 +319,30 @@ class CyclusOutput:
 
     @power_units.setter
     def power_units(self, units):
+        """Set and check the unit used for Cyclus power values.
+
+        Parameters
+        ----------
+        units : str
+            Unit used by the ``timeseriespower.value`` database column.
+
+        Returns
+        -------
+        None
+            The unit and its GW conversion factor are stored in place.
+
+        Raises
+        ------
+        ValueError
+            If ``units`` cannot be converted to GW.
+        """
+
         units = str(units).upper()
-        if units not in POWER_TO_GW:
-            raise ValueError(
-                f"Unsupported Cyclus power units '{units}'. Supported "
-                f"values are: {', '.join(sorted(POWER_TO_GW))}."
-            )
+        # Use the shared conversion table so Cyclus and DYMOND accept the same
+        # power-unit spellings and report the same errors.
+        factor = power_to_gw(1.0, units).item()
         self._power_units = units
-        self._power_to_gw = POWER_TO_GW[units]
+        self._power_to_gw = factor
         if hasattr(self, "_cache"):
             self.clear_cache()
 
@@ -591,21 +672,38 @@ class CyclusOutput:
 
     # --------------- Global Utility Functions ---------------
 
-    def sql_query(self, query_str: str):
-        """
-        Execute a SQL query linked to the current database and return the
-        result
+    def sql_query(self, query_str: str, parameters=()):
+        """Run a SQL query against the Cyclus output database.
 
-        Parameters:
-        -----------
-        query_str: str
-            SQL query to be executed
+        Parameters
+        ----------
+        query_str : str
+            SQL query to run.
+        parameters : sequence, optional
+            Values for the ``?`` placeholders in ``query_str``.
+
+        Returns
+        -------
+        list of sqlite3.Row
+            All rows returned by the query.
+
+        Raises
+        ------
+        sqlite3.Error
+            If SQLite cannot prepare or run the query.
+
+        Notes
+        -----
+        Passing simulator-provided names as ``parameters`` handles quotes and
+        punctuation safely.  Names should not be inserted directly into SQL.
         """
-        if not hasattr(self, "cur"):
-            con = lite.connect(self.path)
-            con.row_factory = lite.Row
-            self.cur = con.cursor()
-        query = self.cur.execute(query_str).fetchall()
+        # ``close`` may have released the connection during earlier result
+        # file handling.  Reopen it when another query is requested.
+        if getattr(self, "cur", None) is None:
+            self.con = lite.connect(self.path)
+            self.con.row_factory = lite.Row
+            self.cur = self.con.cursor()
+        query = self.cur.execute(query_str, tuple(parameters)).fetchall()
         return query
 
     @staticmethod
@@ -663,22 +761,12 @@ class CyclusOutput:
         return np.array(val)
 
     def _aggregate_calendar_years(self, arr, how: str) -> np.ndarray:
-        """
-        Aggregate monthly data by calendar year and align the result to
-        integer year starts.
+        """Combine monthly Cyclus data by calendar year.
 
-        Cyclus defines a simulation by its start year, start month, and a
-        duration in monthly time steps. In the output database,
-        InitialYear and InitialMonth identify the calendar year and
-        month represented by time step 0. Accordingly, yearly aggregation
-        must assign each monthly entry to the calendar year implied by
-        (self.init_year, self.init_month, time_index).
-
-        After aggregation, the yearly values are shifted by one entry.
-        We use start-of-year alignment: the value stored at integer
-        year Y represents the aggregate over the completed calendar year
-        Y - 1. In other words, the first entry is a zero placeholder, and
-        the final aggregated year is dropped.
+        Earlier implementations inserted a leading zero and discarded the
+        final year.  That convention lost real events, mass, and energy.  The
+        shared WATTS utility retains partial first and last years and returns
+        one value for every label in ``self.years_int``.
 
         Parameters
         ----------
@@ -687,60 +775,36 @@ class CyclusOutput:
             arr[t] is the value at monthly time step t. For
             higher-dimensional input, time is along the first dimension and
             any trailing dimensions are preserved.
-        how : {"sum", "max", "end"}
+        how : {"sum", "max", "end", "mean"}
             Aggregation applied within each calendar year:
             - "sum": sum over all months in the year
             - "max": maximum over all months in the year
             - "end": value in the final month of the year
+            - "mean": average over the months represented in the year
 
         Returns
         -------
         np.ndarray
-            Array aligned to integer year starts. The first entry is a zero
-            placeholder. Entry i for i > 0 contains the aggregation
-            over calendar year self.years_int[i - 1].
+            Array aligned directly with ``self.years_int``.
+
+        Raises
+        ------
+        ValueError
+            If ``arr`` or ``how`` is invalid, or if the returned calendar-year
+            labels do not match the Cyclus result time axis.
         """
-        # Convert to array and validate shape
-        arr = np.asarray(arr)
-        if arr.ndim == 0:
-            raise ValueError(
-                "Expected an array of monthly values indexed by time step; "
-                "got a scalar."
-            )
-
-        if arr.shape[0] == 0:
-            return np.zeros((0, *arr.shape[1:]), dtype=arr.dtype)
-
-        # Determine calendar year for each time step, starting from
-        # self.init_year and self.init_month
-        calendar_years = (
-            self.init_year
-            + (self.init_month - 1 + np.arange(arr.shape[0])) // 12
+        labels, yearly = aggregate_calendar_years(
+            arr,
+            init_year=self.init_year,
+            init_month=self.init_month,
+            how=how,
         )
-
-        # Identify indices where the calendar year changes and split the array
-        split_idx = np.flatnonzero(np.diff(calendar_years)) + 1
-        year_blocks = np.split(arr, split_idx, axis=0)
-
-        # Aggregate each calendar year's block according to the user's choice
-        if how == "sum":
-            yearly = np.stack([block.sum(axis=0)
-                              for block in year_blocks], axis=0)
-        elif how == "max":
-            yearly = np.stack([block.max(axis=0)
-                              for block in year_blocks], axis=0)
-        elif how == "end":
-            yearly = np.stack([block[-1] for block in year_blocks], axis=0)
-        else:
+        if not np.array_equal(labels, self.years_int):
             raise ValueError(
-                f"Unknown yearly aggregation '{how}'. "
-                "Expected one of: 'sum', 'max', or 'end'."
+                "Calendar aggregation labels do not match the Cyclus time "
+                f"axis: aggregated={labels}, expected={self.years_int}."
             )
-
-        # Prepend a zero entry to align with self.years_int,
-        # and drop the final aggregated year
-        zeros = np.zeros((1, *yearly.shape[1:]), dtype=yearly.dtype)
-        return np.concatenate((zeros, yearly[:-1]), axis=0)
+        return yearly
 
     def get_yearly_sum(self, arr) -> np.ndarray:
         """
@@ -763,16 +827,24 @@ class CyclusOutput:
         return self._aggregate_calendar_years(arr, how="end")
 
     def get_yearly_avg(self, arr) -> np.ndarray:
-        """
-        Return calendar-year averages for monthly data, aligned to
-        self.years_int.
+        """Return calendar-year averages for monthly data.
 
-        The yearly value is computed as the calendar-year sum divided by 12.
-        For partial first or last calendar years, this gives a 12-month
-        normalized average rather than the mean over only the represented
-        months.
+        Parameters
+        ----------
+        arr : array-like
+            Monthly data with time on the first axis.
+
+        Returns
+        -------
+        numpy.ndarray
+            Calendar-year averages aligned with ``self.years_int``.
+
+        Notes
+        -----
+        Partial first or last years are averaged over the months represented
+        in the simulation.
         """
-        return self.get_yearly_sum(arr) / 12.0
+        return self._aggregate_calendar_years(arr, how="mean")
 
     # --------------- Basic data extraction functions ---------------
 
@@ -1124,14 +1196,19 @@ class CyclusOutput:
         return rows
 
     def _convert_power_to_gw(self, power):
-        """
-        Convert Cyclus ``timeseriespower`` values to GW.
+        """Convert Cyclus ``timeseriespower`` values to GW.
 
-        Cyclus outputs are commonly interpreted as MWe, but the database can
-        in principle represent other power units. The ``power_units`` attribute
-        keeps that assumption explicit while preserving MWe as the default.
+        Parameters
+        ----------
+        power : float or array-like
+            Values from the ``timeseriespower`` table.
+
+        Returns
+        -------
+        numpy.ndarray
+            Power values converted from :attr:`power_units` to GW.
         """
-        return np.asarray(power, dtype=float) * self._power_to_gw
+        return power_to_gw(power, self.power_units)
 
     def get_new_deployments(
         self,
@@ -1347,50 +1424,45 @@ class CyclusOutput:
     def get_deployed_capacity(
         self,
         prototypes: str | list[str] | None = None,
-        return_sum: bool = False,
+        return_sum: bool = True,
         yearly: bool = True,
         reactors: str | list[str] | None = None,
         rest_key: str = "legacy"
     ) -> np.ndarray | dict[str, np.ndarray]:
-        """
-        Determine the amount of deployed power (GW) for each time step
-        for each reactor prototype.
+        """Return deployed electrical capacity by reactor prototype.
 
         Deployed capacity is based on the actual positive-power window of
         each reactor agent.
 
-        For each reactor agent:
-        - the active interval begins at first_power_time
-        - the active interval ends at last_power_time
-        - the deployed capacity is taken as the maximum positive power
-        observed for that agent, converted from ``self.power_units`` to GW
+        Parameters
+        ----------
+        prototypes : str, list of str, or None
+            Reactor prototypes to include.  ``None`` selects every reactor
+            prototype when ``reactors`` is also ``None``.
+        return_sum : bool, optional
+            Return one array summed over the requested prototypes when
+            ``True``.  The default is ``True``.
+        yearly : bool, optional
+            Return end-of-year capacity when ``True``; otherwise return monthly
+            capacity.
+        reactors : str, list of str, or None, optional
+            Alternative name for ``prototypes`` used by the common Cyclus and
+            DYMOND interface.  Do not provide both arguments.
+        rest_key : str, optional
+            Dictionary key for other power-producing prototypes when
+            ``return_sum`` is ``False``.
 
-        Parameters:
-        -----------
-        prototypes: str | list[str] | None
-            Names of reactor prototypes in the simulation. If None and reactors
-            is None, uses all reactor types in the simulation.
-        return_sum: bool
-            If True, returns a single array summed over requested prototypes.
-        yearly: bool
-            If True, returns end-of-year deployed capacity instead
-            of monthly deployed capacity.
-        reactors: str | list[str] | None
-            Alias for prototypes, used for compatibility with DYMOND plugin.
-            Reactors and prototypes cannot both be specified.
-        rest_key: str
-            When return_sum is False, key used to group power-producing
-            prototypes not in the requested `prototypes` list.
+        Returns
+        -------
+        numpy.ndarray or dict of str to numpy.ndarray
+            Deployed electrical capacity in GW, either summed or separated by
+            prototype.
 
-        Returns:
-        --------
-        power_dict: dict[str, np.ndarray] or np.ndarray
-            Keys are strings (reactor prototypes and possibly `rest_key`),
-            values are numpy arrays giving deployed capacity in GW at each
-            time step (monthly) or year-end capacity (yearly=True).
-
-            If return_sum=True, returns a single array summed over requested
-            prototypes only.
+        Notes
+        -----
+        For each reactor, the active interval begins at its first positive
+        power time and ends at its last positive power time.  Its capacity is
+        the maximum positive power observed during that interval.
         """
         prototypes = self._normalize_prototypes(prototypes, reactors)
         self._validate_deployed_capacity_rows(self._get_power_agents())
@@ -2010,56 +2082,42 @@ class CyclusOutput:
         cascade_splits: list[float] | None = None,
         reactors: str | list[str] | None = None,
     ):
-        """
-        Compute natural-uranium feed, enrichment tails, and SWU
-        requirements for one or more reactors.
+        """Calculate natural-uranium feed, tails, and SWU requirements.
 
-        Parameters:
+        Parameters
         ----------
-        prototypes : str or list[str]
-            Prototype name(s).
+        prototypes : str, list of str, or None
+            Reactor prototypes to include.
         natu_assay : float
-            Enrichment of the feed (typically natural uranium) as a decimal
-            between 0 and 1. Required.
+            U-235 assay of the natural-uranium feed, expressed as a fraction.
         tails_assay : float
-            Enrichment of the tails material as a decimal between 0 and 1.
-            Required.
+            U-235 assay of the final tails, expressed as a fraction.
         return_sum : bool, optional
-            If True, returns the sum across reactors (default True).
+            Return one result summed over the selected reactors when ``True``.
         split_cat : bool, optional
-            If True, return tails and SWU split by cascade stage;
-            otherwise return totals (default False).
-        cascade_splits : list of float
-            Intermediate enrichments that define cascade stages, expressed as
-            decimals.
-            Defaults to [0.1, 0.2]. An empty list requests a single
-            unconstrained cascade stage.
-        reactors : str or list[str], optional
-            Alias for prototypes, used for compatibility with DYMOND plugin.
+            Keep separate enrichment-stage rows for tails and SWU when
+            ``True``.
+        cascade_splits : list of float or None, optional
+            Product-assay limits between enrichment stages.  ``None`` uses
+            ``[0.1, 0.2]``; an empty list requests one stage.
+        reactors : str, list of str, or None, optional
+            Alternative name for ``prototypes`` used by the common Cyclus and
+            DYMOND interface.
 
-        Returns:
+        Returns
         -------
-        dict[str, dict[str, np.ndarray] | np.ndarray]
-            Dictionary with keys 'natu', 'tails', and 'swu'.
-            Natural uranium is always a one-dimensional array. Tails and SWU
-            are one-dimensional arrays when split_cat is False and arrays with
-            shape (stages, years) when split_cat is True.
+        dict
+            ``"natu"``, ``"tails"``, and ``"swu"`` arrays, either summed or
+            separated by prototype.  Split tails and SWU have shape
+            ``(stages, years)``.
+
+        Raises
+        ------
+        ValueError
+            If the reactor selection, assays, stage limits, fuel masses, or
+            enrichment results are invalid.
         """
-        assert natu_assay is not None and 0 <= natu_assay <= 1, \
-            f"natu_assay must be a number between 0 and 1, got {natu_assay!r}"
-        assert tails_assay is not None and 0 <= tails_assay <= 1, \
-            f"tails_assay must be a number between 0 and 1, got " \
-            f"{tails_assay!r}"
-
-        if cascade_splits is None:
-            cascade_splits = [0.1, 0.2]
-        elif not cascade_splits:
-            cascade_splits = [np.inf]
-        else:
-            cascade_splits = list(cascade_splits)
-
         prototypes = self._normalize_prototypes(prototypes, reactors)
-
         cached = self._cache_get(
             "stock_fuel_resources",
             prototypes=prototypes,
@@ -2072,99 +2130,25 @@ class CyclusOutput:
         if cached is not self._CACHE_MISS:
             return cached
 
-        # Mass and enrichment arrays. This call is itself cached, so repeated
-        # calls to stock_fuel_natu(), stock_fuel_tails(), and stock_fuel_swu()
-        # do not repeat the expensive fuel-demand and enrichment SQL queries.
-        fuel_mass, enr = self.get_fuel_mass_and_enrichment(
-            prototypes,
-            return_sum=False,
-            reactors=None,
+        # Build one common fuel record per received Cyclus resource.  Calculate
+        # the cascade before adding records by year because feed and SWU are
+        # nonlinear in product assay.
+        receipts = self._received_fuel_receipts(prototypes)
+        resources = calculate_fuel_resources(
+            receipts=receipts,
+            reactors=prototypes,
+            n_times=self.n_yearly_points,
+            natu_assay=natu_assay,
+            tails_assay=tails_assay,
+            cascade_splits=cascade_splits,
         )
-
-        # Reuse cascade calculations for repeated enrichment values.
-        cascade_cache = {}
-        for prototype in prototypes:
-            for enrichment in enr[prototype]:
-                if enrichment > 0:
-                    key = round(float(enrichment), 8)
-                    if key not in cascade_cache:
-                        cascade = enrichment_cascade(
-                            feed_enr=natu_assay,
-                            prod_enr=enrichment,
-                            tail_enr=tails_assay,
-                            cascade_splits=cascade_splits,
-                        )
-                        # For natural uranium, use only the first stage,
-                        # because the rest is reused by the next stage
-                        cascade_cache[key] = {
-                            "natu": cascade["feed"][0],
-                            "tails": np.asarray(cascade["tails"], dtype=float),
-                            "swu": np.asarray(cascade["swu"], dtype=float),
-                        }
-
-        # Ensure a consistent number of stages. If no positive enrichment is
-        # present, return zeros with the stage count implied by cascade_splits.
-        if cascade_cache:
-            lengths = [len(v["tails"]) for v in cascade_cache.values()]
-            assert len(set(lengths)) == 1, \
-                "All cascades must have the same number of stages."
-            n_stages = lengths[0]
-        else:
-            n_stages = len(cascade_splits)
-        zeros = np.zeros(n_stages)
-
-        results = {"natu": {}, "tails": {}, "swu": {}}
-        for prototype in prototypes:
-            # Natural-uranium feed
-            res_natu = np.array(
-                [
-                    cascade_cache.get(round(float(e), 8), {"natu": 0})[
-                        "natu"] if e > 0 else 0
-                    for e in enr[prototype]
-                ],
-                dtype=float,
-            )
-            results["natu"][prototype] = res_natu.T * fuel_mass[prototype]
-
-            # Tails
-            res_tails = np.array(
-                [
-                    (
-                        cascade_cache.get(
-                            round(float(e), 8), {"tails": zeros})["tails"]
-                        if e > 0 else zeros
-                    )
-                    for e in enr[prototype]
-                ],
-                dtype=float,
-            )
-            tails_val = res_tails.T * fuel_mass[prototype]
-            if not split_cat:
-                tails_val = np.sum(tails_val, axis=0)
-            results["tails"][prototype] = tails_val
-
-            # SWU
-            res_swu = np.array(
-                [
-                    (
-                        cascade_cache.get(
-                            round(float(e), 8), {"swu": zeros})["swu"]
-                        if e > 0 else zeros
-                    )
-                    for e in enr[prototype]
-                ],
-                dtype=float,
-            )
-            swu_val = res_swu.T * fuel_mass[prototype]
-            if not split_cat:
-                swu_val = np.sum(swu_val, axis=0)
-            results["swu"][prototype] = swu_val
-
-        if return_sum:
-            results = {
-                key: self._sum_selected_series(values, prototypes)
-                for key, values in results.items()
-            }
+        results = format_fuel_resource_results(
+            resources=resources,
+            reactors=prototypes,
+            n_times=self.n_yearly_points,
+            return_sum=return_sum,
+            split_categories=split_cat,
+        )
 
         return self._cache_set(
             results,
@@ -2322,6 +2306,52 @@ class CyclusOutput:
         )["swu"]
 
     # --------------- Shared cached intermediate stores ---------------
+
+    def _received_fuel_receipts(self, prototypes):
+        """Return one common fuel record for each received resource.
+
+        Parameters
+        ----------
+        prototypes : sequence of str
+            Reactor prototypes whose fuel receipts should be read.
+
+        Returns
+        -------
+        list of FuelReceipt
+            Fuel receipts containing only the reactor, year position, total
+            mass, uranium mass, and U-235 mass needed by the shared fuel
+            calculation.
+
+        Notes
+        -----
+        The records remain separate because feed, tails, and SWU are nonlinear
+        in product assay.  Adding masses before the enrichment calculation
+        would give the wrong result for mixed-assay receipts.
+        """
+
+        cached = self._cache_get_shared(
+            "_received_fuel_receipts",
+            prototypes=prototypes,
+        )
+        if cached is not self._CACHE_MISS:
+            return cached
+
+        receipts = []
+        for row in self._query_received_fuel_receipts(prototypes):
+            receipts.append(
+                FuelReceipt(
+                    reactor=row["prototype"],
+                    time_index=int(row["year_index"]),
+                    material_mass=float(row["material_mass"] or 0.0),
+                    uranium_mass=float(row["uranium_mass"] or 0.0),
+                    u235_mass=float(row["u235_mass"] or 0.0),
+                )
+            )
+        return self._cache_set_shared(
+            receipts,
+            "_received_fuel_receipts",
+            prototypes=prototypes,
+        )
 
     def _received_fuel_yearly_arrays(self, prototypes):
         """
@@ -2750,16 +2780,16 @@ class CyclusOutput:
             Sum over the requested prototypes. If none are present, return a
             zero array with the same shape as the available series.
         """
-        selected = [
-            np.asarray(series_by_prototype[prototype])
-            for prototype in prototypes
-            if prototype in series_by_prototype
-        ]
-        if selected:
-            return np.sum(selected, axis=0)
         if series_by_prototype:
-            return np.zeros_like(next(iter(series_by_prototype.values())))
-        return np.zeros(self.n_yearly_points)
+            length = len(next(iter(series_by_prototype.values())))
+        else:
+            length = self.n_yearly_points
+        return format_reactor_results(
+            series_by_reactor=series_by_prototype,
+            reactors=prototypes,
+            length=length,
+            return_sum=True,
+        )
 
     @staticmethod
     def _validate_new_deployment_rows(rows):
@@ -2911,6 +2941,28 @@ class CyclusOutput:
         self._cache.clear()
         if hasattr(self, "_nucids"):
             self._nucids = None
+
+    def close(self):
+        """Close the SQLite cursor and connection.
+
+        Returns
+        -------
+        None
+            The cursor and connection are closed in place.  Calling this
+            method more than once is safe.
+
+        Notes
+        -----
+        Explicit closure prevents file locks during result movement on Windows
+        and releases database resources during long analyses.
+        """
+
+        if getattr(self, "cur", None) is not None:
+            self.cur.close()
+            self.cur = None
+        if getattr(self, "con", None) is not None:
+            self.con.close()
+            self.con = None
 
     @staticmethod
     def _cache_value(value):
@@ -3068,29 +3120,30 @@ class CyclusOutput:
             **kwargs,
         )
 
-    def _cached_query(self, name, query, **kwargs):
-        """
-        Execute and cache a SQL query.
+    def _cached_query(self, name, query, parameters=(), **kwargs):
+        """Run a SQL query once and reuse its rows.
 
         Parameters
         ----------
         name : str
-            Logical cache namespace for the query.
+            Name that identifies this query in the result cache.
         query : str
             SQL query string.
+        parameters : sequence, optional
+            Values bound to placeholders in ``query``.
         **kwargs
-            Semantic query parameters that form the cache key.
+            Query settings that distinguish one cached result from another.
 
         Returns
         -------
         list
-            Shared cached SQLite rows. Private query callers must treat these
-            rows as read-only.
+            Cached SQLite rows.  Internal callers must treat these rows as
+            read-only.
         """
         cached = self._cache_get_shared(name, **kwargs)
         if cached is not self._CACHE_MISS:
             return cached
-        rows = self.sql_query(query)
+        rows = self.sql_query(query, parameters=parameters)
         return self._cache_set_shared(rows, name, **kwargs)
 
     # --------------- Private SQL query functions ---------------
@@ -3240,6 +3293,101 @@ class CyclusOutput:
             commodity_name=commodity_name,
         )
 
+    def _query_received_fuel_receipts(self, prototypes):
+        """Read separate reactor fuel receipts from the Cyclus database.
+
+        Parameters
+        ----------
+        prototypes : sequence of str
+            Reactor prototypes whose receipts should be returned.
+
+        Returns
+        -------
+        list of sqlite3.Row
+            Rows containing ``prototype``, ``year_index``, ``material_mass``,
+            ``uranium_mass``, and ``u235_mass``.
+
+        Notes
+        -----
+        Receipts are not combined because the enrichment calculation must use
+        the assay of each individual resource.
+        """
+
+        if len(prototypes) == 0:
+            return []
+
+        # Prototype names may contain quotes or punctuation.  Pass them as SQL
+        # values instead of inserting them into the query text.
+        placeholders = ", ".join("?" for _ in prototypes)
+        month_offset = self.init_month - 1
+        max_year_index = self.n_yearly_points
+        query = f"""
+            WITH requested_agents AS (
+                SELECT DISTINCT agentid, prototype
+                FROM agententry
+                WHERE prototype IN ({placeholders})
+            ),
+            uranium_fractions AS (
+                SELECT
+                    qualid,
+                    SUM(
+                        CASE
+                            WHEN nucid BETWEEN 922000000 AND 922999999
+                            THEN massfrac
+                            ELSE 0
+                        END
+                    ) AS u_frac,
+                    SUM(
+                        CASE
+                            WHEN nucid = 922350000
+                            THEN massfrac
+                            ELSE 0
+                        END
+                    ) AS u235_frac
+                FROM compositions
+                GROUP BY qualid
+            ),
+            received AS (
+                SELECT
+                    requested_agents.prototype AS prototype,
+                    CAST(
+                        ({month_offset} + transactions.time) / 12 AS INTEGER
+                    ) AS year_index,
+                    resources.quantity AS material_mass,
+                    resources.quantity * COALESCE(
+                        uranium_fractions.u_frac, 0
+                    ) AS uranium_mass,
+                    resources.quantity * COALESCE(
+                        uranium_fractions.u235_frac, 0
+                    ) AS u235_mass
+                FROM transactions
+                JOIN requested_agents
+                    ON transactions.receiverid = requested_agents.agentid
+                JOIN resources
+                    ON transactions.resourceid = resources.resourceid
+                LEFT JOIN uranium_fractions
+                    ON resources.qualid = uranium_fractions.qualid
+                WHERE transactions.commodity IS NOT NULL
+                AND transactions.time < {self.duration}
+            )
+            SELECT
+                prototype,
+                year_index,
+                material_mass,
+                uranium_mass,
+                u235_mass
+            FROM received
+            WHERE year_index >= 0
+            AND year_index < {max_year_index}
+            ORDER BY prototype, year_index
+        """
+        return self._cached_query(
+            "_query_received_fuel_receipts",
+            query,
+            parameters=tuple(prototypes),
+            prototypes=tuple(prototypes),
+        )
+
     def _query_received_fuel_by_prototype_year(self, prototypes):
         """
         Query received fuel mass, uranium mass, and U-235 mass by prototype/year.
@@ -3250,9 +3398,8 @@ class CyclusOutput:
         output and Python-side aggregation work for large simulations.
 
         Calendar-year alignment is performed in SQL using the same convention
-        as ``get_yearly_sum``: yearly index 0 is a zero placeholder; index ``i``
-        for ``i > 0`` stores the aggregate for ``self.years_int[i - 1]``; the
-        final represented calendar year is dropped.
+        as ``get_yearly_sum``: index zero is the first represented calendar
+        year, and partial first or final years are retained.
 
         Parameters
         ----------
@@ -3306,7 +3453,7 @@ class CyclusOutput:
                     CAST(
                         ({month_offset} + transactions.time) / 12
                         AS INTEGER
-                    ) + 1 AS year_index,
+                    ) AS year_index,
                     resources.quantity AS quantity,
                     COALESCE(uranium_fractions.u_frac, 0) AS u_frac,
                     COALESCE(uranium_fractions.u235_frac, 0) AS u235_frac
@@ -3327,7 +3474,7 @@ class CyclusOutput:
                 SUM(quantity * u_frac) AS u_mass,
                 SUM(quantity * u235_frac) AS u235
             FROM received
-            WHERE year_index > 0
+            WHERE year_index >= 0
             AND year_index < {max_year_index}
             GROUP BY prototype, year_index
         """
@@ -3347,9 +3494,8 @@ class CyclusOutput:
         Python-side aggregation work for large simulations.
 
         Calendar-year alignment is performed in SQL using the same convention
-        as ``get_yearly_sum``: yearly index 0 is a zero placeholder; index ``i``
-        for ``i > 0`` stores the aggregate for ``self.years_int[i - 1]``; the
-        final represented calendar year is dropped.
+        as ``get_yearly_sum``: index zero is the first represented calendar
+        year, and partial first or final years are retained.
 
         Parameters
         ----------
@@ -3382,7 +3528,7 @@ class CyclusOutput:
                     CAST(
                         ({month_offset} + transactions.time) / 12
                         AS INTEGER
-                    ) + 1 AS year_index,
+                    ) AS year_index,
                     resources.quantity AS quantity
                 FROM transactions
                 JOIN requested_agents
@@ -3397,7 +3543,7 @@ class CyclusOutput:
                 year_index,
                 SUM(quantity) AS q
             FROM sent
-            WHERE year_index > 0
+            WHERE year_index >= 0
             AND year_index < {max_year_index}
             GROUP BY prototype, year_index
         """
