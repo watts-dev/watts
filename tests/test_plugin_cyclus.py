@@ -107,8 +107,9 @@ def _create_cyclus_output(
     )
     if transactions is None:
         transactions = [
-            # Only the first calendar year appears in the annual result; the
-            # first output slot is the historical zero placeholder.
+            # Both represented calendar years appear in the annual result.
+            # WATTS no longer inserts a synthetic leading zero or discards the
+            # final year, because either operation loses physical data.
             (100, 1, 99, "fresh_fuel", 0),
             (101, 1, 99, "fresh_fuel", 11),
             (102, 1, 99, "fresh_fuel", 12),
@@ -124,7 +125,13 @@ def _create_cyclus_output(
 @pytest.fixture
 def cyclus_output(tmp_path):
     """Build a January-start Cyclus output for lifecycle and cache tests."""
-    return _create_cyclus_output(tmp_path / "cyclus.sqlite")
+    output = _create_cyclus_output(tmp_path / "cyclus.sqlite")
+    try:
+        yield output
+    finally:
+        # CyclusOutput explicitly owns its SQLite connection now.  Closing it
+        # makes fixture cleanup deterministic on Windows as well as POSIX.
+        output.close()
 
 
 @pytest.fixture
@@ -144,12 +151,16 @@ def shifted_cyclus_output(tmp_path):
         (303, 1, 99, "fresh_fuel", 17),
         (304, 1, 99, "fresh_fuel", 18),
     ]
-    return _create_cyclus_output(
+    output = _create_cyclus_output(
         tmp_path / "shifted_cyclus.sqlite",
         initial_month=7,
         resources=resources,
         transactions=transactions,
     )
+    try:
+        yield output
+    finally:
+        output.close()
 
 
 def test_cyclus_generated_power_cache_keeps_monthly_data(cyclus_output):
@@ -157,7 +168,7 @@ def test_cyclus_generated_power_cache_keeps_monthly_data(cyclus_output):
     yearly = cyclus_output.get_generated_power(
         "LWR", return_sum=False, yearly=True
     )
-    np.testing.assert_allclose(yearly["LWR"], [0.0, 1.0])
+    np.testing.assert_allclose(yearly["LWR"], [1.0, 0.5])
 
     # Mutating the returned value simulates caller-side post-processing. The
     # cached result inside CyclusOutput should remain unchanged.
@@ -173,7 +184,7 @@ def test_cyclus_generated_power_cache_keeps_monthly_data(cyclus_output):
     yearly_again = cyclus_output.get_generated_power(
         "LWR", return_sum=False, yearly=True
     )
-    np.testing.assert_allclose(yearly_again["LWR"], [0.0, 1.0])
+    np.testing.assert_allclose(yearly_again["LWR"], [1.0, 0.5])
 
 
 def test_cyclus_generated_power_cache_is_order_independent(cyclus_output):
@@ -190,7 +201,7 @@ def test_cyclus_generated_power_cache_is_order_independent(cyclus_output):
     yearly = cyclus_output.get_generated_power(
         "LWR", return_sum=False, yearly=True
     )
-    np.testing.assert_allclose(yearly["LWR"], [0.0, 1.0])
+    np.testing.assert_allclose(yearly["LWR"], [1.0, 0.5])
 
     monthly_again = cyclus_output.get_generated_power(
         "LWR", return_sum=False, yearly=False
@@ -230,7 +241,7 @@ def test_cyclus_generated_electricity_uses_power_time_basis(cyclus_output):
     yearly = cyclus_output.get_generated_electricity(
         "LWR", return_sum=False, yearly=True
     )
-    np.testing.assert_allclose(yearly["LWR"], [0.0, 1.0])
+    np.testing.assert_allclose(yearly["LWR"], [1.0, 0.5])
 
     monthly = cyclus_output.get_generated_electricity(
         "LWR", return_sum=True, yearly=False
@@ -270,21 +281,21 @@ def test_cyclus_lifecycle_helpers_use_positive_power_windows(cyclus_output):
 def test_cyclus_fuel_helpers_share_cache_and_copy_public_results(cyclus_output):
     """Fuel demand, discharge, and enrichment use annual cached SQL results."""
     demand = cyclus_output.stock_fuel_demand("LWR", return_sum=False)
-    np.testing.assert_allclose(demand["LWR"], [0.0, 30.0])
+    np.testing.assert_allclose(demand["LWR"], [30.0, 30.0])
 
     enrichment = cyclus_output.get_enrichments("LWR")
-    np.testing.assert_allclose(enrichment["LWR"], [0.0, 0.05])
+    np.testing.assert_allclose(enrichment["LWR"], [0.05, 0.05])
 
     discharged = cyclus_output.stock_fuel_discharged(
         "LWR", return_sum=True
     )
-    np.testing.assert_allclose(discharged, [0.0, 7.0])
+    np.testing.assert_allclose(discharged, [7.0, 0.0])
 
     # Public cached values are returned as copies, so a caller cannot corrupt
     # the cached data used by later CyclusOutput calls.
     demand["LWR"][1] = 999.0
     demand_again = cyclus_output.stock_fuel_demand("LWR", return_sum=False)
-    np.testing.assert_allclose(demand_again["LWR"], [0.0, 30.0])
+    np.testing.assert_allclose(demand_again["LWR"], [30.0, 30.0])
 
     cache_names = {key[0] for key in cyclus_output._cache}
     assert "_received_fuel_yearly_arrays" in cache_names
@@ -296,9 +307,9 @@ def test_cyclus_shared_caches_avoid_repeated_sql(cyclus_output, monkeypatch):
     original_sql_query = cyclus_output.sql_query
     queries = []
 
-    def spy_sql_query(query):
+    def spy_sql_query(query, parameters=()):
         queries.append(query)
-        return original_sql_query(query)
+        return original_sql_query(query, parameters=parameters)
 
     monkeypatch.setattr(cyclus_output, "sql_query", spy_sql_query)
 
@@ -324,16 +335,81 @@ def test_cyclus_shared_caches_avoid_repeated_sql(cyclus_output, monkeypatch):
     assert query_text.count("with power_history") == 1
 
 
+def test_cyclus_initialization_defers_expensive_nuclide_scan(cyclus_output):
+    """The streamlining work must keep composition discovery lazy.
+
+    Most WATTS fuel-cycle methods aggregate uranium directly in SQL and never
+    need the global distinct-nuclide scan.  Deferring it matters on large
+    Cyclus databases with many composition rows.
+    """
+
+    assert cyclus_output._nucids is None
+    np.testing.assert_array_equal(
+        cyclus_output.nucids,
+        [922350000, 922380000],
+    )
+    assert cyclus_output._nucids is not None
+
+
+def test_cyclus_optimized_fuel_queries_preserve_null_commodity_filter(
+    cyclus_output,
+):
+    """SQL-side aggregation must not broaden which transactions are fuel.
+
+    The pre-streamlining path discovered non-null commodities first.  Direct
+    annual SQL is faster, but it must preserve that exclusion instead of
+    silently counting transactions whose commodity is NULL.
+    """
+
+    con = sqlite3.connect(cyclus_output.path)
+    try:
+        con.executemany(
+            "INSERT INTO resources VALUES (?, ?, ?)",
+            [(900, 10, 1000.0), (901, 10, 700.0)],
+        )
+        con.executemany(
+            "INSERT INTO transactions VALUES (?, ?, ?, ?, ?)",
+            [
+                (900, 1, 99, None, 0),
+                (901, 99, 1, None, 3),
+            ],
+        )
+        con.commit()
+    finally:
+        con.close()
+
+    cyclus_output.clear_cache()
+    np.testing.assert_allclose(
+        cyclus_output.stock_fuel_demand("LWR"),
+        [30.0, 30.0],
+    )
+    np.testing.assert_allclose(
+        cyclus_output.stock_fuel_discharged("LWR"),
+        [7.0, 0.0],
+    )
+
+
+def test_cyclus_empty_reactor_selection_has_stable_shapes(cyclus_output):
+    """Empty selections follow the same neutral-element contract as DYMOND."""
+
+    assert cyclus_output.stock_fuel_demand([], return_sum=False) == {}
+    np.testing.assert_array_equal(
+        cyclus_output.stock_fuel_demand([], return_sum=True),
+        np.zeros(2),
+    )
+    assert cyclus_output.get_enrichments([]) == {}
+
+
 def test_cyclus_fuel_years_follow_initial_month(shifted_cyclus_output):
     """Annual fuel aggregation should honor non-January start months."""
     demand = shifted_cyclus_output.stock_fuel_demand("LWR", return_sum=False)
     enrichment = shifted_cyclus_output.get_enrichments("LWR")
 
-    # The July-start case bins months 0-5 into the completed 2020 calendar
-    # year and months 6-17 into 2021. Months 18-23 belong to the partial final
-    # represented year, which the public yearly convention drops.
-    np.testing.assert_allclose(demand["LWR"], [0.0, 30.0, 70.0])
-    np.testing.assert_allclose(enrichment["LWR"], [0.0, 0.05, 0.05])
+    # The July-start case bins months 0-5 into 2020, months 6-17 into
+    # 2021, and months 18-23 into the partial 2022 block.  Boundary years are
+    # retained so annual aggregation conserves every transaction.
+    np.testing.assert_allclose(demand["LWR"], [30.0, 70.0, 50.0])
+    np.testing.assert_allclose(enrichment["LWR"], [0.05, 0.05, 0.05])
 
 
 def test_cyclus_cache_clear_and_nucids_copy_cached_state(cyclus_output):
@@ -354,10 +430,10 @@ def test_cyclus_cache_clear_and_nucids_copy_cached_state(cyclus_output):
 
 def test_cyclus_stock_fuel_resources_requires_assays(cyclus_output):
     """Resource calculations need explicit feed and tails assays."""
-    with pytest.raises(AssertionError, match="natu_assay"):
+    with pytest.raises(ValueError, match="natu_assay"):
         cyclus_output.stock_fuel_resources("LWR", tails_assay=0.002)
 
-    with pytest.raises(AssertionError, match="tails_assay"):
+    with pytest.raises(ValueError, match="tails_assay"):
         cyclus_output.stock_fuel_resources("LWR", natu_assay=0.00711)
 
 
@@ -378,13 +454,104 @@ def test_cyclus_stock_fuel_resources_matches_cascade(cyclus_output):
         tail_enr=0.002,
         cascade_splits=[np.inf],
     )
-    expected_natu = np.array([0.0, cascade["feed"][0] * 30.0])
-    expected_tails = np.array([[0.0, cascade["tails"][0] * 30.0]])
-    expected_swu = np.array([[0.0, cascade["swu"][0] * 30.0]])
+    expected_natu = np.array([cascade["feed"][0] * 30.0] * 2)
+    expected_tails = np.array([[cascade["tails"][0] * 30.0] * 2])
+    expected_swu = np.array([[cascade["swu"][0] * 30.0] * 2])
 
     np.testing.assert_allclose(resources["natu"]["LWR"], expected_natu)
     np.testing.assert_allclose(resources["tails"]["LWR"], expected_tails)
     np.testing.assert_allclose(resources["swu"]["LWR"], expected_swu)
+
+
+def test_cyclus_fuel_resources_sum_each_resource_cascade(cyclus_output):
+    """Mixed-assay Cyclus resources must be cascaded before aggregation."""
+    # The base fixture contains 30 kg of 5%-enriched uranium entering LWR in
+    # time step zero.  Add a 10 kg, 3%-enriched batch in that same time step.
+    # Putting both assays in one reporting bin exposes the nonlinear averaging
+    # error that originally made the Cyclus and DYMOND implementations differ.
+    con = sqlite3.connect(cyclus_output.path)
+    try:
+        con.executemany(
+            "INSERT INTO compositions VALUES (?, ?, ?)",
+            [
+                (11, 922350000, 0.03),
+                (11, 922380000, 0.97),
+            ],
+        )
+        con.execute("INSERT INTO resources VALUES (?, ?, ?)", (110, 11, 10.0))
+        con.execute(
+            "INSERT INTO transactions VALUES (?, ?, ?, ?, ?)",
+            (110, 1, 99, "fresh_fuel", 0),
+        )
+        con.commit()
+    finally:
+        con.close()
+
+    # The reader caches common fuel-receipt records.  Clear the cache so
+    # this deliberately modified fixture is re-read from SQLite.
+    cyclus_output.clear_cache()
+    resources = cyclus_output.stock_fuel_resources(
+        "LWR",
+        natu_assay=0.00711,
+        tails_assay=0.002,
+        return_sum=True,
+        split_cat=True,
+        cascade_splits=[],
+    )
+
+    cascade_5 = enrichment_cascade(
+        feed_enr=0.00711,
+        prod_enr=0.05,
+        tail_enr=0.002,
+        cascade_splits=[np.inf],
+    )
+    cascade_3 = enrichment_cascade(
+        feed_enr=0.00711,
+        prod_enr=0.03,
+        tail_enr=0.002,
+        cascade_splits=[np.inf],
+    )
+
+    # Existing year-zero resources total 30 kg at 5%; the new resource adds
+    # 10 kg at 3%.  Year one retains the fixture's original 30 kg at 5%.
+    expected_natu = np.array(
+        [
+            cascade_5["feed"][0] * 30.0 + cascade_3["feed"][0] * 10.0,
+            cascade_5["feed"][0] * 30.0,
+        ]
+    )
+    expected_tails = np.array(
+        [[
+            cascade_5["tails"][0] * 30.0
+            + cascade_3["tails"][0] * 10.0,
+            cascade_5["tails"][0] * 30.0,
+        ]]
+    )
+    expected_swu = np.array(
+        [[
+            cascade_5["swu"][0] * 30.0
+            + cascade_3["swu"][0] * 10.0,
+            cascade_5["swu"][0] * 30.0,
+        ]]
+    )
+
+    np.testing.assert_allclose(resources["natu"], expected_natu)
+    np.testing.assert_allclose(resources["tails"], expected_tails)
+    np.testing.assert_allclose(resources["swu"], expected_swu)
+
+    # A cascade at the 40 kg bin's weighted-average assay is not equivalent
+    # to the sum above.  Keeping the assertion makes the test document the
+    # precise regression rather than merely snapshotting expected numbers.
+    average_assay = (0.05 * 30.0 + 0.03 * 10.0) / 40.0
+    averaged = enrichment_cascade(
+        feed_enr=0.00711,
+        prod_enr=average_assay,
+        tail_enr=0.002,
+        cascade_splits=[np.inf],
+    )
+    assert resources["swu"][0, 0] != pytest.approx(
+        averaged["swu"][0] * 40.0
+    )
 
 
 def test_cyclus_capacity_factor_helpers(cyclus_output):
