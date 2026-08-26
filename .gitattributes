@@ -1,0 +1,12 @@
+# Keep text files byte-stable when the same checkout is used from Windows and
+# WSL.  Git stores and checks out repository text as LF, preventing an editor
+# or a platform-specific core.autocrlf setting from producing whole-file diffs.
+* text=auto eol=lf
+
+# Windows command scripts and the three legacy fixed-format simulator decks
+# are deliberate byte-preserving exceptions.  Their spacing and historical
+# newline representation may be significant to their native consumers.
+*.bat -text
+examples/1App_RELAP5_SingleChannel/relap5_template -text
+examples/1App_SAS_MultiTemplates_SodiumLoop/sas_template -text
+examples/1App_SAS_SodiumLoop/sas_template -text

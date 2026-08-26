@@ -180,36 +180,45 @@ def swu_to_product_ratio(
 
 def enrichment_cascade(
     feed_enr, prod_enr, tail_enr,
-    cascade_splits = [0.1, 0.2], printing=False
-    ):
-    """
-    Calculate the SWU, feed, and tail distributions across different 
-    stages of enrichment.
-    By cascade, it is understood that the tails of the next stage is
-    the feed for the previous stage.
+    cascade_splits=(0.1, 0.2), printing=False
+):
+    """Calculate feed, tails, and SWU for an enrichment cascade.
 
-    Parameters:
-    -----------
-    prod_enr: float
-        Final product enrichment level, expressed as a decimal
-    tail_enr: float
-        Tailing enrichment level, expressed as a decimal
-    feed_enr: float, optional
-        Feed enrichment level, expressed as a decimal
-        (default is 0.00711)
-    cascade_splits: list of float, optional
-        Enrichment levels (as decimals) at intermediate stages (default is
-        [0.1, 0.2], corresponding to CAT-III, II, I)
-    printing: bool
-        for debugging.
+    In a multistage cascade, the feed to each higher-assay stage comes from
+    the product of the preceding stage.  Material rejected by a higher stage
+    returns to the feed assay of the preceding stage.
 
-    Returns:
-    --------
-    cascade_data: dictionary
-        Dictionary containing lists of SWU, feed, and tails
-        quantities for each stage of the enrichment process.
+    Parameters
+    ----------
+    feed_enr : float
+        U-235 assay of the initial feed, expressed as a fraction.
+    prod_enr : float
+        U-235 assay of the final product, expressed as a fraction.
+    tail_enr : float
+        U-235 assay of the final tails, expressed as a fraction.
+    cascade_splits : sequence of float or None, optional
+        Product-assay limits between stages.  The default ``(0.1, 0.2)``
+        represents the boundaries between enrichment categories III, II,
+        and I.  ``None`` requests one stage without a finite assay limit.
+    printing : bool, optional
+        Print the values calculated for each stage when ``True``.
+
+    Returns
+    -------
+    dict of str to list of float
+        Per-stage ratios for ``"swu"``, ``"feed"``, and ``"tails"``.  Each
+        value is reported per unit of final product mass.
+
+    Raises
+    ------
+    AssertionError
+        If an assay input is not a single number or the stage data do not have
+        matching lengths.
+    ValueError
+        If the assays cannot define a physical enrichment calculation or the
+        calculated stage SWU does not agree with the full-cascade SWU.
     """
-    # make sure these are numbers
+    # Each assay must be one number because one call describes one product.
     enr_inputs_dict = {
         "feed": feed_enr,
         "prod": prod_enr,
@@ -220,12 +229,14 @@ def enrichment_cascade(
             enrichment, numbers.Number), \
             f"Variable {variable} needs to be a single number."
 
-    # edge case of just one
+    # The enrichment functions use infinity to represent one stage with no
+    # intermediate product-assay limit.
     if cascade_splits is None:
         cascade_splits = [np.inf]
 
     if len(cascade_splits) == 1 and cascade_splits[0] > prod_enr:
-        # just one shot
+        # No stage boundary lies below the requested product assay, so a
+        # standard single-stage calculation is sufficient.
         cascade_data = {
             'swu': [swu_to_product_ratio(feed_enr, prod_enr, tail_enr)],
             'feed': [feed_to_product_ratio(feed_enr, prod_enr, tail_enr)],
@@ -233,7 +244,8 @@ def enrichment_cascade(
         }
         return cascade_data
 
-    # Add product enrichments list:
+    # Include only stage limits below the final product assay, followed by the
+    # requested final assay itself.
     stage_product_enrichments = []
     cascade_splits = np.array(list(cascade_splits))
     for enrichment in cascade_splits:
@@ -241,32 +253,32 @@ def enrichment_cascade(
             stage_product_enrichments.append(enrichment)
     stage_product_enrichments.append(prod_enr)
 
-    # Add feed enrichments
+    # The product from one stage becomes the feed to the next stage.
     stage_feed_enrichments = [feed_enr] + stage_product_enrichments[:-1]
 
-    # Repeat tails enrichment for each stage if only one value is provided
-    stage_tail_enrichments = [tail_enr]
-    if len(cascade_splits) > 1:
-        stage_tail_enrichments.append(feed_enr)
-    if len(cascade_splits) > 2:
-        stage_tail_enrichments.extend(cascade_splits[:-2])
+    # The first stage discards to the requested final tails assay.  Every later
+    # stage cascades down into the preceding feed: natural feed for stage one,
+    # then each lower split in turn.  Build enough candidates for the maximum
+    # possible number of stages and trim them to the splits actually below the
+    # requested product assay.  This works uniformly for one finite split,
+    # products between splits, and products above every configured split.
+    stage_tail_candidates = (
+        [tail_enr, feed_enr] + list(cascade_splits[:-1])
+    )
+    stage_tail_enrichments = stage_tail_candidates[
+        : len(stage_product_enrichments)
+    ]
 
-    if len(cascade_splits) == len(stage_product_enrichments):
-        # using all the stages
-        assert (
-            len(cascade_splits)
-            == len(stage_feed_enrichments)
-            == len(stage_product_enrichments)
-            == len(stage_tail_enrichments)
-        )
-    else:  # not using all the stages
-        assert len(stage_product_enrichments) == len(stage_feed_enrichments)
-        # cut off unnecessary stages
-        stage_tail_enrichments = stage_tail_enrichments[
-            : len(stage_product_enrichments)
-        ]
+    # Each list describes the same physical stages.  Check their lengths here
+    # so an error is reported before the stage calculations begin.
+    assert (
+        len(stage_feed_enrichments)
+        == len(stage_product_enrichments)
+        == len(stage_tail_enrichments)
+    )
 
-    # Calculate values
+    # Calculate all stages together because material from a higher stage feeds
+    # back into the preceding stage.
     multistage_dict = multistage_enr(
         stage_feed_enrichments,
         stage_product_enrichments,

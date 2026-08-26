@@ -12,20 +12,29 @@ from .plugin import PluginGeneric, _find_executable
 from .results import Results, ExecInfo
 from .fileutils import PathLike
 from .parameters import Parameters
-from .enrichment_utils import enrichment_cascade
-
-SECONDS_PER_YEAR = 365.25 * 24 * 3600
-POWER_TO_GW = {
-    "W": 1e-9,
-    "MW": 1e-3,
-    "GW": 1.0,
-    "EJ/YR": 1e18 / (SECONDS_PER_YEAR * 1e9),
-    "TWH/YR": 1e12 / (8766 * 1e9),
-}
+from .fuel_cycle_utils import (
+    FuelReceipt,
+    ResultFileReader,
+    SECONDS_PER_YEAR,
+    calculate_fuel_resources,
+    format_fuel_resource_results,
+    format_reactor_results,
+    find_single_output,
+    mass_to_kg,
+    select_reactors,
+    power_to_gw,
+)
 
 
 def _default_dymond_executable():
-    """Return the platform-appropriate DYMOND launcher script name."""
+    """Return the DYMOND launcher name for the current operating system.
+
+    Returns
+    -------
+    str
+        Default DYMOND launcher filename for Windows, macOS, or Linux.
+    """
+
     if sys.platform == "win32":
         return "DYMOND_windows.bat"
     elif sys.platform == "darwin":
@@ -34,34 +43,27 @@ def _default_dymond_executable():
         return "DYMOND_linux.sh"
 
 
-class ResultsDYMOND(Results):
-    """DYMOND simulation results
+class ResultsDYMOND(ResultFileReader, Results):
+    """DYMOND simulation results.
 
     Parameters
     ----------
-    params
-        Parameters used to generate inputs
-    exec_info
-        Execution information (job ID, plugin name, time, etc.)
-    inputs
-        List of input files
-    outputs
-        List of output files
+    params : Parameters
+        Parameters used to render the simulation input.
+    exec_info : ExecInfo
+        Job identifier, plugin name, run time, and other execution details.
+    inputs : list of pathlib.Path
+        Input files stored for the simulation run.
+    outputs : list of pathlib.Path
+        Output files stored for the simulation run.
 
     Attributes
     ----------
-    stocks
-        Dictionary of cumulative material stored in the model at each time
-        point by agent type and material type
-    flows
-        Dictionary of material that has entered an agent between each time
-        point by agent type and material type
-    operations
-        Dictionary of facility operational data (e.g., power produced or
-        material throughput)
-
-    stdout
-        standard output from a DYMOND run
+    obj : DYMONDOutput
+        Reader for the DYMOND HDF5 file.  The file is opened when this
+        attribute is first requested.
+    hdf5_file : pathlib.Path
+        Path to the DYMOND HDF5 output file.
     """
 
     def __init__(
@@ -71,21 +73,73 @@ class ResultsDYMOND(Results):
         inputs: List[Path],
         outputs: List[Path],
     ):
-        super().__init__(params, exec_info, inputs, outputs)
+        """Store DYMOND result metadata without opening the HDF5 file.
 
-        self.obj = self.get_object()
+        Parameters
+        ----------
+        params : Parameters
+            Parameters used to render the simulation input.
+        exec_info : ExecInfo
+            Information recorded for the simulation run.
+        inputs : list of pathlib.Path
+            Input files stored for the run.
+        outputs : list of pathlib.Path
+            Output files stored for the run.
+
+        Returns
+        -------
+        None
+            The result metadata and closed-reader state are stored in place.
+        """
+
+        super().__init__(params, exec_info, inputs, outputs)
+        # WATTS moves the HDF5 file after this object is created.  Open the
+        # file only when a caller first requests ``obj`` so the reader follows
+        # the final path and large HDF5 data are not saved with the metadata.
+        self._initialize_result_reader()
 
     @property
     def hdf5_file(self) -> Path:
-        """Returns the path to the output HDF5 file from the simulation."""
-        path_list = [
-            p for p in self.outputs if p.suffix in (".h5", ".hdf5")]
-        assert len(path_list) == 1, \
-            f"Expected 1 HDF5 file, found {len(path_list)}"
-        return path_list[0]
+        """Return the DYMOND HDF5 output path.
 
-    def get_object(self):
-        return DYMONDOutput(self.hdf5_file)
+        Returns
+        -------
+        pathlib.Path
+            The only file in ``outputs`` with an ``.h5`` or ``.hdf5`` suffix.
+        """
+
+        return find_single_output(
+            self.outputs,
+            suffixes=(".h5", ".hdf5"),
+            description="DYMOND HDF5",
+        )
+
+    def _result_file_path(self) -> Path:
+        """Return the current path to the DYMOND output file.
+
+        Returns
+        -------
+        pathlib.Path
+            Path to the only HDF5 output in this result.
+        """
+
+        return self.hdf5_file
+
+    def _open_result_file(self, path: Path):
+        """Open a DYMOND output reader for one HDF5 file.
+
+        Parameters
+        ----------
+        path : pathlib.Path
+            DYMOND HDF5 output file.
+
+        Returns
+        -------
+        DYMONDOutput
+            Reader loaded from ``path``.
+        """
+
+        return DYMONDOutput(path)
 
 
 class PluginDYMOND(PluginGeneric):
@@ -156,34 +210,60 @@ class PluginDYMOND(PluginGeneric):
 
 class DYMONDOutput:
     def __init__(self, hdf5_path):
-        """
-        Access and organize DYMOND simulation output data from an HDF5 file.
+        """Read DYMOND simulation data from an HDF5 output file.
 
         Parameters
         ----------
         hdf5_path : str or pathlib.Path
             Path to the DYMOND HDF5 output file containing the OUTPUT group
             with stocks, flows, and operations data tables.
+
+        Returns
+        -------
+        None
+            Input settings, time data, and output tables are stored on this
+            reader.
+
+        Raises
+        ------
+        FileNotFoundError
+            If ``hdf5_path`` does not exist.
+        ValueError
+            If the HDF5 file has no ``OUTPUT`` group.
+        json.JSONDecodeError
+            If the stored DYMOND input is not valid JSON.
         """
         self.hdf5_path = Path(hdf5_path)
-        assert self.hdf5_path.is_file(), \
-            f"HDF5 file {self.hdf5_path} does not exist."
+        if not self.hdf5_path.is_file():
+            raise FileNotFoundError(
+                f"HDF5 file {self.hdf5_path} does not exist."
+            )
 
         with h5py.File(self.hdf5_path, 'r') as f:
-            assert 'OUTPUT' in f, \
-                f"HDF5 file {self.hdf5_path} does not contain an OUTPUT group."
+            if 'OUTPUT' not in f:
+                raise ValueError(
+                    f"HDF5 file {self.hdf5_path} does not contain an "
+                    "OUTPUT group."
+                )
 
-            # Read input JSON embedded in the OUTPUT group
+            # Read the model input saved inside the output file.  DYMOND may
+            # store this JSON as raw bytes or as a one-element NumPy array.
             input_raw = f['OUTPUT/input'][()]
             if isinstance(input_raw, bytes):
                 input_raw = input_raw.decode('utf-8')
             elif isinstance(input_raw, np.ndarray):
-                input_raw = str(input_raw.flat[0])
+                # Extract the array value before converting it.  Converting a
+                # NumPy byte value directly produces text such as ``b'...'``,
+                # which is not valid JSON.
+                input_raw = input_raw.flat[0]
                 if isinstance(input_raw, bytes):
                     input_raw = input_raw.decode('utf-8')
+                else:
+                    input_raw = str(input_raw)
             self.input_data = json.loads(input_raw)
 
-            # Read stocks, flows, operations as nested dicts
+            # Convert the three standard result groups into dictionaries used
+            # by the existing DYMOND result methods.
             output_grp = f['OUTPUT']
             self.stocks = self._read_group(output_grp['stocks']) \
                 if 'stocks' in output_grp else {}
@@ -192,12 +272,12 @@ class DYMONDOutput:
             self.operations = self._read_group(output_grp['operations']) \
                 if 'operations' in output_grp else {}
 
-        # Store times
+        # Store the common time fields as direct attributes.
         td = self.get_times()
         for k, v in td.items():
             setattr(self, k, v)
 
-        # Extract type names and reactor specs from input data
+        # Read facility names and reactor settings from the stored model input.
         self.type_names = self._get_type_names()
         self.reactor_types = self.type_names["reactor"]
         self.reprocessing_types = self.type_names["reprocessing"]
@@ -404,9 +484,7 @@ class DYMONDOutput:
         capacity_factors: dict[str, float] | None = None,
         default_capacity_factor: float = 0.9,
     ) -> dict[str, np.ndarray] | np.ndarray:
-        """
-        Returns the generated power for each time step for each
-        reactor type.
+        """Return generated power by reactor type.
 
         By default, extracts the ``"Operating"`` state from operations
         data. If a reactor has no operations entry, falls back to
@@ -417,9 +495,8 @@ class DYMONDOutput:
 
         Parameters
         ----------
-        reactors : list of str or None
-            Names of reactors in the simulation. If None, uses all
-            reactors.
+        reactors : str, list of str, or None
+            Reactor types to include.  ``None`` selects every reactor type.
         return_sum : bool, optional
             If True, returns a single array summed over all reactors.
             If False, returns a dict of per-reactor arrays.
@@ -438,40 +515,51 @@ class DYMONDOutput:
 
         Returns
         -------
-        power_dict : dict[str, np.ndarray] or np.ndarray
-            Generated power per reactor (dict) or summed across all
-            reactors (ndarray) depending on ``return_sum``.
+        numpy.ndarray or dict of str to numpy.ndarray
+            Generated power in GW, either summed or separated by reactor type.
+
+        Raises
+        ------
+        ValueError
+            If a requested reactor does not exist or the configured power unit
+            cannot be converted to GW.
         """
-        reactors = self._normalize_facilities(
-            facilities=reactors,
-            facility_class="reactor"
+        # Use the same rules as Cyclus for strings, repeated names, empty
+        # selections, and unknown reactors.
+        reactors = select_reactors(
+            reactors=reactors,
+            available=self.reactor_types,
         )
 
-        # If capacity_factors is explicitly provided, use deployed
-        # capacity * capacity factor for all reactors.
+        # A caller-supplied capacity-factor table overrides all recorded
+        # operating-power data.
         if capacity_factors is not None:
             deployed = self.get_deployed_capacity(
-                facilities=reactors.tolist(),
+                facilities=reactors,
                 facility_class="reactor",
                 return_sum=False,
             )
-            power_dict = {}
+            power_by_reactor = {}
             for reactor in reactors:
-                cf = capacity_factors.get(
+                capacity_factor = capacity_factors.get(
                     reactor, default_capacity_factor)
-                power_dict[reactor] = deployed[reactor] * cf
+                power_by_reactor[reactor] = (
+                    deployed[reactor] * capacity_factor
+                )
 
-            if return_sum:
-                return np.sum(
-                    list(power_dict.values()), axis=0)
-            return power_dict
+            return format_reactor_results(
+                power_by_reactor,
+                reactors,
+                length=len(self._get_times_array()),
+                return_sum=return_sum,
+            )
 
-        # Default path: use operations data, falling back to
-        # deployed capacity * capacity factor per reactor.
-        ops_reactor = self.operations.get("reactor", {})
+        # Otherwise use recorded operating power when available.  Missing
+        # operating data fall back to capacity times capacity factor.
+        reactor_operations = self.operations.get("reactor", {})
         times = self._get_times_array()
-        input_cfs = self.get_capacity_factors(
-            reactors.tolist(), "reactor")
+        input_capacity_factors = self.get_capacity_factors(
+            reactors, "reactor")
 
         power_units = (
             self.input_data
@@ -481,16 +569,30 @@ class DYMONDOutput:
             .upper()
         )
 
-        to_gw = POWER_TO_GW[power_units]
-
-        power_dict = {}
+        power_by_reactor = {}
         for reactor in reactors:
-            if reactor in ops_reactor:
-                # Convert to GW
-                power_dict[reactor] = np.asarray(
-                    ops_reactor[reactor].get(
-                        "Operating",  np.zeros_like(times)
-                    ) * to_gw
+            if reactor in reactor_operations:
+                operating = reactor_operations[reactor].get("Operating")
+                if operating is None:
+                    # A reactor result without an Operating state is missing
+                    # data; it does not prove that generation was zero.
+                    deployed = self.get_deployed_capacity(
+                        facilities=[reactor],
+                        facility_class="reactor",
+                        return_sum=True,
+                    )
+                    capacity_factor = input_capacity_factors.get(
+                        reactor, np.nan
+                    )
+                    if np.isnan(capacity_factor):
+                        capacity_factor = default_capacity_factor
+                    power_by_reactor[reactor] = (
+                        deployed * capacity_factor
+                    )
+                    continue
+                power_by_reactor[reactor] = power_to_gw(
+                    operating,
+                    power_units,
                 )
             else:
                 deployed = self.get_deployed_capacity(
@@ -498,21 +600,25 @@ class DYMONDOutput:
                     facility_class="reactor",
                     return_sum=True,
                 )
-                cf = input_cfs.get(reactor, np.nan)
-                if np.isnan(cf):
-                    cf = default_capacity_factor
-                power_dict[reactor] = deployed * cf
+                capacity_factor = input_capacity_factors.get(
+                    reactor, np.nan
+                )
+                if np.isnan(capacity_factor):
+                    capacity_factor = default_capacity_factor
+                power_by_reactor[reactor] = deployed * capacity_factor
 
-        if return_sum:
-            return np.sum(list(power_dict.values()), axis=0)
-        return power_dict
+        return format_reactor_results(
+            power_by_reactor,
+            reactors,
+            length=len(times),
+            return_sum=return_sum,
+        )
 
     def get_deployed_capacity(
         self, facilities=None, facility_class="reactor", return_sum=True,
     ) -> dict[str, np.ndarray] | np.ndarray:
-        """
-        Determines the deployed capacity for each time step for each
-        facility type, using the Deployments block in the input data.
+        """Return reactor electrical capacity at each time step from the
+        Deployments block in the input data.
 
         Active units at each time step are taken from
         ``get_facility_fleet_size``.
@@ -522,24 +628,41 @@ class DYMONDOutput:
         Parameters
         ----------
         facilities : list of str or None
-            Names of facilities in the simulation. If None, uses all
-            facilities of the given ``facility_class``.
+            Names of reactor types in the simulation. If None, uses all
+            reactor types.
         facility_class : str, optional
-            Facility class to query (e.g., ``"reactor"``, ``"fabrication"``).
-            Defaults to ``"reactor"``.
+            Must be ``"reactor"``.  The argument remains because other
+            DYMOND-specific methods accept facility classes, but processing
+            throughput is not electrical capacity.
         return_sum : bool, optional
             If True, returns a single array summed over all facilities.
             If False, returns a dict of per-facility arrays. Default True.
 
         Returns
         -------
-        capacity_dict : dict[str, np.ndarray] or np.ndarray
-            Deployed capacity in GW per facility (dict) or summed across all
-            facilities (ndarray) depending on ``return_sum``.
+        numpy.ndarray or dict of str to numpy.ndarray
+            Deployed capacity in GW, either summed or separated by reactor
+            type.
+
+        Raises
+        ------
+        ValueError
+            If ``facility_class`` is not ``"reactor"``, a selected reactor is
+            unknown, or the configured power unit cannot be converted to GW.
         """
-        facilities = self._normalize_facilities(
-            facilities=facilities,
-            facility_class=facility_class
+        # "Capacity" means electrical nameplate capacity in the common
+        # fuel-cycle API.  Processing-facility capacity has mass/time units and
+        # cannot correctly be converted with a power-unit factor.
+        if facility_class != "reactor":
+            raise ValueError(
+                "get_deployed_capacity is defined for reactor electrical "
+                "capacity only. Use the DYMOND-specific facility methods for "
+                "processing throughput."
+            )
+
+        facilities = select_reactors(
+            reactors=facilities,
+            available=self.reactor_types,
         )
 
         type_data = self._get_type_data(facility_class)
@@ -551,21 +674,24 @@ class DYMONDOutput:
             .upper()
         )
 
-        to_gw = POWER_TO_GW[power_units]
+        capacity_by_reactor = {}
+        for reactor in facilities:
+            reactor_data = type_data.get(reactor, {})
+            rated_capacity = reactor_data.get(
+                "capacity", reactor_data.get("power", 0.0))
+            rated_capacity_gw = power_to_gw(
+                rated_capacity, power_units
+            ).item()
 
-        capacity_dict = {}
-        for fac in facilities:
-            fac_info = type_data.get(fac, {})
-            rated_capacity = fac_info.get(
-                "capacity", fac_info.get("power", 0.0))
-            rated_capacity_gw = rated_capacity * to_gw
+            fleet = self.get_facility_fleet_size(reactor, facility_class)
+            capacity_by_reactor[reactor] = fleet * rated_capacity_gw
 
-            fleet = self.get_facility_fleet_size(fac, facility_class)
-            capacity_dict[fac] = fleet * rated_capacity_gw
-
-        if return_sum:
-            return np.sum(list(capacity_dict.values()), axis=0)
-        return capacity_dict
+        return format_reactor_results(
+            capacity_by_reactor,
+            facilities,
+            length=len(self._get_times_array()),
+            return_sum=return_sum,
+        )
 
     def get_fuel_mass_and_enrichment(
         self,
@@ -581,10 +707,10 @@ class DYMONDOutput:
     ) -> dict[str, np.ndarray]:
         """
         Annual mass-weighted U-235 enrichment for fuel received by reactors,
-        computed from per-transaction composition data in the HDF5 output file.
+        computed from each receipt's composition data in the HDF5 output file.
 
         For each time step, enrichment is the ratio of U-235 mass to total
-        uranium mass summed over all incoming transactions in that year.
+        uranium mass summed over all incoming fuel receipts in that year.
         Steps with no uranium input return 0.0.
 
         Parameters
@@ -600,9 +726,11 @@ class DYMONDOutput:
             reactor type. Array length equals the number of simulation time
             steps.
         """
-        reactors = self._normalize_facilities(
-            facilities=reactors,
-            facility_class="reactor"
+        # Use the same reactor-selection rules as the other common result
+        # methods and the Cyclus plugin.
+        reactors = select_reactors(
+            reactors=reactors,
+            available=self.reactor_types,
         )
 
         times = self._get_times_array()
@@ -1204,9 +1332,9 @@ class DYMONDOutput:
             Deployment counts per reactor type, or summed across reactor
             types if ``return_sum=True``.
         """
-        reactors = self._normalize_facilities(
-            facilities=reactors,
-            facility_class="reactor"
+        reactors = select_reactors(
+            reactors=reactors,
+            available=self.reactor_types,
         )
 
         deploy_dict = {}
@@ -1216,9 +1344,12 @@ class DYMONDOutput:
                 facility_class="reactor",
             )
 
-        if return_sum:
-            return np.sum(list(deploy_dict.values()), axis=0)
-        return deploy_dict
+        return format_reactor_results(
+            deploy_dict,
+            reactors,
+            length=len(self._get_times_array()),
+            return_sum=return_sum,
+        )
 
     def get_retirements(
         self,
@@ -1243,9 +1374,9 @@ class DYMONDOutput:
             Retirement counts per reactor type, or summed across reactor
             types if ``return_sum=True``.
         """
-        reactors = self._normalize_facilities(
-            facilities=reactors,
-            facility_class="reactor"
+        reactors = select_reactors(
+            reactors=reactors,
+            available=self.reactor_types,
         )
 
         retire_dict = {}
@@ -1255,9 +1386,12 @@ class DYMONDOutput:
                 facility_class="reactor",
             )
 
-        if return_sum:
-            return np.sum(list(retire_dict.values()), axis=0)
-        return retire_dict
+        return format_reactor_results(
+            retire_dict,
+            reactors,
+            length=len(self._get_times_array()),
+            return_sum=return_sum,
+        )
 
     def get_fleet_size(
         self,
@@ -1282,9 +1416,9 @@ class DYMONDOutput:
             Fleet size per reactor type, or summed across reactor types
             if ``return_sum=True``.
         """
-        reactors = self._normalize_facilities(
-            facilities=reactors,
-            facility_class="reactor"
+        reactors = select_reactors(
+            reactors=reactors,
+            available=self.reactor_types,
         )
 
         fleet_dict = {}
@@ -1294,9 +1428,12 @@ class DYMONDOutput:
                 facility_class="reactor",
             )
 
-        if return_sum:
-            return np.sum(list(fleet_dict.values()), axis=0)
-        return fleet_dict
+        return format_reactor_results(
+            fleet_dict,
+            reactors,
+            length=len(self._get_times_array()),
+            return_sum=return_sum,
+        )
 
     def stock_fuel_demand(
         self, reactors: str | list[str] | None = None,
@@ -1328,23 +1465,14 @@ class DYMONDOutput:
         fuel_mass : np.ndarray or dict[str, np.ndarray]
             Yearly fuel mass per reactor, or total if ``return_sum=True``.
         """
-        reactors = self._normalize_facilities(
-            facilities=reactors,
-            facility_class="reactor"
+        reactors = select_reactors(
+            reactors=reactors,
+            available=self.reactor_types,
         )
 
         fuel_mass_dict = {}
-        known_reactors = set(self.reactor_types)
 
         for reactor in reactors:
-            # Check if the reactor is known in the model input.
-            # If not, raise an error
-            if reactor not in known_reactors:
-                raise ValueError(
-                    f"Reactor '{reactor}' not found "
-                    f"in reactor data."
-                )
-
             # Try process-level incoming flow first
             incoming = self._get_flow(
                 reactor, "reactor", "process", "incoming", config_name)
@@ -1359,11 +1487,18 @@ class DYMONDOutput:
             if incoming is None:
                 incoming = np.zeros_like(self._get_times_array())
 
-            fuel_mass_dict[reactor] = incoming
+            # Common Cyclus/DYMOND fuel-mass results are always reported in kg,
+            # regardless of the mass unit used in the DYMOND model.
+            fuel_mass_dict[reactor] = mass_to_kg(
+                incoming, self._model_unit("mass", "kg")
+            )
 
-        if return_sum:
-            return np.sum(list(fuel_mass_dict.values()), axis=0)
-        return fuel_mass_dict
+        return format_reactor_results(
+            fuel_mass_dict,
+            reactors,
+            length=len(self._get_times_array()),
+            return_sum=return_sum,
+        )
 
     def stock_fuel_discharged(
         self, reactors: str | list[str] | None = None,
@@ -1396,22 +1531,14 @@ class DYMONDOutput:
             Discharged fuel mass per reactor, or total if
             ``return_sum=True``.
         """
-        reactors = self._normalize_facilities(
-            facilities=reactors,
-            facility_class="reactor"
+        reactors = select_reactors(
+            reactors=reactors,
+            available=self.reactor_types,
         )
 
         fuel_mass_dict = {}
-        known_reactors = set(self.reactor_types)
 
         for reactor in reactors:
-            # Check if the reactor is known in the model input.
-            # If not, raise an error
-            if reactor not in known_reactors:
-                raise ValueError(
-                    f"Reactor '{reactor}' not found "
-                    f"in reactor data.")
-
             # Try process-level outgoing flow first
             outgoing = self._get_flow(
                 reactor, "reactor", "process", "outgoing", config_name)
@@ -1426,11 +1553,16 @@ class DYMONDOutput:
             if outgoing is None:
                 outgoing = np.zeros_like(self._get_times_array())
 
-            fuel_mass_dict[reactor] = outgoing
+            fuel_mass_dict[reactor] = mass_to_kg(
+                outgoing, self._model_unit("mass", "kg")
+            )
 
-        if return_sum:
-            return np.sum(list(fuel_mass_dict.values()), axis=0)
-        return fuel_mass_dict
+        return format_reactor_results(
+            fuel_mass_dict,
+            reactors,
+            length=len(self._get_times_array()),
+            return_sum=return_sum,
+        )
 
     def stock_fuel_resources(
         self,
@@ -1441,196 +1573,63 @@ class DYMONDOutput:
         split_cat: bool = False,
         cascade_splits: list[float] | None = None,
     ):
-        """
-        Compute natural-uranium feed, enrichment tails, and SWU
-        requirements for one or more reactors.
+        """Calculate natural-uranium feed, tails, and SWU requirements.
 
-        Enrichment and mass are derived per-transaction from the raw HDF5
-        process data, avoiding errors from averaging non-linear enrichment
-        calculations. Each incoming transaction to a reactor's process stage
-        is individually cascaded and the results binned into annual totals.
-
-        Structure (T = number of time steps, S = number of cascade stages):
-        - natu is always shape (T,)
-        - tails and swu are shape (T,) when split_cat=False
-        - tails and swu are shape (S, T) when split_cat=True
+        Each incoming fuel receipt is calculated separately before its result
+        is added to a reporting period.  This order avoids the mathematical
+        error of averaging assays before a nonlinear enrichment calculation.
 
         Parameters
         ----------
-        reactors : str or list[str]
-            Prototype name(s).
+        reactors : str, list of str, or None
+            Reactor types to include.  ``None`` selects every reactor type.
         natu_assay : float
-            Enrichment of the feed (typically natural uranium) as a decimal
-            between 0 and 1. Required.
+            U-235 assay of the natural-uranium feed, expressed as a fraction.
         tails_assay : float
-            Enrichment of the tails material as a decimal between 0 and 1.
-            Required.
+            U-235 assay of the final tails, expressed as a fraction.
         return_sum : bool, optional
-            If True, returns the sum across reactors (default True).
+            Return one result summed over the selected reactors when ``True``.
         split_cat : bool, optional
-            If True, return tails and SWU split by cascade stage;
-            otherwise return totals (default False).
-        cascade_splits : list of float
-            Intermediate enrichments (as decimals) that define cascade stages.
+            Keep separate enrichment-stage rows for tails and SWU when
+            ``True``.
+        cascade_splits : list of float or None, optional
+            Product-assay limits between enrichment stages.  ``None`` uses
+            ``[0.1, 0.2]``; an empty list requests one stage.
 
         Returns
         -------
-        dict[str, dict[str, np.ndarray] | np.ndarray]
-            Dictionary with keys 'natu', 'tails', and 'swu'.
+        dict
+            ``"natu"``, ``"tails"``, and ``"swu"`` arrays, either summed or
+            separated by reactor type.  Natural uranium has shape ``(times,)``.
+            Split tails and SWU have shape ``(stages, times)``.
+
+        Raises
+        ------
+        ValueError
+            If the reactor selection, HDF5 fuel data, assays, stage limits, or
+            enrichment results are invalid.
         """
-        assert natu_assay is not None and 0 <= natu_assay <= 1, \
-            f"natu_assay must be a number between 0 and 1, got {natu_assay!r}"
-        assert tails_assay is not None and 0 <= tails_assay <= 1, \
-            f"tails_assay must be a number between 0 and 1, got " \
-            f"{tails_assay!r}"
-
-        if cascade_splits is None:
-            cascade_splits = [0.1, 0.2]
-        if not cascade_splits:
-            cascade_splits = [np.inf]
-        else:
-            cascade_splits = list(cascade_splits)
-
-        reactors = self._normalize_facilities(
-            facilities=reactors,
-            facility_class="reactor"
+        reactors = select_reactors(
+            reactors=reactors,
+            available=self.reactor_types,
         )
-
         times = self._get_times_array()
-        n_steps = len(times)
-
-        # Cache cascade results by enrichment to avoid repeated calculations.
-        cascade_cache = {}
-
-        # Number of cascade stages, inferred from the first valid cascade.
-        n_stages = None
-
-        res = {"natu": {}, "tails": {}, "swu": {}}
-
-        with h5py.File(self.hdf5_path, 'r') as f:
-            nuclide_ids = [
-                nid.decode() if isinstance(nid, bytes) else nid
-                for nid in f['OUTPUT/nuclide_ids'][()]
-            ]
-            nuclide_index = {name: i for i, name in enumerate(nuclide_ids)}
-            u235_idx = nuclide_index.get('u235')
-            u_idxs = [i for name, i in nuclide_index.items()
-                      if name.startswith('u')]
-
-            for reactor in reactors:
-                natu_arr = np.zeros(n_steps)
-
-                # For split_cat=True, arrays with shape (S, T)
-                tails_arr = None
-                swu_arr = None
-
-                reactor_group_path = f'Reactor/{reactor}'
-                if reactor_group_path in f:
-                    for instance in f[reactor_group_path].values():
-                        proc = instance.get('process')
-                        if proc is None:
-                            continue
-
-                        times_raw = proc['times'][()]
-                        masses = proc['masses'][()]
-                        compositions = proc['compositions'][()]
-
-                        incoming = masses > 0
-                        if not np.any(incoming):
-                            continue
-
-                        times_in = times_raw[incoming]
-                        masses_in = masses[incoming]
-                        comps_in = compositions[incoming]
-                        times_in_years = times_in / SECONDS_PER_YEAR
-                        idxs = np.searchsorted(
-                            times, times_in_years, side='left')
-
-                        for idx, mass, comp in zip(idxs, masses_in, comps_in):
-                            if idx < 0 or idx >= n_steps:
-                                continue
-                            if u235_idx is None:
-                                continue
-
-                            u_mass = comp[u_idxs].sum()
-                            if u_mass <= 0:
-                                continue
-
-                            enr = float(comp[u235_idx]) / float(u_mass)
-                            if enr <= 0:
-                                continue
-
-                            key = round(enr, 8)
-                            if key not in cascade_cache:
-                                try:
-                                    cascade = enrichment_cascade(
-                                        feed_enr=natu_assay,
-                                        prod_enr=enr,
-                                        tail_enr=tails_assay,
-                                        cascade_splits=cascade_splits,
-                                    )
-                                except (ValueError, AssertionError):
-                                    continue
-
-                                cascade_cache[key] = {
-                                    "natu": cascade["feed"][0],
-                                    "tails": np.asarray(
-                                        cascade["tails"], dtype=float),
-                                    "swu": np.asarray(
-                                        cascade["swu"], dtype=float),
-                                }
-
-                            c = cascade_cache[key]
-
-                            # Infer stage count from the first valid cascade
-                            # and ensure all later cascades are compatible.
-                            if n_stages is None:
-                                n_stages = len(c["tails"])
-                            else:
-                                assert len(c["tails"]) == n_stages, \
-                                    "All cascades must have the same number " \
-                                    "of stages."
-
-                            if tails_arr is None:
-                                tails_arr = np.zeros((n_stages, n_steps))
-                                swu_arr = np.zeros((n_stages, n_steps))
-
-                            natu_arr[idx] += c["natu"] * mass
-                            tails_arr[:, idx] += c["tails"] * mass
-                            swu_arr[:, idx] += c["swu"] * mass
-
-                res["natu"][reactor] = natu_arr
-                res["tails"][reactor] = tails_arr
-                res["swu"][reactor] = swu_arr
-
-        # If no valid cascade was ever computed anywhere, use a single-stage
-        # so split_cat=True still returns a 2D shape.
-        if n_stages is None:
-            n_stages = 1
-
-        # Finalize output shapes reactor by reactor.
-        for reactor in reactors:
-            tails_arr = res["tails"][reactor]
-            swu_arr = res["swu"][reactor]
-
-            if tails_arr is None:
-                if split_cat:
-                    res["tails"][reactor] = np.zeros((n_stages, n_steps))
-                    res["swu"][reactor] = np.zeros((n_stages, n_steps))
-                else:
-                    res["tails"][reactor] = np.zeros(n_steps)
-                    res["swu"][reactor] = np.zeros(n_steps)
-            else:
-                if not split_cat:
-                    res["tails"][reactor] = tails_arr.sum(axis=0)
-                    res["swu"][reactor] = swu_arr.sum(axis=0)
-
-        if return_sum:
-            return {
-                k: np.sum(list(v.values()), axis=0) for k, v in res.items()
-            }
-
-        return res
+        receipts = self._get_fuel_receipts(reactors)
+        resources = calculate_fuel_resources(
+            receipts=receipts,
+            reactors=reactors,
+            n_times=len(times),
+            natu_assay=natu_assay,
+            tails_assay=tails_assay,
+            cascade_splits=cascade_splits,
+        )
+        return format_fuel_resource_results(
+            resources=resources,
+            reactors=reactors,
+            n_times=len(times),
+            return_sum=return_sum,
+            split_categories=split_cat,
+        )
 
     def stock_fuel_natu(
         self,
@@ -1863,6 +1862,169 @@ class DYMONDOutput:
                 else:
                     result[key] = np.atleast_1d(np.asarray(data, dtype=float))
         return result
+
+    def _model_unit(self, quantity, default):
+        """Return the DYMOND input unit for one physical quantity.
+
+        Parameters
+        ----------
+        quantity : str
+            Name under ``Model.units``, such as ``"mass"`` or ``"power"``.
+        default : str
+            Unit to use when the DYMOND input does not declare ``quantity``.
+
+        Returns
+        -------
+        str
+            Declared unit or ``default``.
+
+        Notes
+        -----
+        HDF5 arrays use the units selected in the DYMOND input.  Reading the
+        unit here keeps all common WATTS results on the same conversion path,
+        while DYMOND-specific flow and stock methods remain unchanged.
+        """
+
+        return (
+            self.input_data
+            .get("Model", self.input_data.get("model", {}))
+            .get("units", {})
+            .get(quantity, default)
+        )
+
+    def _get_fuel_receipts(self, reactors):
+        """Read incoming fuel receipts from DYMOND HDF5 process data.
+
+        Parameters
+        ----------
+        reactors : sequence of str
+            Reactor types whose fuel receipts should be read.
+
+        Returns
+        -------
+        list of FuelReceipt
+            Fuel receipts containing the reactor, time position, total mass,
+            uranium mass, and U-235 mass in the common WATTS units.
+
+        Raises
+        ------
+        ValueError
+            If required nuclide, reactor, time, mass, or composition data are
+            missing or have inconsistent lengths.
+
+        Notes
+        -----
+        This method reads the DYMOND file but does not perform enrichment
+        calculations.  Once Cyclus and DYMOND produce the same
+        :class:`FuelReceipt` records, both use the same fuel mathematics.
+        """
+
+        # DYMOND records process events in seconds.  The public result axis is
+        # expressed in years, so each receipt must first be assigned to a time
+        # position on that axis.
+        times = self._get_times_array()
+        n_steps = len(times)
+        mass_unit = self._model_unit("mass", "kg")
+        receipts = []
+
+        with h5py.File(self.hdf5_path, "r") as hdf5:
+            # U-235 and total uranium masses require the ordered nuclide list
+            # that describes every composition row.
+            if "OUTPUT/nuclide_ids" not in hdf5:
+                raise ValueError(
+                    "DYMOND fuel-resource calculations require the "
+                    "OUTPUT/nuclide_ids dataset."
+                )
+
+            nuclide_ids = [
+                (value.decode("utf-8") if isinstance(value, bytes) else str(value))
+                .strip()
+                .lower()
+                for value in hdf5["OUTPUT/nuclide_ids"][()]
+            ]
+            nuclide_index = {
+                name: index for index, name in enumerate(nuclide_ids)
+            }
+            if "u235" not in nuclide_index:
+                raise ValueError(
+                    "DYMOND nuclide_ids does not contain u235; enrichment "
+                    "resources cannot be calculated."
+                )
+            u235_index = nuclide_index["u235"]
+            uranium_indices = [
+                index
+                for name, index in nuclide_index.items()
+                if name.startswith("u")
+            ]
+
+            for reactor in reactors:
+                # Raw process data are stored below one group per reactor type.
+                reactor_path = f"Reactor/{reactor}"
+                if reactor_path not in hdf5:
+                    raise ValueError(
+                        f"DYMOND output does not contain raw process data for "
+                        f"reactor {reactor!r}."
+                    )
+
+                for instance in hdf5[reactor_path].values():
+                    process = instance.get("process")
+                    if process is None:
+                        continue
+                    # A receipt cannot be interpreted unless its time, total
+                    # mass, and nuclide composition are all present.
+                    for required in ("times", "masses", "compositions"):
+                        if required not in process:
+                            raise ValueError(
+                                f"{reactor_path}/process is missing required "
+                                f"dataset {required!r}."
+                            )
+
+                    raw_times = np.asarray(process["times"][()])
+                    raw_masses = np.asarray(process["masses"][()])
+                    compositions = np.asarray(process["compositions"][()])
+                    if not (
+                        len(raw_times) == len(raw_masses) == len(compositions)
+                    ):
+                        raise ValueError(
+                            f"{reactor_path}/process datasets have inconsistent "
+                            "fuel-receipt counts."
+                        )
+
+                    # Positive process mass is material entering the reactor;
+                    # negative mass represents material leaving it.
+                    incoming = raw_masses > 0
+                    event_years = raw_times[incoming] / SECONDS_PER_YEAR
+                    time_indices = np.searchsorted(
+                        times, event_years, side="left"
+                    )
+                    for time_index, raw_mass, composition in zip(
+                        time_indices,
+                        raw_masses[incoming],
+                        compositions[incoming],
+                    ):
+                        # Ignore events outside the configured result period.
+                        if not 0 <= int(time_index) < n_steps:
+                            continue
+                        material_mass = mass_to_kg(raw_mass, mass_unit).item()
+                        # DYMOND compositions contain mass fractions.  Convert
+                        # them to absolute uranium and U-235 masses so the
+                        # shared calculation receives the same data as Cyclus.
+                        uranium_fraction = float(
+                            np.asarray(composition)[uranium_indices].sum()
+                        )
+                        u235_fraction = float(
+                            np.asarray(composition)[u235_index]
+                        )
+                        receipts.append(
+                            FuelReceipt(
+                                reactor=str(reactor),
+                                time_index=int(time_index),
+                                material_mass=material_mass,
+                                uranium_mass=material_mass * uranium_fraction,
+                                u235_mass=material_mass * u235_fraction,
+                            )
+                        )
+        return receipts
 
     def _get_type_names(self):
         """Extract facility type names from input data for all classes.
