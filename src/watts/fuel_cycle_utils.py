@@ -641,7 +641,7 @@ def calculate_fuel_resources(
         product_assay = u235_mass / uranium_mass
         if not 0.0 <= product_assay < 1.0:
             raise ValueError(
-                f"Product assay must be in [0, 1), got {product_assay:.8g}."
+                f"Product assay must be in [0, 1), got {product_assay:.12g}."
             )
 
         reactor = receipt.reactor
