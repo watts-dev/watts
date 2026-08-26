@@ -58,6 +58,11 @@ MASS_TO_KG = {
     "METRIC TONS": 1.0e3,
 }
 
+# Default assays and cascade splits.
+NATURAL_ASSAY = 0.711E-2
+TAILS_ASSAY = 0.250E-2
+CASCADE_SPLITS = [0.1, 0.2]
+
 
 def find_single_output(
     outputs: Iterable[Path],
@@ -443,8 +448,8 @@ def aggregate_calendar_years(
 
 
 def _check_cascade_splits(
-    cascade_splits,
-    natural_assay: float,
+    cascade_splits=CASCADE_SPLITS,
+    natural_assay: float = NATURAL_ASSAY,
 ) -> list[float]:
     """Check and prepare enrichment-stage assay limits.
 
@@ -468,11 +473,10 @@ def _check_cascade_splits(
         If a limit is outside the allowed assay range, limits are not strictly
         increasing, or infinity is mixed with finite limits.
     """
-
     if cascade_splits is None:
-        splits = [0.1, 0.2]
-    else:
-        splits = [float(value) for value in cascade_splits]
+        cascade_splits = CASCADE_SPLITS
+    splits = [float(value) for value in cascade_splits]
+
     # The lower-level enrichment function represents a single stage with an
     # infinite upper assay limit.
     if not splits:
@@ -498,9 +502,9 @@ def calculate_fuel_resources(
     receipts: Iterable[FuelReceipt],
     reactors: Sequence[str],
     n_times: int,
-    natu_assay: float,
-    tails_assay: float,
-    cascade_splits=None,
+    natu_assay: float = NATURAL_ASSAY,
+    tails_assay: float = TAILS_ASSAY,
+    cascade_splits=CASCADE_SPLITS,
 ) -> dict[str, dict[str, np.ndarray]]:
     """Calculate natural-uranium feed, tails, and SWU from fuel receipts.
 

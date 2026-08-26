@@ -16,9 +16,12 @@ import pytest
 
 from watts.enrichment_utils import enrichment_cascade
 from watts.fuel_cycle_utils import (
+    CASCADE_SPLITS,
     FuelReceipt,
+    NATURAL_ASSAY,
     ResultFileReader,
     SECONDS_PER_YEAR,
+    TAILS_ASSAY,
     aggregate_calendar_years,
     calculate_fuel_resources,
     format_fuel_resource_results,
@@ -234,6 +237,32 @@ def _receipt(
         material_mass=material_mass,
         uranium_mass=uranium_mass,
         u235_mass=assay * uranium_mass,
+    )
+
+
+def test_resource_calculation_uses_shared_enrichment_defaults():
+    resources = calculate_fuel_resources(
+        [_receipt(0.04, uranium_mass=80.0, material_mass=120.0)],
+        reactors=("LWR",),
+        n_times=1,
+    )
+    cascade = enrichment_cascade(
+        NATURAL_ASSAY,
+        0.04,
+        TAILS_ASSAY,
+        CASCADE_SPLITS,
+    )
+
+    assert resources["natu"]["LWR"][0] == pytest.approx(
+        cascade["feed"][0] * 80.0
+    )
+    np.testing.assert_allclose(
+        resources["tails"]["LWR"][:, 0],
+        np.asarray(cascade["tails"]) * 80.0,
+    )
+    np.testing.assert_allclose(
+        resources["swu"]["LWR"][:, 0],
+        np.asarray(cascade["swu"]) * 80.0,
     )
 
 
