@@ -618,9 +618,19 @@ def calculate_fuel_resources(
             raise ValueError(f"Fuel receipt contains non-finite mass: {receipt!r}.")
         if material_mass < 0 or uranium_mass < 0 or u235_mass < 0:
             raise ValueError(f"Fuel receipt masses cannot be negative: {receipt!r}.")
-        if uranium_mass > material_mass + 1.0e-12:
+        if uranium_mass > material_mass and not np.isclose(
+            uranium_mass,
+            material_mass,
+            rtol=1.0e-12,
+            atol=1.0e-12,
+        ):
             raise ValueError("Uranium mass cannot exceed total material mass.")
-        if u235_mass > uranium_mass + 1.0e-12:
+        if u235_mass > uranium_mass and not np.isclose(
+            u235_mass,
+            uranium_mass,
+            rtol=1.0e-12,
+            atol=1.0e-12,
+        ):
             raise ValueError("U-235 mass cannot exceed uranium mass.")
 
         # Non-uranium fuel contributes no uranium enrichment requirement.  It
@@ -633,14 +643,16 @@ def calculate_fuel_resources(
             raise ValueError(
                 f"Product assay must be in [0, 1), got {product_assay:.8g}."
             )
-        if product_assay < natu_assay and not np.isclose(product_assay, natu_assay):
-            raise ValueError(
-                f"Product assay {product_assay:.8g} is below the natural feed "
-                f"assay {natu_assay:.8g}; a natural-uranium enrichment cascade "
-                "is not defined for this fuel receipt."
-            )
 
         reactor = receipt.reactor
+        if product_assay < natu_assay and not np.isclose(
+            product_assay, natu_assay
+        ):
+            # Depleted/recycled uranium is not the product of this
+            # natural-feed enrichment cascade.  It therefore contributes no
+            # new natural feed, enrichment tails, or separative work.  The
+            # receipt remains part of fuel demand and fabrication in the rest
+            continue
         if np.isclose(product_assay, natu_assay):
             # Natural-uranium fuel needs one kg of natural feed per kg of
             # uranium product and performs no separative work.

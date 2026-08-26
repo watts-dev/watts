@@ -252,6 +252,22 @@ def test_natural_uranium_receipt_needs_no_tails_or_swu():
     np.testing.assert_array_equal(resources["swu"]["LWR"], [[0.0, 0.0]])
 
 
+@pytest.mark.parametrize("assay", [0.002, 0.004])
+def test_depleted_uranium_receipt_needs_no_enrichment_resources(assay):
+    resources = calculate_fuel_resources(
+        [_receipt(assay)],
+        reactors=("LWR",),
+        n_times=1,
+        natu_assay=0.00711,
+        tails_assay=0.002,
+        cascade_splits=[],
+    )
+
+    np.testing.assert_array_equal(resources["natu"]["LWR"], [0.0])
+    np.testing.assert_array_equal(resources["tails"]["LWR"], [[0.0]])
+    np.testing.assert_array_equal(resources["swu"]["LWR"], [[0.0]])
+
+
 def test_enrichment_uses_uranium_product_mass_not_total_material_mass():
     resources = calculate_fuel_resources(
         [_receipt(0.04, uranium_mass=80.0, material_mass=120.0)],
@@ -456,6 +472,27 @@ def test_zero_uranium_receipt_is_valid_and_contributes_zero():
     )
 
 
+def test_receipt_mass_validation_allows_floating_point_roundoff():
+    resources = calculate_fuel_resources(
+        [
+            FuelReceipt(
+                reactor="LWR",
+                time_index=0,
+                material_mass=100_000.0,
+                uranium_mass=100_000.0 + 3.0e-11,
+                u235_mass=4_000.0,
+            )
+        ],
+        reactors=("LWR",),
+        n_times=1,
+        natu_assay=0.00711,
+        tails_assay=0.002,
+        cascade_splits=[],
+    )
+
+    assert resources["natu"]["LWR"][0] > 0.0
+
+
 @pytest.mark.parametrize(
     "receipts, reactors, n_times, natural, tails, message",
     [
@@ -465,7 +502,6 @@ def test_zero_uranium_receipt_is_valid_and_contributes_zero():
         ([], ("LWR",), 1, 0.00711, 0.008, "0 < tails"),
         ([], ("LWR",), -1, 0.00711, 0.002, "non-negative integer"),
         ([], ("LWR",), 1.5, 0.00711, 0.002, "non-negative integer"),
-        ([_receipt(0.004)], ("LWR",), 1, 0.00711, 0.002, "below"),
         ([_receipt(1.0)], ("LWR",), 1, 0.00711, 0.002, r"in \[0, 1\)"),
         ([_receipt(0.04, reactor="SFR")], ("LWR",), 1,
          0.00711, 0.002, "unknown reactor"),
