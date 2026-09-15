@@ -38,6 +38,7 @@ dependencies = [
     "platformdirs",
     "prettytable",
     "astropy",
+    "h5py",
     "uncertainties",
     "click",
 ]

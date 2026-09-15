@@ -43,9 +43,11 @@ class PluginACCERT(PluginGeneric):
                  extra_template_inputs: Optional[List[PathLike]] = None,
                  show_stdout: bool = False, show_stderr: bool = False):
         executable = _find_executable(executable, 'ACCERT_DIR')
-        execute_command = [sys.executable, '{self.executable}', '-i', '{self.input_name}']
-        super().__init__(executable, execute_command, template_file, extra_inputs,
-                         extra_template_inputs, "ACCERT", show_stdout, show_stderr)
+        execute_command = [sys.executable, '{self.executable}', '-i',
+                          '{self.input_name}']
+        super().__init__(executable, execute_command, template_file,
+                         extra_inputs, extra_template_inputs, "ACCERT",
+                         show_stdout, show_stderr)
         self.input_name = "ACCERT_input.son"
 
     @PluginGeneric.executable.setter
@@ -53,8 +55,8 @@ class PluginACCERT(PluginGeneric):
         if not exe.is_file():
             raise RuntimeError(
                 f"{self.plugin_name} module '{exe}' does not exist. The "
-                "ACCERT_DIR environment variable needs to be set to a directory "
-                "containing the Main.py module."
+                "ACCERT_DIR environment variable needs to be set to a "
+                "directory containing the Main.py module."
             )
         self._executable = Path(exe)
 
@@ -82,8 +84,32 @@ class ResultsACCERT(Results):
     """
 
     @property
-    def total_cost(self) -> float:
+    def total_calculated_direct_cost(self) -> float:
         return self.account_table['total_cost'].values[0]
+
+    @property
+    def total_direct_cost(self) -> float:
+        return self.account_table['total_cost'].values[0] / 0.834
+
+    @property
+    def total_indirect_costs(self) -> float:
+        return self.account_table['total_cost'].values[0] * 0.609 / 0.834
+
+    @property
+    def total_cost_without_owner(self) -> float:
+        """direct cost + indirect costs"""
+        return self.account_table['total_cost'].values[0] * 1.609 / 0.834
+
+    @property
+    def owner_cost(self) -> float:
+        return (self.account_table['total_cost'].values[0] * 1.609 * 0.2 /
+                0.834)
+
+    @property
+    def total_OCC(self) -> float:
+        """Total OCC = Total cost without owner + Owner cost"""
+        return (self.account_table['total_cost'].values[0] * 1.609 * 1.2 /
+                0.834)
 
     @property
     def account_table(self) -> pd.DataFrame:
