@@ -4,7 +4,7 @@ build-backend = "flit_core.buildapi"
 
 [project]
 name = "watts"
-version = "0.5.2-dev"
+version = "0.5.3-dev"
 authors = [
     { name = "UChicago Argonne, LLC", email = "watts@anl.gov" },
 ]
@@ -50,6 +50,7 @@ docs = [
     "pydata_sphinx_theme",
     "sphinx_design",
     "sphinx-autodoc-typehints",
+    "sphinx-favicon",
 ]
 
 [project.urls]

@@ -11,4 +11,3 @@ doc/source/reference/generated/
 *.png
 *.pkl
 *~
-dist/

@@ -14,7 +14,8 @@ API Reference
    watts.PluginGeneric
    watts.PluginABCE
    watts.PluginACCERT
-   watts.PluginGCMat
+   watts.PluginALEAF
+   watts.PluginGCMAT
    watts.PluginMCNP
    watts.PluginMOOSE
    watts.PluginOpenMC
@@ -23,6 +24,10 @@ API Reference
    watts.PluginSAS
    watts.PluginSerpent
    watts.Results
+   watts.ResultsABCE
+   watts.ResultsACCERT
+   watts.ResultsALEAF
+   watts.ResultsGCMAT
    watts.ResultsMCNP
    watts.ResultsMOOSE
    watts.ResultsOpenMC

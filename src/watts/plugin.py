@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2022-2023 UChicago Argonne, LLC
+# SPDX-FileCopyrightText: 2022-2025 UChicago Argonne, LLC
 # SPDX-License-Identifier: MIT
 
 from abc import ABC, abstractmethod
@@ -144,7 +144,7 @@ class Plugin(ABC):
             except Exception:
                 # If error occurred, make sure we remove results directory so it
                 # doesn't pollute database
-                shutil.rmtree(workflow_path)
+                #shutil.rmtree(workflow_path)
                 raise
 
         # Add result to database

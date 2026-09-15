@@ -7,18 +7,36 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changes
+
+* Update ACCERT output name
+  ([#120](https://github.com/watts-dev/watts/pull/120))
+
+### Fixed
+
+* Capture output remaining in subprocess pipe buffers after the process exits
+  ([#124](https://github.com/watts-dev/watts/pull/124))
+
+## [0.5.2]
+
 ### Added
 
 * The `Plugin.__call__` method now accepts an `output_dir` argument that
   specifies the directory created in the database
   ([#107](https://github.com/watts-dev/watts/pull/107))
-* GCMAT plugin via the `PluginGCMAT` class ([114](https://github.com/watts-dev/watts/pull/114))
+* GCMAT plugin via the `PluginGCMAT` class
+  ([#114](https://github.com/watts-dev/watts/pull/114))
+* A-LEAF plugin via the `PluginALEAF` class
+  ([#119](https://github.com/watts-dev/watts/pull/119))
 
 ### Changes
 
 * Update recommendations for Dakota version
   ([#111](https://github.com/watts-dev/watts/pull/111))
-* Update GitHub Actions workflows ([#112](https://github.com/watts-dev/watts/pull/112))
+* Update GitHub Actions workflows
+  ([#112](https://github.com/watts-dev/watts/pull/112))
+* SAS plugin modifications to handle MFUEL output
+  ([#113](https://github.com/watts-dev/watts/pull/113))
 
 ### Fixed
 
