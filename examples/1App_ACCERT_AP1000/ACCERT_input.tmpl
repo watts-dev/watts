@@ -1,0 +1,24 @@
+% AP1000 two-unit plant example.
+% Direct-cost reference basis: Stewart W.R. and Shirvan K.,
+% "Capital cost estimation for advanced nuclear power plants,"
+% Renewable and Sustainable Energy Reviews, 2021, 111880,
+% https://doi.org/10.1016/j.rser.2021.111880; TIMCAT reference
+% implementation: https://github.com/mit-crpg/TIMCAT.
+
+accert{
+    ref_model = "AP1000"
+    use_gncoa = False
+
+    % Dollar year that the escalated costs are reported in
+    target_dollar_year = {{ dollar_year }}
+
+    % Ask ACCERT to write the overnight capital cost summary, which
+    % is what the OCC results of the plugin are read from.
+    post_process { occ = true }
+
+    power(Thermal){ value = {{ thermal_power }} unit = MW }
+    power(Electric){ value = {{ electric_power }} unit = MW }
+
+    % Mass of the main coolant piping, which drives account 222
+    var(mc_piping_M){ value = {{ piping_mass }} unit = kg }
+}

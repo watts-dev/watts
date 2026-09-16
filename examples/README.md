@@ -10,6 +10,9 @@ Training on WATTS is enabled with a suite of simple examples:
 * [__1App_PyARC_UnitCell__](1App_PyARC_UnitCell/README.md) - Showcasing PyARC execution
 * [__1App_SAS_SodiumLoop__](1App_SAS_SodiumLoop/README.md) - Showcasing SAS plugin with a simple sodium loop problem
 * [__1App_MOOSE-MultiApp_Simple__](1App_MOOSE-MultiApp_Simple/README.md) - Simple MOOSE MultiApp calculation
+* [__1App_ACCERT_PWR12BE__](1App_ACCERT_PWR12BE/README.md) - Showcasing ACCERT execution for the PWR12-BE cost model
+* [__1App_ACCERT_AP1000__](1App_ACCERT_AP1000/README.md) - Overnight capital cost of the AP1000 escalated to a target dollar year
+* [__1App_ACCERT_LargeTokamak__](1App_ACCERT_LargeTokamak/README.md) - Cost and levelized cost of electricity of a large tokamak
 ## Examples with Multi Applications
 * [__MultiApp_SAM-OpenMC_VHTR__](MultiApp_SAM-OpenMC_VHTR/README.md) - Workflow with MOOSE/SAM and OpenMC
 ## Multi-step workflow

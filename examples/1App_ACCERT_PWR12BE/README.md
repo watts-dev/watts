@@ -12,6 +12,7 @@ This example provides a demonstration on how to use WATTS to run ACCERT for PWR1
  
 - ACCERT execution
 - Total cost extraction
+- Overnight capital cost extraction
 
 ## File descriptions
 

@@ -6,7 +6,10 @@
 
 accert{
     ref_model = "PWR12-BE"
-    power(Thermal){ value = {{ thermal_power }}   unit = MW } 
+    % Ask ACCERT to write the overnight capital cost summary, which
+    % is what the total_OCC results of the plugin are read from.
+    post_process { occ = true }
+    power(Thermal){ value = {{ thermal_power }}   unit = MW }
     power(Electric){ value = {{ electric_power }}   unit = MW } 
     l0COA(2){
         l1COA(21){
