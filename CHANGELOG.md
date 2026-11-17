@@ -7,21 +7,40 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changes
+
+* Update ACCERT output name
+  ([#120](https://github.com/watts-dev/watts/pull/120))
+* `ornl-wasp>=5.0.0` is now a dependency of WATTS, as required by PyARC 4.0.0
+  and later for use with `PluginPyARC`. Because `ornl-wasp` requires Python
+  3.10+, the minimum supported Python version is now 3.10
+  ([#127](https://github.com/watts-dev/watts/pull/127))
+
+### Fixed
+
+* Capture output remaining in subprocess pipe buffers after the process exits
+  ([#124](https://github.com/watts-dev/watts/pull/124))
+
+## [0.5.2]
+
 ### Added
 
 * The `Plugin.__call__` method now accepts an `output_dir` argument that
   specifies the directory created in the database
   ([#107](https://github.com/watts-dev/watts/pull/107))
+* GCMAT plugin via the `PluginGCMAT` class
+  ([#114](https://github.com/watts-dev/watts/pull/114))
+* A-LEAF plugin via the `PluginALEAF` class
+  ([#119](https://github.com/watts-dev/watts/pull/119))
 
 ### Changes
 
 * Update recommendations for Dakota version
   ([#111](https://github.com/watts-dev/watts/pull/111))
-* Update GitHub Actions workflows ([#112](https://github.com/watts-dev/watts/pull/112))
-* `ornl-wasp>=5.0.0` is now a dependency of WATTS, as required by PyARC 4.0.0
-  and later for use with `PluginPyARC`. Because `ornl-wasp` requires Python
-  3.10+, the minimum supported Python version is now 3.10
-  ([#114](https://github.com/watts-dev/watts/pull/114))
+* Update GitHub Actions workflows
+  ([#112](https://github.com/watts-dev/watts/pull/112))
+* SAS plugin modifications to handle MFUEL output
+  ([#113](https://github.com/watts-dev/watts/pull/113))
 
 ### Fixed
 

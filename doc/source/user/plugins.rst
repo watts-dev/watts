@@ -339,6 +339,46 @@ As with other plugins, :class:`~watts.PluginABCE` is easily used by::
 .. note::
     `ABCE` is still under active development.
 
+A-LEAF Plugin
++++++++++++++
+The :class:`~watts.PluginALEAF` class enables simulations with the Argonne
+Low-carbon Electricity Analysis Framework (A-LEAF) code using a text-based input
+file for fuel price modification. The A-LEAF code uses an Excel-based input
+file, and the A-LEAF plugin will only modify the fuel price under the ``Fuel``
+section of the input file. Since the A-LEAF code is still under active
+development, the plugin will be updated as the code is updated.
+
+The A-LEAF fuel price input file can be templated as follows:
+
+.. code-block:: jinja
+
+    Scenario	FUEL	Type	Unit	2022	2023	2024	2025	2026	...
+
+    Reference	Coal	Real	2022 $/MMBtu	1.64	1.61	1.65	1.57	1.52	...
+    ...
+    Base	Nuclear	Real	2020 $/MMBTU	{% for year, price in fuel_price.items() %}
+    {{ price }}{% if not loop.last %}	{% endif %}{% endfor %}
+    Base	Biomass	Real	2020 $/MMBTU	5.00	5.11	5.22	5.34	5.45	...
+    ...
+    Low	OGS	Real	2020 $/MMBTU	3.30	3.00	2.73	2.58	2.56	...
+
+Before running the A-LEAF plugin, you need to specify the directory that the
+executable and the license key are in (they must be in the same directory). This
+can be done by adding the ``ALEAF_DIR`` variable to the environment or by
+explicitly specifying the path in the Python script as::
+
+    aleaf_plugin = watts.PluginALEAF(
+        'aleaf_template',
+        executable="/path/to/A-LEAF",
+        extra_inputs=[]
+    )
+
+As with other plugins, :class:`~watts.PluginALEAF` can be used by calling the
+:meth:`~watts.PluginALEAF` instance directly the same way as other plugins::
+
+    aleaf_plugin = watts.PluginALEAF('aleaf_template')
+    aleaf_result = aleaf_plugin(params)
+
 
 Dakota Plugin
 +++++++++++++
@@ -476,3 +516,43 @@ As with other plugins, :class:`~watts.PluginACCERT` is used by::
 
     accert_plugin = watts.PluginACCERT('accert_template')
     accert_result = accert_plugin(params)
+
+GCMat Plugin
+++++++++++++
+
+The :class:`~watts.PluginGCMAT` class enables simulations with Argonne's global
+critical materials agent-based model (GCMat). This code simulates dynamic
+economic markets that are composed of agents who have complex decision-making
+behaviors, and interact with and influence each other, possibly indirectly
+through market signals.
+
+The GCMat plugin requires a template input file that can be templated as follows:
+
+.. code-block:: jinja
+
+    region    final demand agent	final demand product	reference product	unit	2010	2011	2012	2013	2014	2015	2016	2017	2018	2019	2020	2021	2022	2023	2024	2025	2026	2027	2028	2029	2030
+    final demand U	U	U	tonnes	111847.841748839	112977.61792812	114118.805988	115271.5212	116435.88	117612	118800	120000	121200	122412	123636.12	124872.4812	126121.206012	127382.41807212	128656.242252841	{{final_demand_2025}}	{{final_demand_2026}}	{{final_demand_2027}}	{{final_demand_2028}}	{{final_demand_2029}}	{{final_demand_2030}}
+
+    China    final demand U	U		shares of total	0.107142857142857	0.106698999696878	0.112674964564139	0.114434523188336	0.116194081812533	0.1278	0.1299	0.132	0.1341	0.1362	0.1383	0.1404	0.1425	0.1446	0.1467	{{china_2025}}	{{china_2026}}	{{china_2027}}	{{china_2028}}	{{china_2029}}	{{china_2030}}
+
+    US    final demand U	U		shares of total	0.206589879692216	0.201409879668034	0.199574650237538	0.196450274218913	0.194620873740305	0.193447312012611	0.190358597294858	0.187635077997256	0.185744587021863	0.183688235605066	0.180393178767648	0.177208294866757	0.174389224194135	0.171923735369984	0.169723351626385	{{us_2025}}	{{us_2026}}	{{us_2027}}	{{us_2028}}	{{us_2029}}	{{us_2030}}
+
+    Europe    final demand U	U		shares of total	0.16491345183516	0.160710857760063	0.154355276635327	0.149054613139685	0.145906896593099	0.143775880528747	0.141896860630669	0.140266791187998	0.138026220404039	0.135574967728323	0.132758006582095	0.130102830325263	0.127653579579804	0.125407763844851	0.123338987757727	{{eu_2025}}	{{eu_2026}}	{{eu_2027}}	{{eu_2028}}	{{eu_2029}}	{{eu_2030}}
+
+    ROW    final demand U	U		shares of total	0.521353811330767	0.531180262874025	0.533394108562996	0.539080588452066	0.543278147354063	0.535073807414382	0.536243130077473	0.536734120790743	0.541204905572035	0.541712831061545	0.548846808065192	0.554835894215335	0.556026422605261	0.556024685007383	0.556929270113103	{{row_2025}}	{{row_2026}}	{{row_2027}}	{{row_2028}}	{{row_2029}}	{{row_2030}}
+
+
+The GCMat plugin can be instantiated with the following command line::
+
+    gcmat_plugin = watts.PluginGCMAT('gcmat_template')
+
+Before running the GCMat plugin, the directory that contains the executable
+'run_repast.sh' must be set. This can be done by setting the ``GCMAT_DIR``
+environment variable::
+
+    export GCMAT_DIR='/path/to/gcmat/output'
+
+As with other plugins, :class:`~watts.PluginGCMAT` is used by::
+
+    gcmat_plugin = watts.PluginGCMAT('gcmat_template')
+    gcmat_result = gcmat_plugin(params)

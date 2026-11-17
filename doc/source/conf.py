@@ -78,18 +78,6 @@ html_logo = '_static/watts.svg'
 
 html_theme_options = {
     "github_url": "https://github.com/watts-dev/watts",
-    "favicons": [
-        {
-            "rel": "icon",
-            "sizes": "16x16",
-            "href": "watts_16x16.png",
-        },
-        {
-            "rel": "icon",
-            "sizes": "32x32",
-            "href": "watts_32x32.png",
-        },
-    ],
     "switcher": {
         "json_url": "https://watts.readthedocs.io/en/latest/_static/switcher.json",
         "version_match": version if '-dev' not in version else 'dev',
@@ -97,3 +85,8 @@ html_theme_options = {
     "navbar_end": ["version-switcher", "navbar-icon-links"],
     "show_toc_level": 3,
 }
+
+favicons = [
+    "watts_16x16.png",
+    "watts_32x32.png",
+]
