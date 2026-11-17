@@ -5,6 +5,11 @@
         "url": "https://watts.readthedocs.io/en/latest/"
     },
     {
+        "name": "0.5.2",
+        "version": "v0.5.2",
+        "url": "https://watts.readthedocs.io/en/v0.5.2/"
+    },
+    {
         "name": "0.5.1",
         "version": "v0.5.1",
         "url": "https://watts.readthedocs.io/en/v0.5.1/"

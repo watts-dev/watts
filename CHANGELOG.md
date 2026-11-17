@@ -7,23 +7,42 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changes
+
+* Update ACCERT output name
+  ([#120](https://github.com/watts-dev/watts/pull/120))
+
+### Fixed
+
+* Capture output remaining in subprocess pipe buffers after the process exits
+  ([#124](https://github.com/watts-dev/watts/pull/124))
+
+## [0.5.2]
+
 ### Added
 
 * The `Plugin.__call__` method now accepts an `output_dir` argument that
   specifies the directory created in the database
   ([#107](https://github.com/watts-dev/watts/pull/107))
+* GCMAT plugin via the `PluginGCMAT` class
+  ([#114](https://github.com/watts-dev/watts/pull/114))
+* A-LEAF plugin via the `PluginALEAF` class
+  ([#119](https://github.com/watts-dev/watts/pull/119))
 
 ### Changes
 
 * Update recommendations for Dakota version
   ([#111](https://github.com/watts-dev/watts/pull/111))
-* Update GitHub Actions workflows ([#112](https://github.com/watts-dev/watts/pull/112))
 * `PluginPyARC` now requires PyARC 4.0.0 or later. PyARC is run in its own
   Python environment through the `entry.sh` script shipped next to `PyARC.sh`
   (the new default `executable`) instead of being imported into the current
   interpreter, which avoids conflicts between the WASP version bundled with
   PyARC and one installed in the WATTS environment
   ([#114](https://github.com/watts-dev/watts/pull/114))
+* Update GitHub Actions workflows
+  ([#112](https://github.com/watts-dev/watts/pull/112))
+* SAS plugin modifications to handle MFUEL output
+  ([#113](https://github.com/watts-dev/watts/pull/113))
 
 ### Fixed
 
