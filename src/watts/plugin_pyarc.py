@@ -3,32 +3,14 @@
 
 from pathlib import Path
 import os
-import pickle
+import sys
 import tempfile
-from typing import List, Optional
+from typing import Mapping, List, Optional
 
-from .fileutils import PathLike, run as run_proc
+from .fileutils import PathLike
 from .parameters import Parameters
 from .plugin import PluginGeneric, _find_executable
 from .results import Results, ExecInfo
-
-
-# Python snippet executed in PyARC's own environment (through entry.sh). It
-# runs PyARC and pickles the results dictionary, which is otherwise only
-# available in memory, so that WATTS can load it afterwards.
-_PYARC_SCRIPT = """
-import pickle, sys, tempfile
-pyarc_dir, input_file, output_dir, results_file = sys.argv[1:5]
-sys.path.insert(0, pyarc_dir)
-import PyARC
-pyarc = PyARC.PyARC()
-pyarc.user_object.do_run = True
-pyarc.user_object.do_postrun = True
-with tempfile.TemporaryDirectory() as tmpdir:
-    pyarc.execute(["-i", input_file, "-w", tmpdir, "-o", output_dir])
-with open(results_file, "wb") as fh:
-    pickle.dump(pyarc.user_object.results, fh)
-"""
 
 
 class ResultsPyARC(Results):
@@ -56,17 +38,14 @@ class ResultsPyARC(Results):
 
 
 class PluginPyARC(PluginGeneric):
-    """Plugin for running PyARC (version 4.0.0 or later)
-
-    PyARC is run in its own Python environment through the ``entry.sh``
-    script that is shipped next to ``PyARC.sh``.
+    """Plugin for running PyARC
 
     Parameters
     ----------
     template_file
         Templated PyARC input
     executable
-        Path to PyARC.sh script
+        Path to PyARC.py script
     extra_inputs
         List of extra (non-templated) input files that are needed
     extra_template_inputs
@@ -86,7 +65,7 @@ class PluginPyARC(PluginGeneric):
     def __init__(
         self,
         template_file: str,
-        executable: PathLike = 'PyARC.sh',
+        executable: PathLike = 'PyARC.py',
         extra_inputs: Optional[List[str]] = None,
         extra_template_inputs: Optional[List[PathLike]] = None,
         show_stdout: bool = False,
@@ -101,35 +80,31 @@ class PluginPyARC(PluginGeneric):
     def executable(self, exe: PathLike):
         if not exe.is_file():
             raise RuntimeError(
-                f"{self.plugin_name} script '{exe}' does not exist. The "
+                f"{self.plugin_name} module '{exe}' does not exist. The "
                 "PyARC_DIR environment variable needs to be set to a directory "
-                "containing the PyARC.sh script (PyARC 4.0.0 or later)."
+                "containing the PyARC.py module."
             )
         self._executable = Path(exe)
 
-    def run(self):
-        """Run PyARC"""
-        pyarc_dir = self.executable.resolve().parent
-        cwd = Path.cwd()
+    def run(self, **kwargs: Mapping):
+        """Run PyARC
 
-        # Results file is written outside of the execution directory so that
-        # it is not collected as a PyARC output
-        fd, results_file = tempfile.mkstemp(suffix='.pkl')
-        os.close(fd)
-        os.remove(results_file)
-        try:
-            run_proc(['bash', str(pyarc_dir / 'entry.sh'), '-c', _PYARC_SCRIPT,
-                      str(pyarc_dir), str(cwd / self.input_name), str(cwd),
-                      results_file])
-            if not os.path.isfile(results_file):
-                raise RuntimeError(
-                    f"PyARC did not complete successfully. See "
-                    f"{self.plugin_name}_log.txt for details.")
-            with open(results_file, 'rb') as fh:
-                self._results_data = pickle.load(fh)
-        finally:
-            if os.path.isfile(results_file):
-                os.remove(results_file)
+        Parameters
+        ----------
+        **kwargs
+            Keyword arguments passed on to :func:`pyarc.execute`
+        """
+        sys.path.insert(0, f'{self.executable.parent}')
+        import PyARC
+        self.pyarc = PyARC.PyARC()
+        self.pyarc.user_object.do_run = True
+        self.pyarc.user_object.do_postrun = True
+        od = Path.cwd()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            self.pyarc.execute(["-i", self.input_name, "-w", tmpdir, "-o", str(od)], **kwargs)
+        sys.path.pop(0)  # Restore sys.path to original state
+        os.chdir(od)  # TODO: I don't know why but I keep going to self.executable after execution - this is very wierd!
 
     def postrun(self, params: Parameters, exec_info: ExecInfo) -> ResultsPyARC:
         """Collect information from PyARC and create results object
@@ -145,4 +120,4 @@ class PluginPyARC(PluginGeneric):
         -------
         PyARC results object
         """
-        return super().postrun(params, exec_info, results_data=self._results_data)
+        return super().postrun(params, exec_info, results_data=self.pyarc.user_object.results)

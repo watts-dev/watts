@@ -18,11 +18,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 * Update recommendations for Dakota version
   ([#111](https://github.com/watts-dev/watts/pull/111))
 * Update GitHub Actions workflows ([#112](https://github.com/watts-dev/watts/pull/112))
-* `PluginPyARC` now requires PyARC 4.0.0 or later. PyARC is run in its own
-  Python environment through the `entry.sh` script shipped next to `PyARC.sh`
-  (the new default `executable`) instead of being imported into the current
-  interpreter, which avoids conflicts between the WASP version bundled with
-  PyARC and one installed in the WATTS environment
+* `ornl-wasp>=5.0.0` is now a dependency of WATTS, as required by PyARC 4.0.0
+  and later for use with `PluginPyARC`. Because `ornl-wasp` requires Python
+  3.10+, the minimum supported Python version is now 3.10
   ([#114](https://github.com/watts-dev/watts/pull/114))
 
 ### Fixed
