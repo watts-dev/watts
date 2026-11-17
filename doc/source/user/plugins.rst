@@ -124,6 +124,10 @@ The path to the PyARC module can be specified explicitly::
         executable="/path/to/PyARC/PyARC.py"
     )
 
+PyARC is imported and run in the same Python environment as WATTS, so that
+environment must provide PyARC's dependencies. In particular, PyARC 4.0.0 and
+later require ``ornl-wasp>=5.0.0``, which is installed as a dependency of WATTS.
+
 To execute PyARC, the :meth:`~watts.PluginPyARC` instance is called directly the
 same way as other plugins. Extra input files and templates can be specified as
 described in :ref:`input_files`.

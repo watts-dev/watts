@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 * Update ACCERT output name
   ([#120](https://github.com/watts-dev/watts/pull/120))
+* `ornl-wasp>=5.0.0` is now a dependency of WATTS, as required by PyARC 4.0.0
+  and later for use with `PluginPyARC`. Because `ornl-wasp` requires Python
+  3.10+, the minimum supported Python version is now 3.10
+  ([#127](https://github.com/watts-dev/watts/pull/127))
 
 ### Fixed
 
